@@ -1,0 +1,35 @@
+.section-tabs {
+  display: flex;
+  border-bottom: $border-width solid $color-border;
+  background-color: $color-bg-light;
+}
+
+.section-tab {
+  flex: 1;
+  padding: $space-sm $space-md;
+  background: none;
+  border: none;
+  font-size: $font-sm;
+  font-weight: $font-semibold;
+  color: $color-text-muted;
+  cursor: pointer;
+  transition: all $transition-base;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -$border-width;
+
+  &:hover:not(:disabled) {
+    color: $color-text-secondary;
+    background-color: $color-bg-lighter;
+  }
+
+  &.active {
+    color: $color-primary;
+    border-bottom-color: $color-primary;
+    background-color: $color-bg-white;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

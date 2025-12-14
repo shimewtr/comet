@@ -1,0 +1,164 @@
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-md;
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: $space-md;
+    gap: $space-md;
+
+    @media (max-width: $breakpoint-sm) {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: $space-xs;
+      gap: $space-sm;
+    }
+  }
+
+  .form-group {
+    label {
+      display: block;
+      margin-bottom: $space-sm;
+      color: $color-text-primary;
+      font-weight: $font-semibold;
+      font-size: $font-sm;
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: $space-sm;
+      cursor: pointer;
+      user-select: none;
+
+      input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+    }
+
+    .comment-input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: $space-sm;
+      border: $border-width solid $color-border;
+      border-radius: $radius-sm;
+      background-color: $color-bg-white;
+      color: $color-text-primary;
+      font-size: $font-md;
+      transition: border-color $transition-base;
+
+      &:focus {
+        border-color: $color-primary;
+        outline: none;
+      }
+
+      &:disabled {
+        background-color: $color-bg-light;
+        cursor: not-allowed;
+      }
+    }
+
+    .color-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $space-sm;
+
+      .color-button {
+        width: $button-width-sm;
+        height: $button-height-sm;
+        padding: 0;
+        border: $border-width solid $color-border;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        transition: all $transition-base;
+
+        &.selected {
+          border: 3px solid $color-primary;
+          box-shadow: 0 0 0 2px rgba($color-primary, 0.3);
+        }
+
+        &:hover:not(:disabled) {
+          box-shadow: $shadow-md;
+          opacity: $opacity-hover;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: $opacity-disabled;
+        }
+      }
+    }
+
+    .size-picker,
+    .speed-picker,
+    .animation-picker {
+      display: flex;
+      gap: $space-sm;
+
+      .size-button,
+      .speed-button,
+      .animation-button {
+        flex: 1;
+        padding: $space-sm 0;
+        border: $border-width solid $color-border;
+        border-radius: $radius-sm;
+        background-color: $color-bg-light;
+        font-weight: $font-medium;
+        font-size: $font-sm;
+        cursor: pointer;
+        transition: all $transition-base;
+
+        &:hover:not(:disabled) {
+          border-color: $color-border-light;
+          background-color: $color-bg-lighter;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: $opacity-disabled;
+        }
+
+        &.selected {
+          border-color: $color-primary;
+          background-color: $color-primary;
+          color: white;
+
+          &:hover {
+            border-color: $color-primary;
+            background-color: $color-primary;
+            color: white;
+          }
+        }
+      }
+    }
+  }
+
+  .submit-button {
+    width: 100%;
+    padding: $space-sm;
+    border: none;
+    border-radius: $radius-sm;
+    background-color: $color-primary;
+    color: white;
+    font-weight: $font-semibold;
+    font-size: $font-md;
+    cursor: pointer;
+    transition:
+      transform $transition-base,
+      box-shadow $transition-base;
+
+    &:hover:not(:disabled) {
+      opacity: $opacity-hover;
+    }
+
+    &:disabled {
+      transform: none;
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+  }
+}

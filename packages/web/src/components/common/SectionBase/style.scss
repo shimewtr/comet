@@ -1,0 +1,33 @@
+.section-base {
+  width: 100%;
+  padding: $space-md;
+  overflow: hidden;
+  border: $border-width solid $color-border;
+  border-radius: $radius-xl;
+  background-color: $color-bg-white;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: $space-sm;
+    border-radius: $radius-lg;
+  }
+
+  .section-header {
+    padding: 0 0 $space-sm;
+    border-bottom: $border-width-thin solid $color-border;
+
+    h3 {
+      margin: 0;
+      color: $color-text-primary;
+      font-weight: $font-semibold;
+      font-size: $font-sm;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+  }
+
+  .section-content {
+    display: flex;
+    flex-direction: column;
+    padding: $space-md 0 0;
+    gap: $space-md;
+  }
+}

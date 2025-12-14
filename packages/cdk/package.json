@@ -1,0 +1,31 @@
+{
+  "name": "@comet/cdk",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "echo 'Please use deploy:dev or deploy:prod with AWS_PROFILE' && exit 1",
+    "deploy:dev": "cdk deploy --all --context env=dev --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "deploy:prod": "cdk deploy --all --context env=prod --require-approval broadening --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "diff": "cdk diff --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "diff:dev": "cdk diff --context env=dev --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "diff:prod": "cdk diff --context env=prod --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "synth": "cdk synth",
+    "synth:dev": "cdk synth --context env=dev",
+    "synth:prod": "cdk synth --context env=prod",
+    "destroy:dev": "cdk destroy --all --context env=dev --profile ${AWS_PROFILE:?AWS_PROFILE is required}",
+    "destroy:prod": "cdk destroy --all --context env=prod --profile ${AWS_PROFILE:?AWS_PROFILE is required}"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.100.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@comet/shared": "workspace:*",
+    "aws-cdk-lib": "^2.100.0",
+    "constructs": "^10.3.0"
+  }
+}

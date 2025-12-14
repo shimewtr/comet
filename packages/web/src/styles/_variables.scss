@@ -1,0 +1,87 @@
+// Color tokens
+$color-primary: #4a90e2;
+$color-primary-dark: #357abd;
+$color-border: #e2e8f0;
+$color-border-light: #cbd5e0;
+$color-bg-white: #ffffff;
+$color-bg-light: #f7fafc;
+$color-bg-lighter: #edf2f7;
+$color-text-primary: #2d3748;
+$color-text-secondary: #4a5568;
+$color-text-muted: #718096;
+$color-text-light: #a0aec0;
+$color-error: #f56565;
+$color-error-dark: #c53030;
+$color-error-bg: #fed7d7;
+
+// Spacing (8px grid system)
+$space-xs: 0.25rem; // 4px
+$space-sm: 0.5rem; // 8px
+$space-md: 1rem; // 16px
+$space-lg: 1.5rem; // 24px
+$space-xl: 2rem; // 32px
+
+// Border radius
+$radius-sm: 0.25rem; // 4px
+$radius-md: 0.375rem; // 6px
+$radius-lg: 0.5rem; // 8px
+$radius-xl: 0.75rem; // 12px
+
+// Font sizes
+$font-xxs: 0.5rem; // 7px
+$font-xs: 0.75rem; // 12px
+$font-sm: 0.875rem; // 14px
+$font-md: 1rem; // 16px
+$font-lg: 1.125rem; // 18px
+$font-xl: 1.25rem; // 20px
+$font-xxl: 1.5rem; // 24px
+$font-xxxl: 1.75rem; // 28px
+
+// Font weights
+$font-normal: 400;
+$font-medium: 500;
+$font-semibold: 600;
+$font-bold: 700;
+
+// Transitions
+$transition-fast: 0.15s;
+$transition-base: 0.2s;
+$transition-slow: 0.3s;
+
+// Shadows
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md:
+  0 4px 6px -1px rgba(0, 0, 0, 0.1),
+  0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg:
+  0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl:
+  0 20px 25px -5px rgba(0, 0, 0, 0.1),
+  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+// Z-index layers
+$z-modal: 1000;
+$z-dropdown: 100;
+$z-sticky: 10;
+$z-default: 1;
+
+// Borders
+$border-width: 2px;
+$border-width-thin: 1px;
+
+// Button sizes
+$button-height-sm: 32px;
+$button-height-md: 40px;
+$button-height-lg: 48px;
+
+$button-width-sm: 32px;
+$button-width-md: 80px;
+$button-width-lg: 120px;
+
+// Opacity levels
+$opacity-disabled: 0.5;
+$opacity-hover: 0.8;
+
+// Breakpoints
+$breakpoint-sm: 600px;

@@ -1,0 +1,108 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding-bottom: 200px;
+  background-color: #333;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: $space-sm $space-sm 50px;
+  }
+
+  .app-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 40px 0 $space-md;
+    gap: 40px;
+    color: white;
+    text-align: center;
+
+    @media (max-width: $breakpoint-sm) {
+      padding: 14px 0;
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      gap: $space-md;
+      font-size: 48px;
+      font-family: 'Space Grotesk', sans-serif;
+
+      @media (max-width: $breakpoint-sm) {
+        gap: $space-sm;
+        font-size: $font-xxl;
+      }
+
+      .comet-icon {
+        width: 60px;
+        height: 60px;
+        animation: float 3s ease-in-out infinite;
+
+        @media (max-width: $breakpoint-sm) {
+          width: 30px;
+          height: 30px;
+          animation: float-small 3s ease-in-out infinite;
+        }
+      }
+    }
+  }
+
+  .app-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1200px;
+    gap: $space-lg;
+  }
+
+  .app-content-main {
+    display: flex;
+    flex-direction: row;
+    max-height: 1200px;
+    gap: $space-lg;
+  }
+
+  .app-main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 800px;
+    gap: $space-lg;
+  }
+
+  .app-aside {
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+    gap: $space-lg;
+
+    @media (max-width: $breakpoint-sm) {
+      display: none;
+    }
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes float-small {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}

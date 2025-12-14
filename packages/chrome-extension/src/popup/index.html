@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comet</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="section">
+        <div class="section-row">
+          <span class="label">コメント表示</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-checkbox" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">設定</h3>
+        <div class="form-group">
+          <label for="websocket-url">WebSocket URL</label>
+          <input
+            type="text"
+            id="websocket-url"
+            class="input-field"
+            placeholder="wss://xxxxx/websocket"
+          />
+        </div>
+        <button id="save-settings" class="button button-success">
+          保存
+        </button>
+        <div id="save-message" class="save-message"></div>
+      </div>
+
+      <script src="popup.js"></script>
+  </body>
+</html>

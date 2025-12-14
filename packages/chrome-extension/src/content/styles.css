@@ -1,0 +1,112 @@
+/* Comet Comment Styles */
+
+#comet-comment-container {
+  z-index: 999999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.comet-comment {
+  position: absolute;
+  font-weight: bold;
+  font-family: 'Arial', 'Hiragino Sans', 'Meiryo', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+  user-select: none;
+}
+
+/* アニメーションのパフォーマンス最適化 */
+.comet-comment {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Blink アニメーション */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.comet-animation-blink {
+  animation: blink 0.7s ease-in-out infinite;
+}
+
+/* Bounce アニメーション - 跳ねるような動き */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+  10% {
+    transform: translateY(0) scale(1.1, 0.9) translateZ(0);
+  }
+  30% {
+    transform: translateY(-40px) scale(0.9, 1.1) translateZ(0);
+  }
+  50% {
+    transform: translateY(-50px) scale(1) translateZ(0);
+  }
+  70% {
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+  80% {
+    transform: translateY(-10px) scale(1) translateZ(0);
+  }
+  90% {
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+}
+
+.comet-animation-bounce {
+  animation: bounce 1.2s ease-out infinite;
+}
+
+/* Shake アニメーション - 上下に小刻みに揺れる */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateY(0) translateZ(0);
+  }
+  10% {
+    transform: translateY(-8px) translateZ(0);
+  }
+  20% {
+    transform: translateY(8px) translateZ(0);
+  }
+  30% {
+    transform: translateY(-8px) translateZ(0);
+  }
+  40% {
+    transform: translateY(8px) translateZ(0);
+  }
+  50% {
+    transform: translateY(-8px) translateZ(0);
+  }
+  60% {
+    transform: translateY(8px) translateZ(0);
+  }
+  70% {
+    transform: translateY(-8px) translateZ(0);
+  }
+  80% {
+    transform: translateY(8px) translateZ(0);
+  }
+  90% {
+    transform: translateY(-8px) translateZ(0);
+  }
+}
+
+.comet-animation-shake {
+  animation: shake 0.8s linear infinite;
+}
