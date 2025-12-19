@@ -10,7 +10,27 @@ export class CommentRenderer {
 
   constructor() {
     this.container = this.createContainer();
-    document.body.appendChild(this.container);
+    this.attachContainer();
+    this.setupFullscreenListener();
+  }
+
+  /**
+   * コンテナを適切な場所にアタッチ
+   */
+  private attachContainer(): void {
+    const target = document.fullscreenElement || document.body;
+    if (!target.contains(this.container)) {
+      target.appendChild(this.container);
+    }
+  }
+
+  /**
+   * 全画面切り替えの監視を設定
+   */
+  private setupFullscreenListener(): void {
+    document.addEventListener('fullscreenchange', () => {
+      this.attachContainer();
+    });
   }
 
   /**
