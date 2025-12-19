@@ -7,9 +7,9 @@ export const COMMENT_COLORS = {
   RED: '#FF0000',
   PINK: '#FF8080',
   ORANGE: '#FFA500',
-  YELLOW: '#FFFF00',
-  GREEN: '#00FF00',
-  CYAN: '#00FFFF',
+  YELLOW: '#FFD700',
+  GREEN: '#00D966',
+  CYAN: '#00CED1',
   BLUE: '#0000FF',
   PURPLE: '#C000FF',
 } as const;
