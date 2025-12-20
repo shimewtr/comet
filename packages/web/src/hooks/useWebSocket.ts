@@ -14,7 +14,6 @@ const RECONNECT_INTERVAL = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_COMMENT_HISTORY = 100;
 const HEARTBEAT_INTERVAL = 5000; // 5秒ごとにheartbeat
-const HEARTBEAT_TIMEOUT = 10000; // 10秒応答がなければ切断とみなす
 
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
