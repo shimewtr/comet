@@ -40,16 +40,12 @@ export function useWebSocket() {
   const startHeartbeat = useCallback(() => {
     clearHeartbeat();
 
+    // 定期的に接続状態をチェック
     heartbeatIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // 接続状態をチェック
-        heartbeatTimeoutRef.current = setTimeout(() => {
-          console.log('Heartbeat timeout - connection lost');
-          setIsConnected(false);
-          if (wsRef.current) {
-            wsRef.current.close();
-          }
-        }, HEARTBEAT_TIMEOUT);
+      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+        console.log('Connection lost - WebSocket is not open');
+        setIsConnected(false);
+        clearHeartbeat();
       }
     }, HEARTBEAT_INTERVAL);
   }, [clearHeartbeat]);
@@ -94,12 +90,6 @@ export function useWebSocket() {
       };
 
       ws.onmessage = (event) => {
-        // メッセージを受信したらheartbeatタイムアウトをリセット
-        if (heartbeatTimeoutRef.current) {
-          clearTimeout(heartbeatTimeoutRef.current);
-          heartbeatTimeoutRef.current = null;
-        }
-
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
 
