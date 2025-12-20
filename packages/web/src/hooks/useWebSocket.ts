@@ -13,6 +13,8 @@ const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 const RECONNECT_INTERVAL = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_COMMENT_HISTORY = 100;
+const HEARTBEAT_INTERVAL = 5000; // 5秒ごとにheartbeat
+const HEARTBEAT_TIMEOUT = 10000; // 10秒応答がなければ切断とみなす
 
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
@@ -21,6 +23,36 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const heartbeatIntervalRef = useRef<number | null>(null);
+  const heartbeatTimeoutRef = useRef<number | null>(null);
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startHeartbeat = useCallback(() => {
+    clearHeartbeat();
+
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // 接続状態をチェック
+        heartbeatTimeoutRef.current = setTimeout(() => {
+          console.log('Heartbeat timeout - connection lost');
+          setIsConnected(false);
+          if (wsRef.current) {
+            wsRef.current.close();
+          }
+        }, HEARTBEAT_TIMEOUT);
+      }
+    }, HEARTBEAT_INTERVAL);
+  }, [clearHeartbeat]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -35,12 +67,14 @@ export function useWebSocket() {
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
+        startHeartbeat();
       };
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
         wsRef.current = null;
+        clearHeartbeat();
 
         // 再接続を試みる
         if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -60,6 +94,12 @@ export function useWebSocket() {
       };
 
       ws.onmessage = (event) => {
+        // メッセージを受信したらheartbeatタイムアウトをリセット
+        if (heartbeatTimeoutRef.current) {
+          clearTimeout(heartbeatTimeoutRef.current);
+          heartbeatTimeoutRef.current = null;
+        }
+
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
 
@@ -85,7 +125,7 @@ export function useWebSocket() {
       console.error('Failed to create WebSocket:', err);
       setError('Failed to create WebSocket connection');
     }
-  }, []);
+  }, [startHeartbeat, clearHeartbeat]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -93,13 +133,15 @@ export function useWebSocket() {
       reconnectTimeoutRef.current = null;
     }
 
+    clearHeartbeat();
+
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
 
     setIsConnected(false);
-  }, []);
+  }, [clearHeartbeat]);
 
   const sendComment = useCallback(
     async (comment: Omit<Comment, 'id' | 'timestamp'>) => {

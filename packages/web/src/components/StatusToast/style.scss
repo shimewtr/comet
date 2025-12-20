@@ -1,0 +1,66 @@
+@import '../../styles/variables';
+
+.status-toast {
+  z-index: $z-modal;
+  position: fixed;
+  top: $space-lg;
+  left: 50%;
+  min-width: 300px;
+  padding: $space-md;
+  transform: translateX(-50%);
+  border-radius: $radius-lg;
+  background-color: $color-error;
+  box-shadow: $shadow-lg;
+  color: $color-bg-white;
+  animation: slideDown $transition-slow ease-out;
+
+  &-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-sm;
+  }
+
+  &-message {
+    flex: 1;
+    font-size: $font-sm;
+    line-height: 1.5;
+  }
+
+  &-reconnect {
+    padding: $space-xs $space-md;
+    border: $border-width-thin solid $color-white-alpha-50;
+    border-radius: $radius-sm;
+    background: $color-white-alpha-20;
+    color: $color-bg-white;
+    font-weight: $font-medium;
+    font-size: $font-sm;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background $transition-base;
+
+    &:hover:not(:disabled) {
+      background: $color-white-alpha-30;
+    }
+
+    &:active:not(:disabled) {
+      background: $color-white-alpha-40;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: $opacity-disabled;
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

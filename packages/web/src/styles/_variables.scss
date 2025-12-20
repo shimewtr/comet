@@ -83,5 +83,11 @@ $button-width-lg: 120px;
 $opacity-disabled: 0.5;
 $opacity-hover: 0.8;
 
+// Semi-transparent colors
+$color-white-alpha-20: rgba(255, 255, 255, 0.2);
+$color-white-alpha-30: rgba(255, 255, 255, 0.3);
+$color-white-alpha-40: rgba(255, 255, 255, 0.4);
+$color-white-alpha-50: rgba(255, 255, 255, 0.5);
+
 // Breakpoints
 $breakpoint-sm: 600px;

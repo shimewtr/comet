@@ -1,7 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { CommentForm } from './components/CommentForm';
 import { CommentHistory } from './components/CommentHistory';
-import { ConnectionStatus } from './components/ConnectionStatus';
+import { StatusToast } from './components/StatusToast';
 import { StampPicker, type StampPickerRef } from './components/StampPicker';
 import { useWebSocket } from './hooks/useWebSocket';
 import type { CommentStyle, Stamp } from '@comet/shared';
@@ -17,6 +17,26 @@ function App() {
     reconnect,
   } = useWebSocket();
   const stampPickerRef = useRef<StampPickerRef>(null);
+  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const prevConnectedRef = useRef<boolean>(isConnected);
+
+  useEffect(() => {
+    const wasConnected = prevConnectedRef.current;
+
+    if (!isConnected && wasConnected) {
+      setToast({ message: '接続が切断されました' });
+    } else if (isConnected && !wasConnected && toast) {
+      setToast(null);
+    }
+
+    prevConnectedRef.current = isConnected;
+  }, [isConnected, toast]);
+
+  useEffect(() => {
+    if (error) {
+      setToast({ message: error });
+    }
+  }, [error]);
 
   const handleCommentSubmit = (content: string, style: CommentStyle) => {
     const success = sendComment({ content, style });
@@ -42,13 +62,6 @@ function App() {
       </header>
 
       <div className="app-content">
-        <div className="app-content-header">
-          <ConnectionStatus
-            isConnected={isConnected}
-            error={error}
-            onReconnect={reconnect}
-          />
-        </div>
         <div className="app-content-main">
           <main className="app-main">
             <CommentForm
@@ -70,6 +83,8 @@ function App() {
           </aside>
         </div>
       </div>
+
+      {toast && <StatusToast message={toast.message} onReconnect={reconnect} />}
     </div>
   );
 }
