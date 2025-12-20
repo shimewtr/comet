@@ -2,6 +2,7 @@ import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
+import { removeConnection } from './dynamodb-client';
 
 /**
  * API Gateway Management APIクライアント
@@ -30,8 +31,14 @@ export async function sendMessageToConnection(
     return true;
   } catch (error: any) {
     // 接続が既に切断されている場合
-    if (error.statusCode === 410) {
-      console.log(`Connection ${connectionId} is gone`);
+    if (error.statusCode === 410 || error.$metadata?.httpStatusCode === 410) {
+      console.log(`Connection ${connectionId} is gone, removing from database`);
+      // DynamoDBから削除
+      try {
+        await removeConnection(connectionId);
+      } catch (dbError) {
+        console.error(`Failed to remove connection ${connectionId}:`, dbError);
+      }
       return false;
     }
     console.error(`Error sending message to ${connectionId}:`, error);
