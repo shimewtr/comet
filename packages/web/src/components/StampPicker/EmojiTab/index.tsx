@@ -28,7 +28,6 @@ export function EmojiTab({ onSelectStamp }: EmojiTabProps) {
         }}
         autoFocusSearch={false}
         skinTonesDisabled
-        lazyLoadEmojis
       />
     </div>
   );
