@@ -62,9 +62,10 @@ export class StampStack extends cdk.Stack {
     // CloudFront Distribution for スタンプ配信
     this.distribution = new cloudfront.Distribution(this, 'StampDistribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(this.stampBucket, {
-          originAccessIdentity,
-        }),
+        origin: origins.S3BucketOrigin.withOriginAccessIdentity(
+          this.stampBucket,
+          { originAccessIdentity }
+        ),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
