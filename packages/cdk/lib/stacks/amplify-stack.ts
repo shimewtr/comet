@@ -38,7 +38,7 @@ export class AmplifyStack extends cdk.Stack {
             {
               pkg: 'node',
               type: 'nvm',
-              version: '18',
+              version: '22',
             },
           ]),
         },
