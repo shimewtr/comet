@@ -52,7 +52,7 @@ export class WebSocketStack extends cdk.Stack {
 
     // Lambda関数の共通設定
     const lambdaConfig = {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../api/websocket-handler/dist'),
       role: lambdaRole,

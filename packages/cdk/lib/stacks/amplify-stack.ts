@@ -21,7 +21,8 @@ export class AmplifyStack extends cdk.Stack {
       platform: 'WEB',
       customRules: [
         {
-          source: '</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>',
+          source:
+            '</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>',
           target: '/index.html',
           status: '200', // SPA routing support - only for non-asset paths
         },

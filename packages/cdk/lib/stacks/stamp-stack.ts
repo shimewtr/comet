@@ -6,7 +6,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -85,7 +84,7 @@ export class StampStack extends cdk.Stack {
 
     // Lambda関数: スタンプアップロード用プリサインドURL生成
     const uploadLambda = new lambda.Function(this, 'UploadLambda', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
         path.join(__dirname, '../../../api/stamp-upload/dist')
@@ -112,7 +111,12 @@ export class StampStack extends cdk.Stack {
       description: 'API for stamp upload',
       corsPreflight: {
         allowOrigins: ['*'],
-        allowMethods: [apigateway.CorsHttpMethod.GET, apigateway.CorsHttpMethod.POST, apigateway.CorsHttpMethod.DELETE, apigateway.CorsHttpMethod.OPTIONS],
+        allowMethods: [
+          apigateway.CorsHttpMethod.GET,
+          apigateway.CorsHttpMethod.POST,
+          apigateway.CorsHttpMethod.DELETE,
+          apigateway.CorsHttpMethod.OPTIONS,
+        ],
         allowHeaders: ['Content-Type'],
       },
     });
