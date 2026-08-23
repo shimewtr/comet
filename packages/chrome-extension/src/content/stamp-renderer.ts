@@ -3,6 +3,7 @@ import {
   DEFAULT_STAMP_SIZE,
   STAMP_DISPLAY_DURATION,
   STAMP_FADE_DURATION,
+  isAllowedStampImageUrl,
 } from '@comet/shared';
 
 /**
@@ -102,7 +103,12 @@ export class StampRenderer {
     `;
 
     // スタンプの表示
-    if (stampMessage.stamp.category === 'custom' && stampMessage.stamp.imageUrl) {
+    // 画像URLはWebSocket経由の外部入力なので、許可された配信元のみimgとして読み込む
+    if (
+      stampMessage.stamp.category === 'custom' &&
+      stampMessage.stamp.imageUrl &&
+      isAllowedStampImageUrl(stampMessage.stamp.imageUrl)
+    ) {
       // カスタムスタンプの場合は画像を表示
       const img = document.createElement('img');
       img.src = stampMessage.stamp.imageUrl;
