@@ -18,6 +18,7 @@ export class StorageStack extends cdk.Stack {
 
     // WebSocket接続情報を管理するDynamoDBテーブル
     this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
+      tableName: `comet-connections-${props.envName}`,
       partitionKey: {
         name: 'connectionId',
         type: dynamodb.AttributeType.STRING,

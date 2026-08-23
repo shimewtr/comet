@@ -24,6 +24,7 @@ export class WebSocketStack extends cdk.Stack {
 
     // Lambda実行ロール
     const lambdaRole = new iam.Role(this, 'WebSocketLambdaRole', {
+      roleName: `comet-websocket-lambda-role-${props.envName}`,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -64,6 +65,7 @@ export class WebSocketStack extends cdk.Stack {
     // Connect Lambda
     const connectHandler = new lambda.Function(this, 'ConnectHandler', {
       ...lambdaConfig,
+      functionName: `comet-websocket-connect-${props.envName}`,
       environment: {
         ...environment,
         HANDLER_TYPE: 'connect',
@@ -73,6 +75,7 @@ export class WebSocketStack extends cdk.Stack {
     // Disconnect Lambda
     const disconnectHandler = new lambda.Function(this, 'DisconnectHandler', {
       ...lambdaConfig,
+      functionName: `comet-websocket-disconnect-${props.envName}`,
       environment: {
         ...environment,
         HANDLER_TYPE: 'disconnect',
@@ -82,6 +85,7 @@ export class WebSocketStack extends cdk.Stack {
     // Message Lambda
     const messageHandler = new lambda.Function(this, 'MessageHandler', {
       ...lambdaConfig,
+      functionName: `comet-websocket-message-${props.envName}`,
       environment: {
         ...environment,
         HANDLER_TYPE: 'message',
@@ -90,7 +94,7 @@ export class WebSocketStack extends cdk.Stack {
 
     // WebSocket API
     this.webSocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
-      apiName: `CometWebSocketApi-${props.envName}`,
+      apiName: `comet-websocket-api-${props.envName}`,
       description: `WebSocket API for Comet real-time comments (${props.envName})`,
       connectRouteOptions: {
         integration: new WebSocketLambdaIntegration(

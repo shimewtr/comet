@@ -85,6 +85,7 @@ export class StampStack extends cdk.Stack {
 
     // Lambda関数: スタンプアップロード用プリサインドURL生成
     const uploadLambda = new lambda.Function(this, 'UploadLambda', {
+      functionName: `comet-stamp-upload-${props.envName}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
