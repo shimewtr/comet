@@ -6,6 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { physicalName } from '../naming';
@@ -84,9 +85,27 @@ export class StampStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // カテゴリでの一覧取得用GSI（一覧APIをScanではなくQueryにするため）
+    this.stampsTable.addGlobalSecondaryIndex({
+      indexName: 'CategoryIndex',
+      partitionKey: { name: 'category', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // Lambda関数: スタンプアップロード用プリサインドURL生成
+    const uploadLambdaName = physicalName(this, props.envName, 'stamp-upload');
+
+    // ロググループは明示的に作成する
+    // （logRetentionは非推奨で、リテンション設定用のカスタムリソースLambdaが余分に作られるため）
+    const uploadLogGroup = new logs.LogGroup(this, 'UploadLambdaLogGroup', {
+      logGroupName: `/aws/lambda/${uploadLambdaName}`,
+      retention: props.config.logRetentionDays as logs.RetentionDays,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const uploadLambda = new lambda.Function(this, 'UploadLambda', {
-      functionName: physicalName(this, props.envName, 'stamp-upload'),
+      functionName: uploadLambdaName,
+      logGroup: uploadLogGroup,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
@@ -99,7 +118,6 @@ export class StampStack extends cdk.Stack {
       },
       memorySize: props.config.lambdaMemorySize,
       timeout: cdk.Duration.seconds(30),
-      logRetention: props.config.logRetentionDays,
     });
 
     // Lambda関数に権限付与

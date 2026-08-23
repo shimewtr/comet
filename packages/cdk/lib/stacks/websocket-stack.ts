@@ -52,13 +52,23 @@ export class WebSocketStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.seconds(30),
       memorySize: props.config.lambdaMemorySize,
-      logRetention: props.config.logRetentionDays as logs.RetentionDays,
     };
 
+    // ロググループは明示的に作成する
+    // （logRetentionは非推奨で、リテンション設定用のカスタムリソースLambdaが余分に作られるため）
+    const createLogGroup = (id: string, functionName: string) =>
+      new logs.LogGroup(this, id, {
+        logGroupName: `/aws/lambda/${functionName}`,
+        retention: props.config.logRetentionDays as logs.RetentionDays,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      });
+
     // Connect Lambda
+    const connectName = physicalName(this, props.envName, 'websocket-connect');
     const connectHandler = new lambda.Function(this, 'ConnectHandler', {
       ...lambdaConfig,
-      functionName: physicalName(this, props.envName, 'websocket-connect'),
+      functionName: connectName,
+      logGroup: createLogGroup('ConnectHandlerLogGroup', connectName),
       environment: {
         ...environment,
         HANDLER_TYPE: 'connect',
@@ -66,9 +76,15 @@ export class WebSocketStack extends cdk.Stack {
     });
 
     // Disconnect Lambda
+    const disconnectName = physicalName(
+      this,
+      props.envName,
+      'websocket-disconnect'
+    );
     const disconnectHandler = new lambda.Function(this, 'DisconnectHandler', {
       ...lambdaConfig,
-      functionName: physicalName(this, props.envName, 'websocket-disconnect'),
+      functionName: disconnectName,
+      logGroup: createLogGroup('DisconnectHandlerLogGroup', disconnectName),
       environment: {
         ...environment,
         HANDLER_TYPE: 'disconnect',
@@ -76,9 +92,11 @@ export class WebSocketStack extends cdk.Stack {
     });
 
     // Message Lambda
+    const messageName = physicalName(this, props.envName, 'websocket-message');
     const messageHandler = new lambda.Function(this, 'MessageHandler', {
       ...lambdaConfig,
-      functionName: physicalName(this, props.envName, 'websocket-message'),
+      functionName: messageName,
+      logGroup: createLogGroup('MessageHandlerLogGroup', messageName),
       environment: {
         ...environment,
         HANDLER_TYPE: 'message',

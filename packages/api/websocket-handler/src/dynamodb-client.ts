@@ -3,6 +3,7 @@ import {
   PutItemCommand,
   DeleteItemCommand,
   QueryCommand,
+  AttributeValue,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 
@@ -51,23 +52,30 @@ export async function removeConnection(connectionId: string): Promise<void> {
  * ルーム内の全接続IDを取得
  */
 export async function getRoomConnections(roomId: string): Promise<string[]> {
-  const result = await client.send(
-    new QueryCommand({
-      TableName: tableName,
-      IndexName: 'RoomIdIndex',
-      KeyConditionExpression: 'roomId = :roomId',
-      ExpressionAttributeValues: marshall({
-        ':roomId': roomId,
-      }),
-    })
-  );
+  const connectionIds: string[] = [];
+  let lastEvaluatedKey: Record<string, AttributeValue> | undefined;
 
-  if (!result.Items || result.Items.length === 0) {
-    return [];
-  }
+  // 1回のQueryは1MBで打ち切られるため、接続数が多い場合に備えてページングする
+  do {
+    const result = await client.send(
+      new QueryCommand({
+        TableName: tableName,
+        IndexName: 'RoomIdIndex',
+        KeyConditionExpression: 'roomId = :roomId',
+        ExpressionAttributeValues: marshall({
+          ':roomId': roomId,
+        }),
+        ProjectionExpression: 'connectionId',
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
 
-  return result.Items.map((item) => {
-    const data = unmarshall(item);
-    return data.connectionId as string;
-  });
+    for (const item of result.Items ?? []) {
+      connectionIds.push(unmarshall(item).connectionId as string);
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return connectionIds;
 }

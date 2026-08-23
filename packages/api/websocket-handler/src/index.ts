@@ -23,6 +23,7 @@ import {
 import {
   createApiGatewayClient,
   broadcastMessage,
+  sendMessageToConnection,
 } from './api-gateway-client';
 
 const HANDLER_TYPE = process.env.HANDLER_TYPE || 'message';
@@ -213,17 +214,17 @@ async function handleMessage(
 
       case WebSocketMessageType.PING: {
         // Pongを返す
-        const apiGatewayClient = createApiGatewayClient(endpoint);
-        await apiGatewayClient.send({
-          ConnectionId: connectionId,
-          Data: Buffer.from(
+        await sendMessageToConnection(
+          apiGatewayClient,
+          connectionId,
+          Buffer.from(
             JSON.stringify({
               type: WebSocketMessageType.PONG,
               payload: {},
               timestamp: Date.now(),
             })
-          ),
-        } as any);
+          )
+        );
         break;
       }
 

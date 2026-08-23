@@ -2,7 +2,7 @@ import { APIGatewayProxyHandlerV2, APIGatewayProxyEventV2 } from 'aws-lambda';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { generateId } from '@comet/shared';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
@@ -26,10 +26,13 @@ type ResponseHeaders = Record<string, string>;
  * スタンプ一覧取得ハンドラー
  */
 const handleListStamps = async () => {
+  // 全件Scan+Filterだと件数増加でコスト・レイテンシが増えるため、
+  // categoryのGSIに対するQueryで取得する
   const result = await dynamoClient.send(
-    new ScanCommand({
+    new QueryCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'category = :category',
+      IndexName: 'CategoryIndex',
+      KeyConditionExpression: 'category = :category',
       ExpressionAttributeValues: {
         ':category': 'custom',
       },
