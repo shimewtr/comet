@@ -20,6 +20,10 @@ interface CommentFormProps {
   disabled?: boolean;
 }
 
+// 連投による荒れ・過負荷を防ぐための送信クールダウン
+const COMMENT_COOLDOWN_MS = 2000;
+const DANMAKU_COOLDOWN_MS = 10000;
+
 export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
   const [content, setContent] = useState('');
   const [color, setColor] = useState<string>(COMMENT_COLORS.WHITE);
@@ -27,15 +31,42 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
   const [speedOption, setSpeedOption] = useState<SpeedOption>('normal');
   const [animation, setAnimation] = useState<CommentAnimation>('none');
   const [isDanmakuMode, setIsDanmakuMode] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0); // 残り秒数
   const danmakuTimeoutsRef = useRef<number[]>([]);
+  const cooldownTimerRef = useRef<number | null>(null);
 
-  // アンマウント時に未発火の弾幕送信タイマーを破棄する
+  // アンマウント時に未発火のタイマーを破棄する
   useEffect(() => {
     return () => {
       danmakuTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
       danmakuTimeoutsRef.current = [];
+      if (cooldownTimerRef.current !== null) {
+        window.clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
     };
   }, []);
+
+  const startCooldown = (durationMs: number) => {
+    const endAt = Date.now() + durationMs;
+    setCooldownRemaining(Math.ceil(durationMs / 1000));
+
+    if (cooldownTimerRef.current !== null) {
+      window.clearInterval(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = window.setInterval(() => {
+      const remaining = endAt - Date.now();
+      if (remaining <= 0) {
+        if (cooldownTimerRef.current !== null) {
+          window.clearInterval(cooldownTimerRef.current);
+          cooldownTimerRef.current = null;
+        }
+        setCooldownRemaining(0);
+      } else {
+        setCooldownRemaining(Math.ceil(remaining / 1000));
+      }
+    }, 250);
+  };
 
   const getRandomColor = (): string => {
     const colors = Object.values(COMMENT_COLORS);
@@ -61,7 +92,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!content.trim()) {
+    if (!content.trim() || cooldownRemaining > 0) {
       return;
     }
 
@@ -91,6 +122,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
       onSubmit(content, style);
     }
 
+    startCooldown(isDanmakuMode ? DANMAKU_COOLDOWN_MS : COMMENT_COOLDOWN_MS);
     setContent('');
   };
 
@@ -194,10 +226,12 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
 
         <button
           type="submit"
-          disabled={disabled || !content.trim()}
+          disabled={disabled || !content.trim() || cooldownRemaining > 0}
           className="submit-button"
         >
-          コメントを送信
+          {cooldownRemaining > 0
+            ? `コメントを送信 (${cooldownRemaining}秒)`
+            : 'コメントを送信'}
         </button>
       </form>
     </SectionBase>
