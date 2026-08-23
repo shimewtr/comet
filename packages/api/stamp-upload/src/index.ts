@@ -1,4 +1,4 @@
-import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import { APIGatewayProxyHandlerV2, APIGatewayProxyEventV2 } from 'aws-lambda';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -18,6 +18,8 @@ interface GeneratePresignedUrlRequest {
   fileSize: number;
   stampName?: string;
 }
+
+type ResponseHeaders = Record<string, string>;
 
 /**
  * スタンプ一覧取得ハンドラー
@@ -97,155 +99,168 @@ const handleDeleteStamp = async (stampId: string) => {
 };
 
 /**
- * プリサインドURL生成 & スタンプ一覧取得ハンドラー
+ * プリサインドURL生成ハンドラー
+ */
+const handleGeneratePresignedUrl = async (
+  event: APIGatewayProxyEventV2,
+  headers: ResponseHeaders
+) => {
+  if (!event.body) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Request body is required' }),
+    };
+  }
+
+  const request: GeneratePresignedUrlRequest = JSON.parse(event.body);
+
+  // バリデーション
+  if (!request.fileName || !request.fileType || !request.fileSize) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'fileName, fileType, and fileSize are required' }),
+    };
+  }
+
+  // ファイルサイズチェック
+  if (request.fileSize > MAX_FILE_SIZE) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({
+        error: `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+      }),
+    };
+  }
+
+  // ファイルタイプチェック
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+  if (!allowedTypes.includes(request.fileType)) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({
+        error: 'Invalid file type. Only PNG, JPG, and GIF are allowed',
+      }),
+    };
+  }
+
+  // ユニークなファイル名生成
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 11);
+  const extension = request.fileType.split('/')[1];
+  const s3Key = `custom/${timestamp}-${randomString}.${extension}`;
+
+  // プリサインドURL生成
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: s3Key,
+    ContentType: request.fileType,
+  });
+
+  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5分有効
+
+  // スタンプメタデータをDynamoDBに保存
+  const stampId = `${timestamp}-${randomString}`;
+  const imageUrl = `https://${CDN_DOMAIN}/${s3Key}`;
+
+  // スタンプ名（カスタム名があればそれを使用、なければファイル名から生成）
+  const stampName = request.stampName?.trim() || request.fileName.replace(/\.[^/.]+$/, '');
+
+  await dynamoClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        id: stampId,
+        name: stampName,
+        imageUrl,
+        category: 'custom',
+        s3Key,
+        uploadedAt: timestamp,
+      },
+    })
+  );
+
+  console.log(`Generated presigned URL for: ${s3Key}`);
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({
+      uploadUrl,
+      stampId,
+      imageUrl,
+      s3Key,
+    }),
+  };
+};
+
+/**
+ * メインハンドラー
+ * API Gatewayに定義したルートと一致するrouteKeyで分岐する
  */
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
   // CORSヘッダー
-  const headers = {
+  const headers: ResponseHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
   };
 
-  // OPTIONSリクエスト（プリフライト）
-  if (event.requestContext.http.method === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
-  }
-
   try {
-    // GET /stamps - スタンプ一覧取得
-    if (event.requestContext.http.method === 'GET' && event.rawPath.includes('/stamps')) {
-      const stamps = await handleListStamps();
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ stamps }),
-      };
-    }
-
-    // DELETE /stamps/{id} - スタンプ削除
-    if (event.requestContext.http.method === 'DELETE' && event.rawPath.includes('/stamps/')) {
-      const stampId = event.rawPath.split('/stamps/')[1];
-      if (!stampId) {
+    switch (event.routeKey) {
+      // GET /stamps - スタンプ一覧取得
+      case 'GET /stamps': {
+        const stamps = await handleListStamps();
         return {
-          statusCode: 400,
+          statusCode: 200,
           headers,
-          body: JSON.stringify({ error: 'Stamp ID is required' }),
+          body: JSON.stringify({ stamps }),
         };
       }
 
-      const result = await handleDeleteStamp(stampId);
-      return {
-        statusCode: result.statusCode,
-        headers,
-        body: JSON.stringify(result.error ? { error: result.error } : { success: true }),
-      };
+      // DELETE /stamps/{id} - スタンプ削除
+      case 'DELETE /stamps/{id}': {
+        const stampId = event.pathParameters?.id;
+        if (!stampId) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Stamp ID is required' }),
+          };
+        }
+
+        const result = await handleDeleteStamp(stampId);
+        return {
+          statusCode: result.statusCode,
+          headers,
+          body: JSON.stringify(result.error ? { error: result.error } : { success: true }),
+        };
+      }
+
+      // POST /upload - プリサインドURL生成
+      case 'POST /upload': {
+        return handleGeneratePresignedUrl(event, headers);
+      }
+
+      default:
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: `Route not found: ${event.routeKey}` }),
+        };
     }
-
-    // POST /upload - プリサインドURL生成
-    if (!event.body) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Request body is required' }),
-      };
-    }
-
-    const request: GeneratePresignedUrlRequest = JSON.parse(event.body);
-
-    // バリデーション
-    if (!request.fileName || !request.fileType || !request.fileSize) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'fileName, fileType, and fileSize are required' }),
-      };
-    }
-
-    // ファイルサイズチェック
-    if (request.fileSize > MAX_FILE_SIZE) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          error: `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
-        }),
-      };
-    }
-
-    // ファイルタイプチェック
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
-    if (!allowedTypes.includes(request.fileType)) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          error: 'Invalid file type. Only PNG, JPG, and GIF are allowed',
-        }),
-      };
-    }
-
-    // ユニークなファイル名生成
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 11);
-    const extension = request.fileType.split('/')[1];
-    const s3Key = `custom/${timestamp}-${randomString}.${extension}`;
-
-    // プリサインドURL生成
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: s3Key,
-      ContentType: request.fileType,
-    });
-
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5分有効
-
-    // スタンプメタデータをDynamoDBに保存
-    const stampId = `${timestamp}-${randomString}`;
-    const imageUrl = `https://${CDN_DOMAIN}/${s3Key}`;
-
-    // スタンプ名（カスタム名があればそれを使用、なければファイル名から生成）
-    const stampName = request.stampName?.trim() || request.fileName.replace(/\.[^/.]+$/, '');
-
-    await dynamoClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          id: stampId,
-          name: stampName,
-          imageUrl,
-          category: 'custom',
-          s3Key,
-          uploadedAt: timestamp,
-        },
-      })
-    );
-
-    console.log(`Generated presigned URL for: ${s3Key}`);
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        uploadUrl,
-        stampId,
-        imageUrl,
-        s3Key,
-      }),
-    };
   } catch (error) {
-    console.error('Error generating presigned URL:', error);
+    console.error('Error handling request:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to generate upload URL',
+        error: 'Failed to handle request',
         details: error instanceof Error ? error.message : 'Unknown error',
       }),
     };
