@@ -1,256 +1,126 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
-  WebSocketMessage,
   NewCommentPayload,
   NewStampPayload,
   Comment,
   Stamp,
   StampMessage,
 } from '@comet/shared';
-import { WebSocketMessageType } from '@comet/shared';
+import { WebSocketMessageType, CometSocket, generateId } from '@comet/shared';
 
 const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
-const RECONNECT_INTERVAL = 3000;
-const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_COMMENT_HISTORY = 100;
-const HEARTBEAT_INTERVAL = 5000; // 5秒ごとにheartbeat
 
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commentHistory, setCommentHistory] = useState<Comment[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<number | null>(null);
-  const heartbeatIntervalRef = useRef<number | null>(null);
-  const heartbeatTimeoutRef = useRef<number | null>(null);
+  const socketRef = useRef<CometSocket | null>(null);
 
-  const clearHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (heartbeatTimeoutRef.current) {
-      clearTimeout(heartbeatTimeoutRef.current);
-      heartbeatTimeoutRef.current = null;
-    }
-  }, []);
-
-  const startHeartbeat = useCallback(() => {
-    clearHeartbeat();
-
-    // 定期的に接続状態をチェック
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState !== WebSocket.OPEN) {
-        console.log('Connection lost - WebSocket is not open');
-        setIsConnected(false);
-        clearHeartbeat();
-      }
-    }, HEARTBEAT_INTERVAL);
-  }, [clearHeartbeat]);
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
+  useEffect(() => {
     if (!WEBSOCKET_URL) {
       console.error('VITE_WEBSOCKET_URL is not set');
       setError('WebSocket URL is not configured');
       return;
     }
 
-    try {
-      const ws = new WebSocket(WEBSOCKET_URL);
+    const socket = new CometSocket(WEBSOCKET_URL, {
+      onStatusChange: (status) => {
+        setIsConnected(status === 'open');
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setIsConnected(true);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-        startHeartbeat();
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        setIsConnected(false);
-        wsRef.current = null;
-        clearHeartbeat();
-
-        // 再接続を試みる
-        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          reconnectAttemptsRef.current++;
-          console.log(
-            `Reconnecting... (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`
-          );
-          reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_INTERVAL);
-        } else {
+        if (status === 'open') {
+          setError(null);
+        } else if (status === 'failed') {
           setError('Failed to connect after multiple attempts');
         }
-      };
+      },
+    });
 
-      ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        setError('WebSocket connection error');
-      };
+    const unsubscribe = socket.on<NewCommentPayload>(
+      WebSocketMessageType.NEW_COMMENT,
+      (payload) => {
+        setCommentHistory((prev) => {
+          const newHistory = [payload.comment, ...prev];
+          // IDで重複を除去しつつ最大数まで保持
+          const distinctHistory = Array.from(
+            new Map(newHistory.map((c) => [c.id, c])).values()
+          );
+          return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
+        });
+      }
+    );
 
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
+    socket.connect().catch((err) => {
+      // 初回接続失敗でもCometSocketが自動で再接続を試みる
+      console.error('Failed to connect WebSocket:', err);
+    });
+    socketRef.current = socket;
 
-          // コメント受信時に履歴に追加
-          if (message.type === WebSocketMessageType.NEW_COMMENT) {
-            const payload = message.payload as NewCommentPayload;
-            setCommentHistory((prev) => {
-              const newHistory = [payload.comment, ...prev];
-              // IDで重複を除去しつつ最大数まで保持
-              // （内容をキーにすると同じ文言のコメントが履歴から消えてしまう）
-              const distinctHistory = Array.from(
-                new Map(newHistory.map((c) => [c.id, c])).values()
-              );
-              return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
-            });
-          }
-        } catch (err) {
-          console.error('Failed to parse message:', err);
-        }
-      };
-
-      wsRef.current = ws;
-    } catch (err) {
-      console.error('Failed to create WebSocket:', err);
-      setError('Failed to create WebSocket connection');
-    }
-  }, [startHeartbeat, clearHeartbeat]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    clearHeartbeat();
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setIsConnected(false);
-  }, [clearHeartbeat]);
+    return () => {
+      unsubscribe();
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
 
   const sendComment = useCallback(
     async (comment: Omit<Comment, 'id' | 'timestamp'>) => {
-      // WebSocketが接続中の場合は接続完了を待つ（最大3秒）
-      if (wsRef.current?.readyState === WebSocket.CONNECTING) {
-        const timeout = 3000;
-        const startTime = Date.now();
-
-        await new Promise<void>((resolve) => {
-          const checkConnection = () => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              resolve();
-            } else if (
-              wsRef.current?.readyState === WebSocket.CONNECTING &&
-              Date.now() - startTime < timeout
-            ) {
-              setTimeout(checkConnection, 50);
-            } else {
-              resolve(); // タイムアウトまたは接続失敗時も resolve
-            }
-          };
-          checkConnection();
-        });
-      }
-
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        console.error('WebSocket is not connected');
+      const socket = socketRef.current;
+      if (!socket) {
         return false;
       }
 
       const fullComment: Comment = {
         ...comment,
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateId(),
         timestamp: Date.now(),
       };
 
-      const message: WebSocketMessage<NewCommentPayload> = {
-        type: WebSocketMessageType.NEW_COMMENT,
-        payload: { comment: fullComment },
-        timestamp: Date.now(),
-      };
+      const payload: NewCommentPayload = { comment: fullComment };
+      const sent = await socket.sendWhenOpen(
+        WebSocketMessageType.NEW_COMMENT,
+        payload
+      );
 
-      try {
-        wsRef.current.send(JSON.stringify(message));
-        return true;
-      } catch (err) {
-        console.error('Failed to send comment:', err);
-        return false;
+      if (!sent) {
+        console.error('WebSocket is not connected');
       }
+      return sent;
     },
     []
   );
 
   const sendStamp = useCallback(
     async (stamp: Stamp, position?: { x: number; y: number }) => {
-      // WebSocketが接続中の場合は接続完了を待つ（最大3秒）
-      if (wsRef.current?.readyState === WebSocket.CONNECTING) {
-        const timeout = 3000;
-        const startTime = Date.now();
-
-        await new Promise<void>((resolve) => {
-          const checkConnection = () => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              resolve();
-            } else if (
-              wsRef.current?.readyState === WebSocket.CONNECTING &&
-              Date.now() - startTime < timeout
-            ) {
-              setTimeout(checkConnection, 50);
-            } else {
-              resolve(); // タイムアウトまたは接続失敗時も resolve
-            }
-          };
-          checkConnection();
-        });
-      }
-
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        console.error('WebSocket is not connected');
+      const socket = socketRef.current;
+      if (!socket) {
         return false;
       }
 
       const stampMessage: StampMessage = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateId(),
         stamp,
         timestamp: Date.now(),
         position,
       };
 
-      const message: WebSocketMessage<NewStampPayload> = {
-        type: WebSocketMessageType.NEW_STAMP,
-        payload: { stamp: stampMessage },
-        timestamp: Date.now(),
-      };
+      const payload: NewStampPayload = { stamp: stampMessage };
+      const sent = await socket.sendWhenOpen(
+        WebSocketMessageType.NEW_STAMP,
+        payload
+      );
 
-      try {
-        wsRef.current.send(JSON.stringify(message));
-        return true;
-      } catch (err) {
-        console.error('Failed to send stamp:', err);
-        return false;
+      if (!sent) {
+        console.error('WebSocket is not connected');
       }
+      return sent;
     },
     []
   );
 
-  useEffect(() => {
-    connect();
-
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect]);
+  const reconnect = useCallback(() => {
+    socketRef.current?.reconnectNow();
+  }, []);
 
   return {
     isConnected,
@@ -258,6 +128,6 @@ export function useWebSocket() {
     commentHistory,
     sendComment,
     sendStamp,
-    reconnect: connect,
+    reconnect,
   };
 }

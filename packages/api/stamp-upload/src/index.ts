@@ -3,6 +3,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { generateId } from '@comet/shared';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
 const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -151,10 +152,9 @@ const handleGeneratePresignedUrl = async (
   }
 
   // ユニークなファイル名生成
-  const timestamp = Date.now();
-  const randomString = Math.random().toString(36).substring(2, 11);
+  const stampId = generateId();
   const extension = request.fileType.split('/')[1];
-  const s3Key = `custom/${timestamp}-${randomString}.${extension}`;
+  const s3Key = `custom/${stampId}.${extension}`;
 
   // プリサインドURL生成
   const command = new PutObjectCommand({
@@ -166,7 +166,6 @@ const handleGeneratePresignedUrl = async (
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5分有効
 
   // スタンプメタデータをDynamoDBに保存
-  const stampId = `${timestamp}-${randomString}`;
   const imageUrl = `https://${CDN_DOMAIN}/${s3Key}`;
 
   // スタンプ名（カスタム名があればそれを使用、なければファイル名から生成）
@@ -181,7 +180,7 @@ const handleGeneratePresignedUrl = async (
         imageUrl,
         category: 'custom',
         s3Key,
-        uploadedAt: timestamp,
+        uploadedAt: Date.now(),
       },
     })
   );
