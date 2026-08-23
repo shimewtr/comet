@@ -6,7 +6,11 @@ import { Comment, COMMENT_SIZES, DEFAULT_COMMENT_COLOR } from '@comet/shared';
 export class CommentRenderer {
   private container: HTMLElement;
   private activeComments: Set<HTMLElement> = new Set();
+  private removalTimeouts: Set<number> = new Set();
   private enabled: boolean = true;
+  private readonly handleFullscreenChange = () => {
+    this.attachContainer();
+  };
 
   constructor() {
     this.container = this.createContainer();
@@ -28,9 +32,7 @@ export class CommentRenderer {
    * 全画面切り替えの監視を設定
    */
   private setupFullscreenListener(): void {
-    document.addEventListener('fullscreenchange', () => {
-      this.attachContainer();
-    });
+    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
   }
 
   /**
@@ -68,9 +70,11 @@ export class CommentRenderer {
     const duration = this.animateComment(element, comment);
 
     // アニメーション終了後に削除
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
+      this.removalTimeouts.delete(timeoutId);
       this.removeComment(element);
     }, duration);
+    this.removalTimeouts.add(timeoutId);
   }
 
   /**
@@ -144,6 +148,11 @@ export class CommentRenderer {
     }
 
     const animate = () => {
+      // clearAll/destroy等で要素が削除済みならループを打ち切る
+      if (!this.activeComments.has(element)) {
+        return;
+      }
+
       const elapsed = Date.now() - startTime;
       const progress = elapsed / duration;
 
@@ -186,6 +195,8 @@ export class CommentRenderer {
    * 全コメントをクリア
    */
   clearAll(): void {
+    this.removalTimeouts.forEach((id) => window.clearTimeout(id));
+    this.removalTimeouts.clear();
     this.activeComments.forEach((element) => element.remove());
     this.activeComments.clear();
   }
@@ -210,6 +221,10 @@ export class CommentRenderer {
    */
   destroy(): void {
     this.clearAll();
+    document.removeEventListener(
+      'fullscreenchange',
+      this.handleFullscreenChange
+    );
     this.container.remove();
   }
 }
