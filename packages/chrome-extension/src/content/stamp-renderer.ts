@@ -2,62 +2,16 @@ import {
   StampMessage,
   DEFAULT_STAMP_SIZE,
   STAMP_DISPLAY_DURATION,
-  STAMP_FADE_DURATION,
   isAllowedStampImageUrl,
 } from '@comet/shared';
+import { OverlayRenderer } from './overlay-renderer';
 
 /**
  * スタンプ表示を管理するクラス
  */
-export class StampRenderer {
-  private container: HTMLElement;
-  private activeStamps: Set<HTMLElement> = new Set();
-  private removalTimeouts: Set<number> = new Set();
-  private enabled: boolean = true;
-  private readonly handleFullscreenChange = () => {
-    this.attachContainer();
-  };
-
+export class StampRenderer extends OverlayRenderer {
   constructor() {
-    this.container = this.createContainer();
-    this.attachContainer();
-    this.setupFullscreenListener();
-  }
-
-  /**
-   * コンテナを適切な場所にアタッチ
-   */
-  private attachContainer(): void {
-    const target = document.fullscreenElement || document.body;
-    if (!target.contains(this.container)) {
-      target.appendChild(this.container);
-    }
-  }
-
-  /**
-   * 全画面切り替えの監視を設定
-   */
-  private setupFullscreenListener(): void {
-    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
-  }
-
-  /**
-   * スタンプコンテナを作成
-   */
-  private createContainer(): HTMLElement {
-    const container = document.createElement('div');
-    container.id = 'comet-stamp-container';
-    container.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 999998;
-      overflow: hidden;
-    `;
-    return container;
+    super('comet-stamp-container', 999998);
   }
 
   /**
@@ -69,18 +23,10 @@ export class StampRenderer {
     }
 
     const element = this.createStampElement(stampMessage);
-    this.container.appendChild(element);
-    this.activeStamps.add(element);
+    this.addElement(element, STAMP_DISPLAY_DURATION);
 
     // アニメーション開始（拡大しながら消える）
     this.animateStamp(element);
-
-    // アニメーション完了後に削除
-    const timeoutId = window.setTimeout(() => {
-      this.removalTimeouts.delete(timeoutId);
-      this.removeStamp(element);
-    }, STAMP_DISPLAY_DURATION);
-    this.removalTimeouts.add(timeoutId);
   }
 
   /**
@@ -155,55 +101,12 @@ export class StampRenderer {
     const margin = 100;
 
     return {
-      x: margin + Math.random() * (containerWidth - margin * 2 - DEFAULT_STAMP_SIZE),
-      y: margin + Math.random() * (containerHeight - margin * 2 - DEFAULT_STAMP_SIZE),
+      x:
+        margin +
+        Math.random() * (containerWidth - margin * 2 - DEFAULT_STAMP_SIZE),
+      y:
+        margin +
+        Math.random() * (containerHeight - margin * 2 - DEFAULT_STAMP_SIZE),
     };
-  }
-
-  /**
-   * スタンプを削除
-   */
-  private removeStamp(element: HTMLElement): void {
-    if (this.activeStamps.has(element)) {
-      this.activeStamps.delete(element);
-      element.remove();
-    }
-  }
-
-  /**
-   * 全スタンプをクリア
-   */
-  clearAll(): void {
-    this.removalTimeouts.forEach((id) => window.clearTimeout(id));
-    this.removalTimeouts.clear();
-    this.activeStamps.forEach((element) => element.remove());
-    this.activeStamps.clear();
-  }
-
-  /**
-   * スタンプ表示を有効化
-   */
-  enable(): void {
-    this.enabled = true;
-  }
-
-  /**
-   * スタンプ表示を無効化
-   */
-  disable(): void {
-    this.enabled = false;
-    this.clearAll();
-  }
-
-  /**
-   * コンテナを削除
-   */
-  destroy(): void {
-    this.clearAll();
-    document.removeEventListener(
-      'fullscreenchange',
-      this.handleFullscreenChange
-    );
-    this.container.remove();
   }
 }
