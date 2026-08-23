@@ -7,6 +7,8 @@ import { StampMessage } from './stamp.js';
 export enum WebSocketMessageType {
   NEW_COMMENT = 'new_comment',
   NEW_STAMP = 'new_stamp',
+  HISTORY_REQUEST = 'history_request',
+  HISTORY = 'history',
   ERROR = 'error',
   PING = 'ping',
   PONG = 'pong',
@@ -34,4 +36,19 @@ export interface NewCommentPayload {
  */
 export interface NewStampPayload {
   stamp: StampMessage;
+}
+
+/**
+ * コメント履歴リクエスト（クライアント→サーバ）
+ */
+export interface HistoryRequestPayload {
+  limit?: number;
+}
+
+/**
+ * コメント履歴レスポンス（サーバ→リクエストした接続のみ）
+ * commentsは古い順
+ */
+export interface HistoryPayload {
+  comments: Comment[];
 }
