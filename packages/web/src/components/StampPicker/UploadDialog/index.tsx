@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SectionBase } from '../../common/SectionBase';
 import './style.scss';
 
@@ -12,6 +12,20 @@ interface UploadDialogProps {
 export function UploadDialog({ isOpen, onClose, onUpload, uploading }: UploadDialogProps) {
   const [uploadName, setUploadName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // プレビュー用のblob URLはファイルが変わる・アンマウント時に破棄する
+  const previewUrl = useMemo(
+    () => (uploadFile ? URL.createObjectURL(uploadFile) : null),
+    [uploadFile]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   if (!isOpen) return null;
 
@@ -64,12 +78,9 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading }: UploadDia
                 </span>
               </label>
             </div>
-            {uploadFile && (
+            {previewUrl && (
               <div className="upload-preview">
-                <img
-                  src={URL.createObjectURL(uploadFile)}
-                  alt="プレビュー"
-                />
+                <img src={previewUrl} alt="プレビュー" />
               </div>
             )}
           </div>

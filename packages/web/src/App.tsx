@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { CommentForm } from './components/CommentForm';
 import { CommentHistory } from './components/CommentHistory';
 import { StatusToast } from './components/StatusToast';
-import { StampPicker, type StampPickerRef } from './components/StampPicker';
+import { StampPicker } from './components/StampPicker';
 import { useWebSocket } from './hooks/useWebSocket';
 import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
@@ -16,7 +16,6 @@ function App() {
     sendStamp,
     reconnect,
   } = useWebSocket();
-  const stampPickerRef = useRef<StampPickerRef>(null);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const prevConnectedRef = useRef<boolean>(isConnected);
 
@@ -73,7 +72,6 @@ function App() {
 
             <div className="stamp-section">
               <StampPicker
-                ref={stampPickerRef}
                 onSelectStamp={handleStampSelect}
                 disabled={!isConnected}
               />

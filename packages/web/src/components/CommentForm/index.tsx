@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   CommentStyle,
   CommentSize,
@@ -27,6 +27,15 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
   const [speedOption, setSpeedOption] = useState<SpeedOption>('normal');
   const [animation, setAnimation] = useState<CommentAnimation>('none');
   const [isDanmakuMode, setIsDanmakuMode] = useState(false);
+  const danmakuTimeoutsRef = useRef<number[]>([]);
+
+  // アンマウント時に未発火の弾幕送信タイマーを破棄する
+  useEffect(() => {
+    return () => {
+      danmakuTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      danmakuTimeoutsRef.current = [];
+    };
+  }, []);
 
   const getRandomColor = (): string => {
     const colors = Object.values(COMMENT_COLORS);
@@ -66,9 +75,10 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
           speed: SPEED_VALUES[randomSpeed],
           animation: getRandomAnimation(),
         };
-        setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
           onSubmit(content, style);
         }, i * 100); // 100msずつずらして送信
+        danmakuTimeoutsRef.current.push(timeoutId);
       }
     } else {
       // 通常モード: 選択したスタイルで1個送信
