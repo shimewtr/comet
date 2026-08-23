@@ -1,5 +1,9 @@
-import { PostCommentRequest, CommentStyle } from '../types/index.js';
-import { COMMENT_COLORS } from '../constants/index.js';
+import {
+  PostCommentRequest,
+  CommentStyle,
+  CommentAnimation,
+} from '../types/index.js';
+import { COMMENT_COLORS, COMMENT_SIZE_OPTIONS } from '../constants/index.js';
 
 /**
  * コメント内容の最大文字数
@@ -77,5 +81,41 @@ export function applyDefaultCommentStyle(
     size: style?.size || 'medium',
     speed: style?.speed || 5,
     animation: style?.animation || 'none',
+  };
+}
+
+const VALID_ANIMATIONS: readonly CommentAnimation[] = [
+  'none',
+  'blink',
+  'bounce',
+  'shake',
+];
+
+const MIN_COMMENT_SPEED = 1;
+const MAX_COMMENT_SPEED = 10;
+
+/**
+ * 外部入力のコメントスタイルを検証し、不正な値はデフォルトに置き換える
+ */
+export function sanitizeCommentStyle(
+  style?: Partial<CommentStyle>
+): CommentStyle {
+  const applied = applyDefaultCommentStyle(style);
+
+  return {
+    color: isValidCommentColor(applied.color)
+      ? applied.color
+      : COMMENT_COLORS.WHITE,
+    size: COMMENT_SIZE_OPTIONS.includes(applied.size) ? applied.size : 'medium',
+    speed:
+      typeof applied.speed === 'number' &&
+      Number.isFinite(applied.speed) &&
+      applied.speed >= MIN_COMMENT_SPEED &&
+      applied.speed <= MAX_COMMENT_SPEED
+        ? applied.speed
+        : 5,
+    animation: VALID_ANIMATIONS.includes(applied.animation ?? 'none')
+      ? applied.animation
+      : 'none',
   };
 }

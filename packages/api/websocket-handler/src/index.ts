@@ -8,7 +8,11 @@ import {
   NewCommentPayload,
   NewStampPayload,
   Comment,
+  StampCategory,
   StampMessage,
+  validatePostCommentRequest,
+  sanitizeCommentStyle,
+  isAllowedStampImageUrl,
 } from '@comet/shared';
 import {
   saveConnection,
@@ -22,6 +26,13 @@ import {
 
 const HANDLER_TYPE = process.env.HANDLER_TYPE || 'message';
 const GLOBAL_ROOM_ID = 'global'; // 全ユーザー共通のルームID
+
+const MAX_STAMP_NAME_LENGTH = 50;
+const STAMP_CATEGORIES: readonly StampCategory[] = [
+  'emotion',
+  'reaction',
+  'custom',
+];
 
 /**
  * WebSocket接続ハンドラー
@@ -86,11 +97,26 @@ async function handleMessage(
     switch (message.type) {
       case WebSocketMessageType.NEW_COMMENT: {
         const payload = message.payload as NewCommentPayload;
+        const rawComment = payload?.comment;
 
-        // コメントにIDとタイムスタンプを追加
+        if (!rawComment || typeof rawComment.content !== 'string') {
+          console.warn('Rejected comment: invalid payload shape');
+          return { statusCode: 400 };
+        }
+
+        const validation = validatePostCommentRequest({
+          content: rawComment.content,
+        });
+        if (!validation.valid) {
+          console.warn(`Rejected comment: ${validation.error}`);
+          return { statusCode: 400 };
+        }
+
+        // 検証済みのフィールドのみでブロードキャスト用コメントを組み立てる
         const comment: Comment = {
-          ...payload.comment,
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          content: rawComment.content,
+          style: sanitizeCommentStyle(rawComment.style),
           timestamp: Date.now(),
         };
 
@@ -116,12 +142,52 @@ async function handleMessage(
 
       case WebSocketMessageType.NEW_STAMP: {
         const payload = message.payload as NewStampPayload;
+        const rawStampMessage = payload?.stamp;
+        const rawStamp = rawStampMessage?.stamp;
 
-        // スタンプメッセージにIDとタイムスタンプを確保
+        if (
+          !rawStamp ||
+          typeof rawStamp.name !== 'string' ||
+          rawStamp.name.length === 0 ||
+          rawStamp.name.length > MAX_STAMP_NAME_LENGTH ||
+          !STAMP_CATEGORIES.includes(rawStamp.category)
+        ) {
+          console.warn('Rejected stamp: invalid payload shape');
+          return { statusCode: 400 };
+        }
+
+        // カスタムスタンプは許可された配信元の画像URLのみ受け付ける
+        if (
+          rawStamp.category === 'custom' &&
+          !isAllowedStampImageUrl(rawStamp.imageUrl)
+        ) {
+          console.warn(`Rejected stamp: disallowed imageUrl ${rawStamp.imageUrl}`);
+          return { statusCode: 400 };
+        }
+
+        const rawPosition = rawStampMessage.position;
+        const position =
+          typeof rawPosition?.x === 'number' &&
+          Number.isFinite(rawPosition.x) &&
+          typeof rawPosition?.y === 'number' &&
+          Number.isFinite(rawPosition.y)
+            ? { x: rawPosition.x, y: rawPosition.y }
+            : undefined;
+
+        // 検証済みのフィールドのみでブロードキャスト用スタンプを組み立てる
         const stampMessage: StampMessage = {
-          ...payload.stamp,
-          id: payload.stamp.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id:
+            typeof rawStampMessage.id === 'string' && rawStampMessage.id
+              ? rawStampMessage.id
+              : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          stamp: {
+            id: typeof rawStamp.id === 'string' ? rawStamp.id : '',
+            name: rawStamp.name,
+            imageUrl: rawStamp.category === 'custom' ? rawStamp.imageUrl : '',
+            category: rawStamp.category,
+          },
           timestamp: Date.now(),
+          position,
         };
 
         // グローバルルーム内の全接続にブロードキャスト
