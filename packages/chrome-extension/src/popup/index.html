@@ -19,19 +19,78 @@
       </div>
 
       <div class="section">
-        <h3 class="section-title">設定</h3>
+        <h3 class="section-title">接続設定</h3>
         <div class="form-group">
           <label for="websocket-url">WebSocket URL</label>
           <input
             type="text"
             id="websocket-url"
             class="input-field"
-            placeholder="wss://xxxxx/websocket"
+            placeholder="wss://xxxxx/prod"
           />
         </div>
-        <button id="save-settings" class="button button-success">
-          保存
-        </button>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">表示設定</h3>
+        <div class="form-group">
+          <label for="speed-scale"
+            >コメント速度: <span id="speed-scale-value">1.0</span>x</label
+          >
+          <input
+            type="range"
+            id="speed-scale"
+            min="0.5"
+            max="2"
+            step="0.1"
+            value="1"
+          />
+        </div>
+        <div class="form-group">
+          <label for="font-scale"
+            >文字サイズ: <span id="font-scale-value">1.0</span>x</label
+          >
+          <input
+            type="range"
+            id="font-scale"
+            min="0.5"
+            max="2"
+            step="0.1"
+            value="1"
+          />
+        </div>
+        <div class="form-group">
+          <label for="display-area">表示領域</label>
+          <select id="display-area" class="input-field">
+            <option value="full">画面全体</option>
+            <option value="top-half">上半分</option>
+            <option value="top-third">上1/3</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">参加用QRコード</h3>
+        <div class="section-row">
+          <span class="label">画面に表示する</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="qr-enabled" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="web-app-url">WebアプリURL</label>
+          <input
+            type="text"
+            id="web-app-url"
+            class="input-field"
+            placeholder="https://xxxx.amplifyapp.com"
+          />
+        </div>
+      </div>
+
+      <div class="section">
+        <button id="save-settings" class="button button-success">保存</button>
         <div id="save-message" class="save-message"></div>
       </div>
     </div>

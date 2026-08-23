@@ -6,10 +6,95 @@ import {
 } from '@comet/shared';
 import { CommentRenderer } from './comment-renderer';
 import { StampRenderer } from './stamp-renderer';
+import { QrRenderer } from './qr-renderer';
+import { loadSettings, CometSettings } from '../settings';
 
 let wsClient: CometSocket | null = null;
+let currentWebsocketUrl = '';
 let commentRenderer: CommentRenderer | null = null;
 let stampRenderer: StampRenderer | null = null;
+let qrRenderer: QrRenderer | null = null;
+
+/**
+ * レンダラーを初期化（初回のみ）
+ */
+function ensureRenderers(): void {
+  if (!commentRenderer) {
+    commentRenderer = new CommentRenderer();
+  }
+  if (!stampRenderer) {
+    stampRenderer = new StampRenderer();
+  }
+  if (!qrRenderer) {
+    qrRenderer = new QrRenderer();
+  }
+}
+
+/**
+ * WebSocket接続を張り直す（URLが変わったときのみ呼ばれる）
+ */
+function connectWebSocket(websocketUrl: string): void {
+  if (wsClient) {
+    wsClient.disconnect();
+    wsClient = null;
+  }
+  currentWebsocketUrl = websocketUrl;
+
+  if (!websocketUrl) {
+    console.error(
+      'Comet: WebSocket URL is not configured. Please set it in the extension popup.'
+    );
+    return;
+  }
+
+  const socket = new CometSocket(websocketUrl);
+
+  // 新規コメント受信ハンドラー
+  socket.on<NewCommentPayload>(WebSocketMessageType.NEW_COMMENT, (payload) => {
+    commentRenderer?.renderComment(payload.comment);
+  });
+
+  // 新規スタンプ受信ハンドラー
+  socket.on<NewStampPayload>(WebSocketMessageType.NEW_STAMP, (payload) => {
+    stampRenderer?.renderStamp(payload.stamp);
+  });
+
+  socket
+    .connect()
+    .then(() => {
+      console.log('Comet: Connected to WebSocket');
+    })
+    .catch((error) => {
+      console.error('Comet: Failed to connect to WebSocket:', error);
+    });
+
+  wsClient = socket;
+}
+
+/**
+ * 設定を各コンポーネントに反映する
+ */
+function applySettings(settings: CometSettings): void {
+  ensureRenderers();
+
+  commentRenderer?.updateDisplaySettings({
+    speedScale: settings.speedScale,
+    fontScale: settings.fontScale,
+    displayArea: settings.displayArea,
+  });
+
+  // 参加用QRコード
+  if (settings.qrEnabled && settings.webAppUrl) {
+    qrRenderer?.show(settings.webAppUrl);
+  } else {
+    qrRenderer?.hide();
+  }
+
+  // WebSocket接続（URLが変わったときだけ張り直す）
+  if (settings.websocketUrl !== currentWebsocketUrl || !wsClient) {
+    connectWebSocket(settings.websocketUrl);
+  }
+}
 
 /**
  * 初期化
@@ -17,54 +102,18 @@ let stampRenderer: StampRenderer | null = null;
 async function initialize() {
   console.log('Comet: Initializing...');
 
-  // 設定を読み込む
-  const result = await chrome.storage.sync.get('websocketUrl');
-  const websocketUrl = result.websocketUrl;
-
-  if (!websocketUrl) {
-    console.error('Comet: WebSocket URL is not configured. Please set it in the extension popup.');
-    return;
-  }
-
-  // レンダラーを初期化
-  commentRenderer = new CommentRenderer();
-  stampRenderer = new StampRenderer();
+  ensureRenderers();
 
   // 保存された表示状態を復元
   const localResult = await chrome.storage.local.get('commentsEnabled');
   const isEnabled = localResult.commentsEnabled !== false; // デフォルトはtrue
   if (!isEnabled) {
-    commentRenderer.disable();
-    stampRenderer.disable();
+    commentRenderer?.disable();
+    stampRenderer?.disable();
   }
 
-  // WebSocket接続を初期化
-  try {
-    wsClient = new CometSocket(websocketUrl);
-
-    // 新規コメント受信ハンドラー
-    wsClient.on<NewCommentPayload>(
-      WebSocketMessageType.NEW_COMMENT,
-      (payload) => {
-        if (commentRenderer) {
-          commentRenderer.renderComment(payload.comment);
-        }
-      }
-    );
-
-    // 新規スタンプ受信ハンドラー
-    wsClient.on<NewStampPayload>(WebSocketMessageType.NEW_STAMP, (payload) => {
-      if (stampRenderer) {
-        stampRenderer.renderStamp(payload.stamp);
-      }
-    });
-
-    await wsClient.connect();
-
-    console.log('Comet: Connected to WebSocket');
-  } catch (error) {
-    console.error('Comet: Failed to connect to WebSocket:', error);
-  }
+  const settings = await loadSettings();
+  applySettings(settings);
 }
 
 /**
@@ -75,19 +124,30 @@ function cleanup() {
     wsClient.disconnect();
   }
 
-  if (commentRenderer) {
-    commentRenderer.destroy();
+  commentRenderer?.destroy();
+  stampRenderer?.destroy();
+  qrRenderer?.destroy();
+}
+
+/**
+ * popupでの設定変更をリロードなしで反映する
+ */
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync') {
+    return;
   }
 
-  if (stampRenderer) {
-    stampRenderer.destroy();
-  }
-}
+  loadSettings()
+    .then((settings) => applySettings(settings))
+    .catch((error) => {
+      console.error('Comet: Failed to apply settings:', error);
+    });
+});
 
 /**
  * Chrome拡張からのメッセージハンドラー
  */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     case 'TOGGLE_COMMENTS':
       if (message.enabled) {
@@ -117,4 +177,6 @@ window.addEventListener('beforeunload', cleanup);
 /**
  * エントリーポイント
  */
-initialize();
+initialize().catch((error) => {
+  console.error('Comet: Failed to initialize:', error);
+});

@@ -8,11 +8,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@comet/shared": "workspace:*"
+    "@comet/shared": "workspace:*",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.254",
     "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.6",
     "copy-webpack-plugin": "^11.0.0",
     "ts-loader": "^9.5.0",
     "typescript": "^5.3.0",
