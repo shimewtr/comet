@@ -42,6 +42,31 @@ export function validatePostCommentRequest(
 }
 
 /**
+ * スタンプ画像URLとして許可するホスト名のサフィックス
+ * （スタンプ画像はCloudFront経由で配信される）
+ */
+const ALLOWED_STAMP_IMAGE_HOST_SUFFIXES = ['.cloudfront.net'];
+
+/**
+ * スタンプ画像URLの検証
+ * WebSocket経由で受信したURLをそのままimg.srcに設定すると
+ * 任意の外部URLを読み込ませられるため、配信元を許可リストで制限する
+ */
+export function isAllowedStampImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' &&
+      ALLOWED_STAMP_IMAGE_HOST_SUFFIXES.some((suffix) =>
+        parsed.hostname.endsWith(suffix)
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * デフォルトのコメントスタイルを適用
  */
 export function applyDefaultCommentStyle(
