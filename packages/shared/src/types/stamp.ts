@@ -14,17 +14,6 @@ export interface Stamp {
 export type StampCategory = 'emotion' | 'reaction' | 'custom';
 
 /**
- * スタンプ投稿リクエスト
- */
-export interface PostStampRequest {
-  stampId: string;
-  position?: {
-    x: number;
-    y: number;
-  };
-}
-
-/**
  * スタンプメッセージ
  */
 export interface StampMessage {

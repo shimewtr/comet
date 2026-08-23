@@ -16,26 +16,3 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-/**
- * メッセージハンドラー
- */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Background received message:', message);
-
-  switch (message.type) {
-    case 'GET_CONFIG':
-      chrome.storage.sync.get(['enabled', 'websocketUrl'], (config) => {
-        sendResponse(config);
-      });
-      return true; // 非同期レスポンス
-
-    case 'SET_CONFIG':
-      chrome.storage.sync.set(message.config, () => {
-        sendResponse({ success: true });
-      });
-      return true; // 非同期レスポンス
-
-    default:
-      sendResponse({ error: 'Unknown message type' });
-  }
-});

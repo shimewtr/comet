@@ -36,12 +36,3 @@ export interface PostCommentRequest {
   content: string;
   style?: Partial<CommentStyle>;
 }
-
-/**
- * コメント投稿レスポンス
- */
-export interface PostCommentResponse {
-  success: boolean;
-  comment?: Comment;
-  error?: string;
-}

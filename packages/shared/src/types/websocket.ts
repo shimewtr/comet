@@ -35,20 +35,3 @@ export interface NewCommentPayload {
 export interface NewStampPayload {
   stamp: StampMessage;
 }
-
-/**
- * エラーメッセージ
- */
-export interface ErrorPayload {
-  code: string;
-  message: string;
-}
-
-/**
- * WebSocket接続情報
- */
-export interface ConnectionInfo {
-  connectionId: string;
-  userId?: string;
-  connectedAt: number;
-}
