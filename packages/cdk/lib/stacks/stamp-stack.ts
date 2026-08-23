@@ -24,6 +24,8 @@ export class StampStack extends cdk.Stack {
   public readonly distribution: cloudfront.Distribution;
   public readonly stampsTable: dynamodb.Table;
   public readonly uploadApi: apigateway.HttpApi;
+  /** スタンプAPIのベースURL（末尾スラッシュなし） */
+  public readonly stampApiBaseUrl: string;
 
   constructor(scope: Construct, id: string, props: StampStackProps) {
     super(scope, id, props);
@@ -141,6 +143,9 @@ export class StampStack extends cdk.Stack {
         allowHeaders: ['Content-Type'],
       },
     });
+
+    // Webビルドに渡すベースURL（uploadApi.urlは末尾スラッシュ付きのため自前で組み立てる）
+    this.stampApiBaseUrl = `https://${this.uploadApi.apiId}.execute-api.${this.region}.amazonaws.com`;
 
     // Lambda統合
     const uploadIntegration = new apigatewayIntegrations.HttpLambdaIntegration(

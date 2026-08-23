@@ -5,6 +5,10 @@ import { physicalName } from '../naming';
 
 export interface AmplifyStackProps extends cdk.StackProps {
   envName: string;
+  /** WebアプリのビルドでVITE_WEBSOCKET_URLとして埋め込むWebSocket URL */
+  webSocketUrl: string;
+  /** WebアプリのビルドでVITE_STAMP_API_URLとして埋め込むスタンプAPIのベースURL */
+  stampApiUrl: string;
   githubRepo?: string;
   githubBranch?: string;
   githubToken?: string;
@@ -42,6 +46,15 @@ export class AmplifyStack extends cdk.Stack {
               version: '22',
             },
           ]),
+        },
+        // Amplify上のCIビルドで接続先を埋め込むための環境変数
+        {
+          name: 'VITE_WEBSOCKET_URL',
+          value: props.webSocketUrl,
+        },
+        {
+          name: 'VITE_STAMP_API_URL',
+          value: props.stampApiUrl,
         },
       ],
       buildSpec: `version: 1
