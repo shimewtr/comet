@@ -43,7 +43,7 @@ const storageStack = new StorageStack(app, `${stackPrefix}StorageStack`, {
 });
 
 // WebSocketスタック
-new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
+const webSocketStack = new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   env,
   description: `Comet WebSocket API Stack - ${envName}`,
   envName,
@@ -51,19 +51,22 @@ new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   connectionsTable: storageStack.connectionsTable,
 });
 
-// Amplify Hostingスタック（Web UI）
-new AmplifyStack(app, `${stackPrefix}AmplifyStack`, {
-  env,
-  description: `Comet Web UI Hosting - ${envName}`,
-  envName,
-});
-
 // スタンプスタック（S3 + CloudFront + Lambda + DynamoDB）
-new StampStack(app, `${stackPrefix}StampStack`, {
+const stampStack = new StampStack(app, `${stackPrefix}StampStack`, {
   env,
   description: `Comet Stamp Storage & CDN - ${envName}`,
   envName,
   config,
+});
+
+// Amplify Hostingスタック（Web UI）
+// CI上のwebビルドに接続先URLを渡すため、WebSocket/Stampスタックの後に作成する
+new AmplifyStack(app, `${stackPrefix}AmplifyStack`, {
+  env,
+  description: `Comet Web UI Hosting - ${envName}`,
+  envName,
+  webSocketUrl: webSocketStack.webSocketUrl,
+  stampApiUrl: stampStack.stampApiBaseUrl,
 });
 
 // タグを追加

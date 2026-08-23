@@ -19,6 +19,8 @@ export interface WebSocketStackProps extends cdk.StackProps {
 
 export class WebSocketStack extends cdk.Stack {
   public readonly webSocketApi: apigatewayv2.WebSocketApi;
+  /** クライアントが接続するWebSocket URL（wss://.../prod） */
+  public readonly webSocketUrl: string;
 
   constructor(scope: Construct, id: string, props: WebSocketStackProps) {
     super(scope, id, props);
@@ -133,6 +135,8 @@ export class WebSocketStack extends cdk.Stack {
       stageName: 'prod',
       autoDeploy: true,
     });
+
+    this.webSocketUrl = stage.url;
 
     // Lambda関数にAPI Gateway呼び出し権限を付与
     const apiArn = `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.apiId}/*`;
