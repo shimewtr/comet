@@ -85,6 +85,13 @@ export class StampStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // カテゴリでの一覧取得用GSI（一覧APIをScanではなくQueryにするため）
+    this.stampsTable.addGlobalSecondaryIndex({
+      indexName: 'CategoryIndex',
+      partitionKey: { name: 'category', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // Lambda関数: スタンプアップロード用プリサインドURL生成
     const uploadLambdaName = physicalName(this, props.envName, 'stamp-upload');
 
