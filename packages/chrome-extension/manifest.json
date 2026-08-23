@@ -9,13 +9,12 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["activeTab", "storage"],
-  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://docs.google.com/*"],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
@@ -27,7 +26,7 @@
   "web_accessible_resources": [
     {
       "resources": ["content.css"],
-      "matches": ["<all_urls>"]
+      "matches": ["https://docs.google.com/*"]
     }
   ]
 }
