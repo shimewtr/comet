@@ -1,4 +1,4 @@
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import type { Stamp } from '@comet/shared';
 
 interface EmojiTabProps {
@@ -6,7 +6,7 @@ interface EmojiTabProps {
 }
 
 export function EmojiTab({ onSelectStamp }: EmojiTabProps) {
-  const handleEmojiClick = (emojiData: any) => {
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
     const stamp: Stamp = {
       id: `emoji-${emojiData.unified}`,
       name: emojiData.emoji,

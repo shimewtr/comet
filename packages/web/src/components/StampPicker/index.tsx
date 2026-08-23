@@ -48,7 +48,6 @@ export function StampPicker({
     const controller = new AbortController();
     fetchCustomStamps(controller.signal);
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeleteStamp = async (
