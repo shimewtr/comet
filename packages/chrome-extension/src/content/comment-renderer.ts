@@ -1,57 +1,12 @@
 import { Comment, COMMENT_SIZES, DEFAULT_COMMENT_COLOR } from '@comet/shared';
+import { OverlayRenderer } from './overlay-renderer';
 
 /**
  * コメント表示を管理するクラス
  */
-export class CommentRenderer {
-  private container: HTMLElement;
-  private activeComments: Set<HTMLElement> = new Set();
-  private removalTimeouts: Set<number> = new Set();
-  private enabled: boolean = true;
-  private readonly handleFullscreenChange = () => {
-    this.attachContainer();
-  };
-
+export class CommentRenderer extends OverlayRenderer {
   constructor() {
-    this.container = this.createContainer();
-    this.attachContainer();
-    this.setupFullscreenListener();
-  }
-
-  /**
-   * コンテナを適切な場所にアタッチ
-   */
-  private attachContainer(): void {
-    const target = document.fullscreenElement || document.body;
-    if (!target.contains(this.container)) {
-      target.appendChild(this.container);
-    }
-  }
-
-  /**
-   * 全画面切り替えの監視を設定
-   */
-  private setupFullscreenListener(): void {
-    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
-  }
-
-  /**
-   * コメントコンテナを作成
-   */
-  private createContainer(): HTMLElement {
-    const container = document.createElement('div');
-    container.id = 'comet-comment-container';
-    container.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 999999;
-      overflow: hidden;
-    `;
-    return container;
+    super('comet-comment-container', 999999);
   }
 
   /**
@@ -63,18 +18,11 @@ export class CommentRenderer {
     }
 
     const element = this.createCommentElement(comment);
+
+    // 幅の計測（offsetWidth）が必要なので先にDOMへ追加する
     this.container.appendChild(element);
-    this.activeComments.add(element);
-
-    // アニメーション開始
-    const duration = this.animateComment(element, comment);
-
-    // アニメーション終了後に削除
-    const timeoutId = window.setTimeout(() => {
-      this.removalTimeouts.delete(timeoutId);
-      this.removeComment(element);
-    }, duration);
-    this.removalTimeouts.add(timeoutId);
+    const duration = this.startScrollAnimation(element, comment);
+    this.trackElement(element, duration);
   }
 
   /**
@@ -83,7 +31,19 @@ export class CommentRenderer {
   private createCommentElement(comment: Comment): HTMLElement {
     const element = document.createElement('div');
     element.className = 'comet-comment';
-    element.textContent = comment.content;
+
+    // bounce/shake等のCSSアニメーションはtransformを使うため、
+    // スクロール移動（translateX）と衝突しないよう内側の要素に適用する
+    const inner = document.createElement('span');
+    inner.style.display = 'inline-block';
+    inner.textContent = comment.content;
+
+    const animation = comment.style.animation || 'none';
+    if (animation !== 'none') {
+      inner.classList.add(`comet-animation-${animation}`);
+    }
+
+    element.appendChild(inner);
 
     const fontSize = COMMENT_SIZES[comment.style.size];
     const color = comment.style.color || DEFAULT_COMMENT_COLOR;
@@ -113,10 +73,13 @@ export class CommentRenderer {
   }
 
   /**
-   * コメントをアニメーション
+   * コメントを右から左へ流すアニメーションを開始
+   * 毎フレームJSでleftを書き換える方式は表示中のコメント数に比例して
+   * レイアウト計算が発生し重くなるため、transformのCSS transitionで
+   * コンポジタに任せる
    * @returns アニメーションの継続時間（ミリ秒）
    */
-  private animateComment(element: HTMLElement, comment: Comment): number {
+  private startScrollAnimation(element: HTMLElement, comment: Comment): number {
     const containerWidth = this.container.clientWidth;
     const containerHeight = this.container.clientHeight;
     const elementWidth = element.offsetWidth;
@@ -139,92 +102,28 @@ export class CommentRenderer {
     const baseDistance = containerWidth + elementWidth;
     // 速度をpx/sとして扱い、durationを計算（ミリ秒）
     const duration = (baseDistance / (speed * 100)) * 1000;
-    const startTime = Date.now();
 
-    // アニメーションタイプに応じたクラスを追加
-    const animation = comment.style.animation || 'none';
-    if (animation !== 'none') {
-      element.classList.add(`comet-animation-${animation}`);
-    }
+    // 初期スタイルを確定させてからtransitionを開始する
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        element.style.transition = `transform ${duration}ms linear`;
+        element.style.transform = `translateX(${-baseDistance}px)`;
+      });
+    });
 
-    const animate = () => {
-      // clearAll/destroy等で要素が削除済みならループを打ち切る
-      if (!this.activeComments.has(element)) {
-        return;
-      }
-
-      const elapsed = Date.now() - startTime;
-      const progress = elapsed / duration;
-
-      if (progress >= 1) {
-        element.style.left = `${-elementWidth}px`;
-        return;
-      }
-
-      // 線形移動
-      const x = containerWidth - baseDistance * progress;
-      element.style.left = `${x}px`;
-
-      requestAnimationFrame(animate);
-    };
-
-    requestAnimationFrame(animate);
     return duration;
   }
 
   /**
    * ランダムなY座標を取得（重複を避ける簡易版）
    */
-  private getRandomYPosition(min: number, max: number, lineHeight: number): number {
+  private getRandomYPosition(
+    min: number,
+    max: number,
+    lineHeight: number
+  ): number {
     const lanes = Math.floor((max - min) / lineHeight);
     const lane = Math.floor(Math.random() * lanes);
     return min + lane * lineHeight;
-  }
-
-  /**
-   * コメントを削除
-   */
-  private removeComment(element: HTMLElement): void {
-    if (this.activeComments.has(element)) {
-      this.activeComments.delete(element);
-      element.remove();
-    }
-  }
-
-  /**
-   * 全コメントをクリア
-   */
-  clearAll(): void {
-    this.removalTimeouts.forEach((id) => window.clearTimeout(id));
-    this.removalTimeouts.clear();
-    this.activeComments.forEach((element) => element.remove());
-    this.activeComments.clear();
-  }
-
-  /**
-   * コメント表示を有効化
-   */
-  enable(): void {
-    this.enabled = true;
-  }
-
-  /**
-   * コメント表示を無効化
-   */
-  disable(): void {
-    this.enabled = false;
-    this.clearAll();
-  }
-
-  /**
-   * コンテナを削除
-   */
-  destroy(): void {
-    this.clearAll();
-    document.removeEventListener(
-      'fullscreenchange',
-      this.handleFullscreenChange
-    );
-    this.container.remove();
   }
 }
