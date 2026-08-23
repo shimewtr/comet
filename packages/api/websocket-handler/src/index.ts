@@ -19,6 +19,8 @@ import {
   saveConnection,
   removeConnection,
   getRoomConnections,
+  saveComment,
+  getRecentComments,
 } from './dynamodb-client';
 import {
   createApiGatewayClient,
@@ -122,6 +124,13 @@ async function handleMessage(
           timestamp: Date.now(),
         };
 
+        // 履歴保存の失敗は配信を妨げない
+        const savePromise = saveComment(GLOBAL_ROOM_ID, comment).catch(
+          (error) => {
+            console.error('Failed to save comment history:', error);
+          }
+        );
+
         // グローバルルーム内の全接続にブロードキャスト
         const connectionIds = await getRoomConnections(GLOBAL_ROOM_ID);
         const broadcastPayload: WebSocketMessage<NewCommentPayload> = {
@@ -135,6 +144,7 @@ async function handleMessage(
           connectionIds,
           broadcastPayload
         );
+        await savePromise;
 
         console.log(
           `Broadcast to ${result.sent} connections, ${result.failed} failed`
@@ -208,6 +218,23 @@ async function handleMessage(
 
         console.log(
           `Broadcast stamp to ${stampResult.sent} connections, ${stampResult.failed} failed`
+        );
+        break;
+      }
+
+      case WebSocketMessageType.HISTORY_REQUEST: {
+        // 直近のコメント履歴をリクエスト元の接続にだけ返す
+        const comments = await getRecentComments(GLOBAL_ROOM_ID);
+        await sendMessageToConnection(
+          apiGatewayClient,
+          connectionId,
+          Buffer.from(
+            JSON.stringify({
+              type: WebSocketMessageType.HISTORY,
+              payload: { comments },
+              timestamp: Date.now(),
+            })
+          )
         );
         break;
       }

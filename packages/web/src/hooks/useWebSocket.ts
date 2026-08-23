@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   NewCommentPayload,
   NewStampPayload,
+  HistoryPayload,
   Comment,
   Stamp,
   StampMessage,
@@ -30,23 +31,36 @@ export function useWebSocket() {
 
         if (status === 'open') {
           setError(null);
+          // 接続（再接続含む）のたびに直近のコメント履歴を取得する
+          socket.send(WebSocketMessageType.HISTORY_REQUEST, {});
         } else if (status === 'failed') {
           setError('Failed to connect after multiple attempts');
         }
       },
     });
 
-    const unsubscribe = socket.on<NewCommentPayload>(
+    // 新しい順（先頭が最新）でIDの重複を除去しつつ最大数まで保持する
+    const mergeIntoHistory = (prev: Comment[], incoming: Comment[]) => {
+      const merged = [...prev, ...incoming].sort(
+        (a, b) => b.timestamp - a.timestamp
+      );
+      const distinctHistory = Array.from(
+        new Map(merged.map((c) => [c.id, c])).values()
+      );
+      return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
+    };
+
+    const unsubscribeComment = socket.on<NewCommentPayload>(
       WebSocketMessageType.NEW_COMMENT,
       (payload) => {
-        setCommentHistory((prev) => {
-          const newHistory = [payload.comment, ...prev];
-          // IDで重複を除去しつつ最大数まで保持
-          const distinctHistory = Array.from(
-            new Map(newHistory.map((c) => [c.id, c])).values()
-          );
-          return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
-        });
+        setCommentHistory((prev) => mergeIntoHistory(prev, [payload.comment]));
+      }
+    );
+
+    const unsubscribeHistory = socket.on<HistoryPayload>(
+      WebSocketMessageType.HISTORY,
+      (payload) => {
+        setCommentHistory((prev) => mergeIntoHistory(prev, payload.comments));
       }
     );
 
@@ -57,7 +71,8 @@ export function useWebSocket() {
     socketRef.current = socket;
 
     return () => {
-      unsubscribe();
+      unsubscribeComment();
+      unsubscribeHistory();
       socket.disconnect();
       socketRef.current = null;
     };

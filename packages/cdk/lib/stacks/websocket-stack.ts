@@ -15,6 +15,7 @@ export interface WebSocketStackProps extends cdk.StackProps {
     logRetentionDays: number;
   };
   connectionsTable: dynamodb.Table;
+  commentsTable: dynamodb.Table;
 }
 
 export class WebSocketStack extends cdk.Stack {
@@ -38,10 +39,12 @@ export class WebSocketStack extends cdk.Stack {
 
     // DynamoDBアクセス権限を追加
     props.connectionsTable.grantReadWriteData(lambdaRole);
+    props.commentsTable.grantReadWriteData(lambdaRole);
 
     // 環境変数
     const environment = {
       CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
+      COMMENTS_TABLE_NAME: props.commentsTable.tableName,
       NODE_ENV: props.envName === 'prod' ? 'production' : 'development',
       ENV_NAME: props.envName,
     };

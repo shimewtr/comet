@@ -49,6 +49,7 @@ const webSocketStack = new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   envName,
   config,
   connectionsTable: storageStack.connectionsTable,
+  commentsTable: storageStack.commentsTable,
 });
 
 // スタンプスタック（S3 + CloudFront + Lambda + DynamoDB）
