@@ -50,3 +50,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Archives
+*.zip
