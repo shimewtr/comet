@@ -13,6 +13,7 @@ import {
   validatePostCommentRequest,
   sanitizeCommentStyle,
   isAllowedStampImageUrl,
+  generateId,
 } from '@comet/shared';
 import {
   saveConnection,
@@ -114,7 +115,7 @@ async function handleMessage(
 
         // 検証済みのフィールドのみでブロードキャスト用コメントを組み立てる
         const comment: Comment = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateId(),
           content: rawComment.content,
           style: sanitizeCommentStyle(rawComment.style),
           timestamp: Date.now(),
@@ -179,7 +180,7 @@ async function handleMessage(
           id:
             typeof rawStampMessage.id === 'string' && rawStampMessage.id
               ? rawStampMessage.id
-              : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              : generateId(),
           stamp: {
             id: typeof rawStamp.id === 'string' ? rawStamp.id : '',
             name: rawStamp.name,

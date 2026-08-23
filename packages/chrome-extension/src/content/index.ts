@@ -2,12 +2,12 @@ import {
   WebSocketMessageType,
   NewCommentPayload,
   NewStampPayload,
+  CometSocket,
 } from '@comet/shared';
-import { WebSocketClient } from './websocket-client';
 import { CommentRenderer } from './comment-renderer';
 import { StampRenderer } from './stamp-renderer';
 
-let wsClient: WebSocketClient | null = null;
+let wsClient: CometSocket | null = null;
 let commentRenderer: CommentRenderer | null = null;
 let stampRenderer: StampRenderer | null = null;
 
@@ -40,13 +40,12 @@ async function initialize() {
 
   // WebSocket接続を初期化
   try {
-    wsClient = new WebSocketClient(websocketUrl);
-    await wsClient.connect();
+    wsClient = new CometSocket(websocketUrl);
 
     // 新規コメント受信ハンドラー
-    wsClient.on(
+    wsClient.on<NewCommentPayload>(
       WebSocketMessageType.NEW_COMMENT,
-      (payload: NewCommentPayload) => {
+      (payload) => {
         if (commentRenderer) {
           commentRenderer.renderComment(payload.comment);
         }
@@ -54,11 +53,13 @@ async function initialize() {
     );
 
     // 新規スタンプ受信ハンドラー
-    wsClient.on(WebSocketMessageType.NEW_STAMP, (payload: NewStampPayload) => {
+    wsClient.on<NewStampPayload>(WebSocketMessageType.NEW_STAMP, (payload) => {
       if (stampRenderer) {
         stampRenderer.renderStamp(payload.stamp);
       }
     });
+
+    await wsClient.connect();
 
     console.log('Comet: Connected to WebSocket');
   } catch (error) {
