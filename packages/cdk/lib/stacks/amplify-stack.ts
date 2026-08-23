@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as amplify from 'aws-cdk-lib/aws-amplify';
 import { Construct } from 'constructs';
+import { physicalName } from '../naming';
 
 export interface AmplifyStackProps extends cdk.StackProps {
   envName: string;
@@ -17,7 +18,7 @@ export class AmplifyStack extends cdk.Stack {
 
     // Amplify Hosting App
     this.amplifyApp = new amplify.CfnApp(this, 'WebApp', {
-      name: `comet-web-${props.envName}`,
+      name: physicalName(this, props.envName, 'web'),
       platform: 'WEB',
       customRules: [
         {

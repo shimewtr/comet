@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
+import { physicalName } from '../naming';
 
 export interface StorageStackProps extends cdk.StackProps {
   envName: string;
@@ -18,7 +19,7 @@ export class StorageStack extends cdk.Stack {
 
     // WebSocket接続情報を管理するDynamoDBテーブル
     this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
-      tableName: `comet-connections-${props.envName}`,
+      tableName: physicalName(this, props.envName, 'connections'),
       partitionKey: {
         name: 'connectionId',
         type: dynamodb.AttributeType.STRING,

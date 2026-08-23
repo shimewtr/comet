@@ -8,6 +8,7 @@ import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integratio
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { physicalName } from '../naming';
 
 export interface StampStackProps extends cdk.StackProps {
   envName: string;
@@ -28,7 +29,7 @@ export class StampStack extends cdk.Stack {
 
     // S3バケット for スタンプ画像
     this.stampBucket = new s3.Bucket(this, 'StampBucket', {
-      bucketName: `comet-stamps-${props.envName}-${this.account}`,
+      bucketName: physicalName(this, props.envName, 'stamps'),
       // CORS設定
       cors: [
         {
@@ -77,7 +78,7 @@ export class StampStack extends cdk.Stack {
 
     // DynamoDBテーブル for カスタムスタンプメタデータ
     this.stampsTable = new dynamodb.Table(this, 'StampsTable', {
-      tableName: `comet-stamps-${props.envName}`,
+      tableName: physicalName(this, props.envName, 'stamps'),
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -85,7 +86,7 @@ export class StampStack extends cdk.Stack {
 
     // Lambda関数: スタンプアップロード用プリサインドURL生成
     const uploadLambda = new lambda.Function(this, 'UploadLambda', {
-      functionName: `comet-stamp-upload-${props.envName}`,
+      functionName: physicalName(this, props.envName, 'stamp-upload'),
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
@@ -109,7 +110,7 @@ export class StampStack extends cdk.Stack {
 
     // HTTP API Gateway
     this.uploadApi = new apigateway.HttpApi(this, 'StampUploadApi', {
-      apiName: `comet-stamp-upload-${props.envName}`,
+      apiName: physicalName(this, props.envName, 'stamp-upload-api'),
       description: 'API for stamp upload',
       corsPreflight: {
         allowOrigins: ['*'],
