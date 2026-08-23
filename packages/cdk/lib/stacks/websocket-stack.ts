@@ -35,14 +35,6 @@ export class WebSocketStack extends cdk.Stack {
     // DynamoDBアクセス権限を追加
     props.connectionsTable.grantReadWriteData(lambdaRole);
 
-    // API Gateway管理権限を追加
-    lambdaRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['execute-api:ManageConnections', 'execute-api:Invoke'],
-        resources: ['*'],
-      })
-    );
-
     // 環境変数
     const environment = {
       CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
