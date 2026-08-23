@@ -12,7 +12,11 @@ import {
 export class StampRenderer {
   private container: HTMLElement;
   private activeStamps: Set<HTMLElement> = new Set();
+  private removalTimeouts: Set<number> = new Set();
   private enabled: boolean = true;
+  private readonly handleFullscreenChange = () => {
+    this.attachContainer();
+  };
 
   constructor() {
     this.container = this.createContainer();
@@ -34,9 +38,7 @@ export class StampRenderer {
    * 全画面切り替えの監視を設定
    */
   private setupFullscreenListener(): void {
-    document.addEventListener('fullscreenchange', () => {
-      this.attachContainer();
-    });
+    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
   }
 
   /**
@@ -74,9 +76,11 @@ export class StampRenderer {
     this.animateStamp(element);
 
     // アニメーション完了後に削除
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
+      this.removalTimeouts.delete(timeoutId);
       this.removeStamp(element);
     }, STAMP_DISPLAY_DURATION);
+    this.removalTimeouts.add(timeoutId);
   }
 
   /**
@@ -170,6 +174,8 @@ export class StampRenderer {
    * 全スタンプをクリア
    */
   clearAll(): void {
+    this.removalTimeouts.forEach((id) => window.clearTimeout(id));
+    this.removalTimeouts.clear();
     this.activeStamps.forEach((element) => element.remove());
     this.activeStamps.clear();
   }
@@ -194,6 +200,10 @@ export class StampRenderer {
    */
   destroy(): void {
     this.clearAll();
+    document.removeEventListener(
+      'fullscreenchange',
+      this.handleFullscreenChange
+    );
     this.container.remove();
   }
 }
