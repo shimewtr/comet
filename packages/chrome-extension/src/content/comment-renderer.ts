@@ -2,11 +2,46 @@ import { Comment, COMMENT_SIZES, DEFAULT_COMMENT_COLOR } from '@comet/shared';
 import { OverlayRenderer } from './overlay-renderer';
 
 /**
+ * ユーザーが調整できるコメント表示設定
+ */
+export interface CommentDisplaySettings {
+  /** 速度の倍率（大きいほど速い） */
+  speedScale: number;
+  /** 文字サイズの倍率 */
+  fontScale: number;
+  /** コメントを流す領域 */
+  displayArea: 'full' | 'top-half' | 'top-third';
+}
+
+/** 表示領域ごとのY座標範囲（画面高さに対する比率） */
+const DISPLAY_AREA_RANGES: Record<
+  CommentDisplaySettings['displayArea'],
+  { min: number; max: number }
+> = {
+  full: { min: 0.1, max: 0.9 },
+  'top-half': { min: 0.05, max: 0.5 },
+  'top-third': { min: 0.05, max: 0.33 },
+};
+
+/**
  * コメント表示を管理するクラス
  */
 export class CommentRenderer extends OverlayRenderer {
+  private displaySettings: CommentDisplaySettings = {
+    speedScale: 1,
+    fontScale: 1,
+    displayArea: 'full',
+  };
+
   constructor() {
     super('comet-comment-container', 999999);
+  }
+
+  /**
+   * 表示設定を更新する（以降に流れるコメントから反映される）
+   */
+  updateDisplaySettings(settings: CommentDisplaySettings): void {
+    this.displaySettings = settings;
   }
 
   /**
@@ -45,7 +80,9 @@ export class CommentRenderer extends OverlayRenderer {
 
     element.appendChild(inner);
 
-    const fontSize = COMMENT_SIZES[comment.style.size];
+    const fontSize = Math.round(
+      COMMENT_SIZES[comment.style.size] * this.displaySettings.fontScale
+    );
     const color = comment.style.color || DEFAULT_COMMENT_COLOR;
 
     // 白文字以外は白い影、白文字は黒い影
@@ -84,11 +121,15 @@ export class CommentRenderer extends OverlayRenderer {
     const containerHeight = this.container.clientHeight;
     const elementWidth = element.offsetWidth;
 
-    // Y座標を決定（画面の10%〜90%の範囲）
-    const lineHeight = COMMENT_SIZES[comment.style.size] + 4;
+    // Y座標を決定（設定された表示領域の範囲）
+    const areaRange = DISPLAY_AREA_RANGES[this.displaySettings.displayArea];
+    const lineHeight =
+      Math.round(
+        COMMENT_SIZES[comment.style.size] * this.displaySettings.fontScale
+      ) + 4;
     const y = this.getRandomYPosition(
-      containerHeight * 0.1,
-      containerHeight * 0.9,
+      containerHeight * areaRange.min,
+      containerHeight * areaRange.max,
       lineHeight
     );
 
@@ -98,7 +139,7 @@ export class CommentRenderer extends OverlayRenderer {
 
     // アニメーション設定
     // speedは速度を表す（大きいほど速い）ので、durationは速度に反比例
-    const speed = comment.style.speed || 5;
+    const speed = (comment.style.speed || 5) * this.displaySettings.speedScale;
     const baseDistance = containerWidth + elementWidth;
     // 速度をpx/sとして扱い、durationを計算（ミリ秒）
     const duration = (baseDistance / (speed * 100)) * 1000;
