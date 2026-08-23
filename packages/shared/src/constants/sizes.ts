@@ -19,11 +19,6 @@ export const COMMENT_SIZES: Record<CommentSize, number> = {
 } as const;
 
 /**
- * デフォルトのコメントサイズ
- */
-export const DEFAULT_COMMENT_SIZE: CommentSize = 'medium';
-
-/**
  * 速度オプション
  */
 export type SpeedOption = 'slow' | 'normal' | 'fast';
@@ -46,16 +41,3 @@ export const SPEED_VALUES: Record<SpeedOption, number> = {
   fast: 6,
 } as const;
 
-/**
- * コメントのアニメーション速度（秒）
- */
-export const COMMENT_ANIMATION_DURATION = {
-  slow: 5,
-  normal: 3,
-  fast: 2,
-} as const;
-
-/**
- * デフォルトのアニメーション速度
- */
-export const DEFAULT_ANIMATION_DURATION = COMMENT_ANIMATION_DURATION.normal;
