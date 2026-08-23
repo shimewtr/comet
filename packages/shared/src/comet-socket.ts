@@ -21,6 +21,11 @@ export interface CometSocketOptions {
   maxReconnectAttempts?: number;
   /** 再接続の基準遅延ミリ秒。指数バックオフする（デフォルト: 1000） */
   reconnectBaseDelayMs?: number;
+  /**
+   * キープアライブPINGの送信間隔ミリ秒（デフォルト: 5分、0以下で無効）
+   * API GatewayのWebSocketはアイドル10分で切断されるため、それより短くする
+   */
+  keepaliveIntervalMs?: number;
   /** 接続状態が変わったときに呼ばれる */
   onStatusChange?: (status: CometSocketStatus) => void;
 }
@@ -29,6 +34,7 @@ type MessageHandler<T> = (payload: T, message: WebSocketMessage) => void;
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
+const DEFAULT_KEEPALIVE_INTERVAL_MS = 5 * 60 * 1000;
 const SEND_WAIT_POLL_INTERVAL_MS = 50;
 
 /**
@@ -41,6 +47,7 @@ export class CometSocket {
   private handlers = new Map<WebSocketMessageType, Set<MessageHandler<any>>>();
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
   private manuallyClosed = false;
   private status: CometSocketStatus = 'closed';
 
@@ -77,6 +84,7 @@ export class CometSocket {
         ws.onopen = () => {
           this.reconnectAttempts = 0;
           this.setStatus('open');
+          this.startKeepalive();
           settled = true;
           resolve();
         };
@@ -100,6 +108,7 @@ export class CometSocket {
 
         ws.onclose = () => {
           this.ws = null;
+          this.clearKeepalive();
           if (this.manuallyClosed) {
             this.setStatus('closed');
             return;
@@ -197,6 +206,7 @@ export class CometSocket {
   disconnect(): void {
     this.manuallyClosed = true;
     this.clearReconnectTimer();
+    this.clearKeepalive();
 
     if (this.ws) {
       this.ws.close();
@@ -204,6 +214,31 @@ export class CometSocket {
     }
 
     this.setStatus('closed');
+  }
+
+  /**
+   * API Gatewayのアイドルタイムアウト（10分）による切断を防ぐため、
+   * 接続中は定期的にPINGを送る
+   */
+  private startKeepalive(): void {
+    this.clearKeepalive();
+
+    const interval =
+      this.options.keepaliveIntervalMs ?? DEFAULT_KEEPALIVE_INTERVAL_MS;
+    if (interval <= 0) {
+      return;
+    }
+
+    this.keepaliveTimer = setInterval(() => {
+      this.send(WebSocketMessageType.PING, {});
+    }, interval);
+  }
+
+  private clearKeepalive(): void {
+    if (this.keepaliveTimer !== null) {
+      clearInterval(this.keepaliveTimer);
+      this.keepaliveTimer = null;
+    }
   }
 
   private dispatch(message: WebSocketMessage): void {
