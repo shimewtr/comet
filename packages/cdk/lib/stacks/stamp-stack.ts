@@ -85,6 +85,8 @@ export class StampStack extends cdk.Stack {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // アップロード未完了のpendingレコードを自動削除する
+      timeToLiveAttribute: 'ttl',
     });
 
     // カテゴリでの一覧取得用GSI（一覧APIをScanではなくQueryにするため）
@@ -125,6 +127,7 @@ export class StampStack extends cdk.Stack {
     // Lambda関数に権限付与
     this.stampBucket.grantPut(uploadLambda);
     this.stampBucket.grantDelete(uploadLambda);
+    this.stampBucket.grantRead(uploadLambda); // confirm時のHeadObject用
     this.stampsTable.grantWriteData(uploadLambda);
     this.stampsTable.grantReadData(uploadLambda);
 
@@ -168,6 +171,12 @@ export class StampStack extends cdk.Stack {
     this.uploadApi.addRoutes({
       path: '/stamps/{id}',
       methods: [apigateway.HttpMethod.DELETE],
+      integration: uploadIntegration,
+    });
+
+    this.uploadApi.addRoutes({
+      path: '/stamps/{id}/confirm',
+      methods: [apigateway.HttpMethod.POST],
       integration: uploadIntegration,
     });
 

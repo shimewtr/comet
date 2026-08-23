@@ -1,8 +1,8 @@
 import { APIGatewayProxyHandlerV2, APIGatewayProxyEventV2 } from 'aws-lambda';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { generateId } from '@comet/shared';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
@@ -12,6 +12,8 @@ const BUCKET_NAME = process.env.STAMP_BUCKET_NAME || '';
 const TABLE_NAME = process.env.STAMPS_TABLE_NAME || '';
 const CDN_DOMAIN = process.env.STAMP_CDN_DOMAIN || '';
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+// アップロード未完了のままのpendingレコードをTTLで自動削除するまでの時間
+const PENDING_TTL_SECONDS = 24 * 60 * 60;
 
 interface GeneratePresignedUrlRequest {
   fileName: string;
@@ -28,13 +30,18 @@ type ResponseHeaders = Record<string, string>;
 const handleListStamps = async () => {
   // 全件Scan+Filterだと件数増加でコスト・レイテンシが増えるため、
   // categoryのGSIに対するQueryで取得する
+  // アップロード完了前のpendingレコードは一覧に出さない
+  // （statusを持たない既存レコードはactive扱い）
   const result = await dynamoClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
       IndexName: 'CategoryIndex',
       KeyConditionExpression: 'category = :category',
+      FilterExpression: 'attribute_not_exists(#st) OR #st = :active',
+      ExpressionAttributeNames: { '#st': 'status' },
       ExpressionAttributeValues: {
         ':category': 'custom',
+        ':active': 'active',
       },
     })
   );
@@ -171,6 +178,8 @@ const handleGeneratePresignedUrl = async (
   // スタンプ名（カスタム名があればそれを使用、なければファイル名から生成）
   const stampName = request.stampName?.trim() || request.fileName.replace(/\.[^/.]+$/, '');
 
+  // アップロード完了確認（confirm）まではpendingとして保存する。
+  // クライアントがアップロードを完了しないまま放置した場合はTTLで自動削除される
   await dynamoClient.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -181,6 +190,8 @@ const handleGeneratePresignedUrl = async (
         category: 'custom',
         s3Key,
         uploadedAt: Date.now(),
+        status: 'pending',
+        ttl: Math.floor(Date.now() / 1000) + PENDING_TTL_SECONDS,
       },
     })
   );
@@ -197,6 +208,57 @@ const handleGeneratePresignedUrl = async (
       s3Key,
     }),
   };
+};
+
+/**
+ * アップロード完了確認ハンドラー
+ * S3に実際にオブジェクトが存在することを確認してからスタンプを有効化する
+ */
+const handleConfirmStamp = async (stampId: string) => {
+  const getResult = await dynamoClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { id: stampId },
+    })
+  );
+
+  if (!getResult.Item) {
+    return { statusCode: 404, error: 'Stamp not found' };
+  }
+
+  const stamp = getResult.Item;
+
+  // 既に有効化済みなら冪等に成功を返す
+  if (stamp.status === 'active' || stamp.status === undefined) {
+    return { statusCode: 200, success: true };
+  }
+
+  // S3に画像が実在するか確認する
+  try {
+    await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: stamp.s3Key,
+      })
+    );
+  } catch (error) {
+    console.warn(`Confirm rejected: object not found for ${stampId}`, error);
+    return { statusCode: 400, error: 'Image has not been uploaded yet' };
+  }
+
+  // 有効化してTTLを外す
+  await dynamoClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { id: stampId },
+      UpdateExpression: 'SET #st = :active REMOVE #ttl',
+      ExpressionAttributeNames: { '#st': 'status', '#ttl': 'ttl' },
+      ExpressionAttributeValues: { ':active': 'active' },
+    })
+  );
+
+  console.log(`Confirmed stamp: ${stampId}`);
+  return { statusCode: 200, success: true };
 };
 
 /**
@@ -241,6 +303,27 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           statusCode: result.statusCode,
           headers,
           body: JSON.stringify(result.error ? { error: result.error } : { success: true }),
+        };
+      }
+
+      // POST /stamps/{id}/confirm - アップロード完了確認
+      case 'POST /stamps/{id}/confirm': {
+        const stampId = event.pathParameters?.id;
+        if (!stampId) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Stamp ID is required' }),
+          };
+        }
+
+        const result = await handleConfirmStamp(stampId);
+        return {
+          statusCode: result.statusCode,
+          headers,
+          body: JSON.stringify(
+            result.error ? { error: result.error } : { success: true }
+          ),
         };
       }
 

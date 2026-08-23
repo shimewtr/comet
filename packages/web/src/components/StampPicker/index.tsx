@@ -104,7 +104,7 @@ export function StampPicker({
         throw new Error(errorMessage);
       }
 
-      const { uploadUrl } = await response.json();
+      const { uploadUrl, stampId } = await response.json();
 
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
@@ -116,6 +116,16 @@ export function StampPicker({
 
       if (!uploadResponse.ok) {
         throw new Error('画像のアップロードに失敗しました');
+      }
+
+      // アップロード完了をサーバに通知してスタンプを有効化する
+      const confirmResponse = await fetch(
+        `${STAMPS_API_URL}/${stampId}/confirm`,
+        { method: 'POST' }
+      );
+
+      if (!confirmResponse.ok) {
+        throw new Error('スタンプの有効化に失敗しました');
       }
 
       setShowUploadDialog(false);
