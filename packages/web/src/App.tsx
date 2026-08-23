@@ -25,12 +25,12 @@ function App() {
 
     if (!isConnected && wasConnected) {
       setToast({ message: '接続が切断されました' });
-    } else if (isConnected && !wasConnected && toast) {
+    } else if (isConnected && !wasConnected) {
       setToast(null);
     }
 
     prevConnectedRef.current = isConnected;
-  }, [isConnected, toast]);
+  }, [isConnected]);
 
   useEffect(() => {
     if (error) {
@@ -38,17 +38,19 @@ function App() {
     }
   }, [error]);
 
-  const handleCommentSubmit = (content: string, style: CommentStyle) => {
-    const success = sendComment({ content, style });
+  const handleCommentSubmit = async (content: string, style: CommentStyle) => {
+    const success = await sendComment({ content, style });
     if (!success) {
       console.error('Failed to send comment');
+      setToast({ message: 'コメントを送信できませんでした' });
     }
   };
 
-  const handleStampSelect = (stamp: Stamp) => {
-    const success = sendStamp(stamp);
+  const handleStampSelect = async (stamp: Stamp) => {
+    const success = await sendStamp(stamp);
     if (!success) {
       console.error('Failed to send stamp');
+      setToast({ message: 'スタンプを送信できませんでした' });
     }
   };
 

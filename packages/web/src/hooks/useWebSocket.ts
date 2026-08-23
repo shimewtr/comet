@@ -54,6 +54,12 @@ export function useWebSocket() {
       return;
     }
 
+    if (!WEBSOCKET_URL) {
+      console.error('VITE_WEBSOCKET_URL is not set');
+      setError('WebSocket URL is not configured');
+      return;
+    }
+
     try {
       const ws = new WebSocket(WEBSOCKET_URL);
 
@@ -97,9 +103,10 @@ export function useWebSocket() {
             const payload = message.payload as NewCommentPayload;
             setCommentHistory((prev) => {
               const newHistory = [payload.comment, ...prev];
-              // コメント内容で重複を除去しつつ最大数まで保持
+              // IDで重複を除去しつつ最大数まで保持
+              // （内容をキーにすると同じ文言のコメントが履歴から消えてしまう）
               const distinctHistory = Array.from(
-                new Map(newHistory.map((c) => [c.content, c])).values()
+                new Map(newHistory.map((c) => [c.id, c])).values()
               );
               return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
             });
