@@ -124,6 +124,11 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
 
     startCooldown(isDanmakuMode ? DANMAKU_COOLDOWN_MS : COMMENT_COOLDOWN_MS);
     setContent('');
+
+    // 弾幕モードは1回送信したら自動でOFFに戻す（連続で弾幕を撃つのは意図的な操作にする）
+    if (isDanmakuMode) {
+      setIsDanmakuMode(false);
+    }
   };
 
   return (
