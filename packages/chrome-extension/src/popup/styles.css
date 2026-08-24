@@ -1,17 +1,23 @@
+/*
+ * Web本体（packages/web/src/styles/_variables.scss）のカラートークンに準拠:
+ * 背景 #333 / 白カード / プライマリ #4a90e2
+ */
 :root {
-  color-scheme: dark;
-  --bg-top: #191c2b;
-  --bg-bottom: #101321;
-  --card-bg: rgba(255, 255, 255, 0.055);
-  --card-border: rgba(255, 255, 255, 0.09);
-  --text-main: #e8eaf2;
-  --text-sub: #aeb4c8;
-  --text-muted: #8b91a7;
-  --accent: #7c8cff;
-  --accent-strong: #6a5cff;
-  --accent-2: #9d6bff;
-  --input-bg: rgba(0, 0, 0, 0.32);
-  --input-border: rgba(255, 255, 255, 0.13);
+  --color-primary: #4a90e2;
+  --color-primary-dark: #357abd;
+  --color-border: #e2e8f0;
+  --color-border-light: #cbd5e0;
+  --color-bg-page: #333333;
+  --color-bg-white: #ffffff;
+  --color-bg-light: #f7fafc;
+  --color-bg-lighter: #edf2f7;
+  --color-text-primary: #2d3748;
+  --color-text-secondary: #4a5568;
+  --color-text-muted: #718096;
+  --color-text-light: #a0aec0;
+  --color-error: #f56565;
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 * {
@@ -23,8 +29,8 @@
 body {
   width: 380px;
   min-width: 380px;
-  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
-  color: var(--text-main);
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Meiryo',
     Roboto, sans-serif;
@@ -38,7 +44,7 @@ body {
   gap: 12px;
 }
 
-/* ヘッダー */
+/* ヘッダー（web本体のヘッダーと同じ「ダーク地に白タイトル」） */
 .popup-header {
   display: flex;
   align-items: center;
@@ -49,32 +55,28 @@ body {
 .popup-logo {
   width: 26px;
   height: 26px;
-  filter: drop-shadow(0 0 6px rgba(124, 140, 255, 0.55));
 }
 
 .popup-title {
-  background: linear-gradient(90deg, #aab4ff, #d3b6ff);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
+  color: #ffffff;
   font-weight: 700;
   font-size: 19px;
   letter-spacing: 0.04em;
 }
 
-/* セクションカード */
+/* セクションカード（web本体のSectionBaseと同じ白カード） */
 .section {
   display: flex;
   flex-direction: column;
   padding: 14px;
   gap: 10px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  background: var(--card-bg);
+  border-radius: 8px;
+  background: var(--color-bg-white);
+  box-shadow: var(--shadow-md);
 }
 
 .section-title {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -89,7 +91,7 @@ body {
 }
 
 .label {
-  color: var(--text-main);
+  color: var(--color-text-primary);
   font-weight: 600;
   font-size: 13px;
 }
@@ -101,12 +103,12 @@ body {
 }
 
 .form-group label {
-  color: var(--text-sub);
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
 
 .form-group label span {
-  color: var(--accent);
+  color: var(--color-primary);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -115,25 +117,25 @@ body {
 .input-field {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-main);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-white);
+  color: var(--color-text-primary);
   font-size: 12px;
   font-family: inherit;
   transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .input-field:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 140, 255, 0.18);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
   outline: none;
 }
 
 .input-field::placeholder {
-  color: rgba(174, 180, 200, 0.45);
+  color: var(--color-text-light);
 }
 
 select.input-field {
@@ -144,7 +146,7 @@ select.input-field {
 input[type='range'] {
   width: 100%;
   height: 20px;
-  accent-color: var(--accent);
+  accent-color: var(--color-primary);
   cursor: pointer;
 }
 
@@ -170,7 +172,7 @@ input[type='range'] {
   bottom: 0;
   left: 0;
   border-radius: 24px;
-  background-color: rgba(255, 255, 255, 0.16);
+  background-color: var(--color-border-light);
   cursor: pointer;
   transition: 0.25s;
 }
@@ -182,13 +184,14 @@ input[type='range'] {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: #f4f5fb;
+  background-color: var(--color-bg-white);
   content: '';
   transition: 0.25s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background: linear-gradient(90deg, var(--accent-strong), var(--accent-2));
+  background-color: var(--color-primary);
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
@@ -196,7 +199,7 @@ input[type='range'] {
 }
 
 .toggle-switch input:focus-visible + .toggle-slider {
-  box-shadow: 0 0 0 3px rgba(124, 140, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
 }
 
 /* ボタン */
@@ -204,21 +207,21 @@ input[type='range'] {
   display: inline-block;
   width: 100%;
   padding: 8px 14px;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-main);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-light);
+  color: var(--color-text-secondary);
   font-weight: 600;
   font-size: 12px;
   font-family: inherit;
   text-align: center;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 
 .button:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-border-light);
+  background: var(--color-bg-lighter);
 }
 
 .button:disabled {
@@ -226,18 +229,17 @@ input[type='range'] {
   cursor: not-allowed;
 }
 
+/* プライマリボタン（web本体の送信ボタンと同じ配色） */
 .button-success {
   padding: 10px 14px;
   border: none;
-  background: linear-gradient(90deg, var(--accent-strong), var(--accent-2));
-  color: #fff;
+  background: var(--color-primary);
+  color: #ffffff;
   font-size: 13px;
-  box-shadow: 0 4px 14px rgba(106, 92, 255, 0.35);
 }
 
 .button-success:hover:not(:disabled) {
-  filter: brightness(1.1);
-  box-shadow: 0 4px 18px rgba(106, 92, 255, 0.5);
+  background: var(--color-primary-dark);
 }
 
 .save-message {
