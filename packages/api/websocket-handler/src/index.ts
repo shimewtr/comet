@@ -29,6 +29,9 @@ import {
 } from './api-gateway-client';
 
 const HANDLER_TYPE = process.env.HANDLER_TYPE || 'message';
+// イベント全文などの冗長なログはデバッグ時のみ出す（CloudWatch Logsのコスト削減と
+// コメント本文をログに残さないため）
+const DEBUG_LOGGING = process.env.LOG_LEVEL === 'debug';
 const GLOBAL_ROOM_ID = 'global'; // 全ユーザー共通のルームID
 
 const MAX_STAMP_NAME_LENGTH = 50;
@@ -50,7 +53,6 @@ async function handleConnect(
   try {
     // 接続時に自動的にグローバルルームに参加
     await saveConnection(connectionId, GLOBAL_ROOM_ID);
-    console.log(`Connection ${connectionId} joined global room`);
   } catch (error) {
     console.error('Error saving connection:', error);
     return { statusCode: 500 };
@@ -87,7 +89,9 @@ async function handleMessage(
   const domainName = event.requestContext.domainName;
   const stage = event.requestContext.stage;
 
-  console.log(`Message from ${connectionId}:`, event.body);
+  if (DEBUG_LOGGING) {
+    console.log(`Message from ${connectionId}:`, event.body);
+  }
 
   try {
     if (!event.body) {
@@ -270,8 +274,10 @@ async function handleMessage(
  * メインハンドラー
  */
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log('Event:', JSON.stringify(event, null, 2));
-  console.log('Handler type:', HANDLER_TYPE);
+  if (DEBUG_LOGGING) {
+    console.log('Event:', JSON.stringify(event, null, 2));
+    console.log('Handler type:', HANDLER_TYPE);
+  }
 
   try {
     switch (HANDLER_TYPE) {

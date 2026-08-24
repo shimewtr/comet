@@ -12,6 +12,8 @@ const BUCKET_NAME = process.env.STAMP_BUCKET_NAME || '';
 const TABLE_NAME = process.env.STAMPS_TABLE_NAME || '';
 const CDN_DOMAIN = process.env.STAMP_CDN_DOMAIN || '';
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+// イベント全文のログはデバッグ時のみ（CloudWatch Logsのコスト削減）
+const DEBUG_LOGGING = process.env.LOG_LEVEL === 'debug';
 // アップロード未完了のままのpendingレコードをTTLで自動削除するまでの時間
 const PENDING_TTL_SECONDS = 24 * 60 * 60;
 
@@ -266,7 +268,11 @@ const handleConfirmStamp = async (stampId: string) => {
  * API Gatewayに定義したルートと一致するrouteKeyで分岐する
  */
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  console.log('Received event:', JSON.stringify(event));
+  if (DEBUG_LOGGING) {
+    console.log('Received event:', JSON.stringify(event));
+  } else {
+    console.log('Request:', event.routeKey);
+  }
 
   // CORSヘッダー
   const headers: ResponseHeaders = {
