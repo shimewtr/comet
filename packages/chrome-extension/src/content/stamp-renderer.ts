@@ -10,7 +10,9 @@ import { OverlayRenderer } from './overlay-renderer';
 // 連打コンボの判定・演出パラメータ
 const COMBO_WINDOW_MS = 2000; // この間隔以内に同じスタンプが来たらコンボ継続
 const COMBO_BURST_EVERY = 5; // 5連打ごとに破裂演出
-const BURST_STAMP_SIZE = 300;
+const BURST_BASE_SIZE = 300; // ×5時点の破裂サイズ
+const BURST_SIZE_STEP = 100; // コンボが5増えるごとの加算サイズ
+const BURST_MAX_COMBO = 20; // これ以上はサイズを大きくしない
 const BURST_HOLD_MS = 550; // ポップ表示してから破裂するまで
 const BURST_DISPLAY_DURATION = 1400;
 const BURST_PARTICLE_COUNT = 24;
@@ -75,11 +77,17 @@ export class StampRenderer extends OverlayRenderer {
 
   /**
    * コンボ達成時の破裂演出
-   * 巨大なスタンプが中央付近にポップ→破裂して粒が飛び散る
+   * 巨大なスタンプが中央付近にポップ→破裂して粒が飛び散る。
+   * コンボが続くほど大きくなる（×5→×10→×15→×20、以降は最大サイズ）
    */
   private renderBurst(stamp: Stamp, comboCount: number): void {
     const containerWidth = this.container.clientWidth;
     const containerHeight = this.container.clientHeight;
+
+    // コンボ段階（×5=1, ×10=2, ×15=3, ×20以上=4）でサイズを決める
+    const tier =
+      Math.min(comboCount, BURST_MAX_COMBO) / COMBO_BURST_EVERY;
+    const size = BURST_BASE_SIZE + (tier - 1) * BURST_SIZE_STEP;
 
     // 中央付近にランダム配置
     const x = containerWidth * (0.3 + Math.random() * 0.4);
@@ -95,27 +103,11 @@ export class StampRenderer extends OverlayRenderer {
       opacity: 1;
       pointer-events: none;
       user-select: none;
-      text-align: center;
       z-index: 999998;
       filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.9));
     `;
 
-    burst.appendChild(this.createStampFace(stamp, BURST_STAMP_SIZE));
-
-    const label = document.createElement('div');
-    label.textContent = `×${comboCount}`;
-    label.style.cssText = `
-      font-size: 72px;
-      font-weight: bold;
-      color: #FFD700;
-      text-shadow:
-        -2px -2px 0 #000,
-        2px -2px 0 #000,
-        -2px 2px 0 #000,
-        2px 2px 0 #000;
-      font-family: 'Arial', 'Hiragino Sans', 'Meiryo', sans-serif;
-    `;
-    burst.appendChild(label);
+    burst.appendChild(this.createStampFace(stamp, size));
 
     this.addElement(burst, BURST_DISPLAY_DURATION);
 
@@ -133,14 +125,20 @@ export class StampRenderer extends OverlayRenderer {
       burst.style.transition = 'transform 250ms ease-in, opacity 250ms ease-in';
       burst.style.transform = 'translate(-50%, -50%) scale(1.7)';
       burst.style.opacity = '0';
-      this.spawnParticles(stamp, x, y);
+      // 大きい破裂ほど粒も遠くまで飛ばす
+      this.spawnParticles(stamp, x, y, 1 + (tier - 1) * 0.2);
     }, BURST_HOLD_MS);
   }
 
   /**
    * 破裂時に四方八方へ飛び散る粒を生成する
    */
-  private spawnParticles(stamp: Stamp, x: number, y: number): void {
+  private spawnParticles(
+    stamp: Stamp,
+    x: number,
+    y: number,
+    distanceScale: number
+  ): void {
     for (let i = 0; i < BURST_PARTICLE_COUNT; i++) {
       const particle = document.createElement('div');
       particle.style.cssText = `
@@ -160,7 +158,7 @@ export class StampRenderer extends OverlayRenderer {
       // 全方位に均等 + 少しランダムにばらす
       const angle =
         (Math.PI * 2 * i) / BURST_PARTICLE_COUNT + Math.random() * 0.5;
-      const distance = 220 + Math.random() * 300;
+      const distance = (220 + Math.random() * 300) * distanceScale;
       const dx = Math.cos(angle) * distance;
       const dy = Math.sin(angle) * distance;
       const rotation = Math.random() * 360 - 180;
