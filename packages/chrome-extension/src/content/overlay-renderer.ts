@@ -51,11 +51,17 @@ export abstract class OverlayRenderer {
    */
   protected trackElement(element: HTMLElement, lifetimeMs: number): void {
     this.activeElements.add(element);
+    this.scheduleTimeout(() => this.removeElement(element), lifetimeMs);
+  }
 
+  /**
+   * clearAll/destroy時にまとめて破棄されるタイマーを張る
+   */
+  protected scheduleTimeout(callback: () => void, delayMs: number): void {
     const timeoutId = window.setTimeout(() => {
       this.removalTimeouts.delete(timeoutId);
-      this.removeElement(element);
-    }, lifetimeMs);
+      callback();
+    }, delayMs);
     this.removalTimeouts.add(timeoutId);
   }
 
