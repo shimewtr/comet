@@ -6,6 +6,7 @@ import { StorageStack } from '../lib/stacks/storage-stack';
 import { WebStack } from '../lib/stacks/web-stack';
 import { StampStack } from '../lib/stacks/stamp-stack';
 import { loadEnvConfig } from '../lib/config';
+import { physicalNameParts } from '../lib/naming';
 
 const app = new cdk.App();
 
@@ -54,7 +55,17 @@ new StampStack(app, `${stackPrefix}StampStack`, {
   authSigningSecret: storageStack.authSigningSecret,
 });
 
-// Webホスティングスタック（CloudFront + S3）
+// 認証有効時、Edge用のconfig生成に具体値のアカウントIDが必要
+if (authEnabled && !env.account) {
+  throw new Error(
+    '認証を有効化するにはAWS認証情報（CDK_DEFAULT_ACCOUNT）が必要です'
+  );
+}
+const signingSecretName = authEnabled
+  ? physicalNameParts(env.account!, env.region, envName, 'auth-signing-key')
+  : undefined;
+
+// Webホスティングスタック（CloudFront + S3 + 任意のEdge認証）
 new WebStack(app, `${stackPrefix}WebStack`, {
   env,
   description: `Comet Web Hosting - ${envName}`,
@@ -62,6 +73,12 @@ new WebStack(app, `${stackPrefix}WebStack`, {
   webSocketUrl: webSocketStack.webSocketUrl,
   authEnabled,
   domain: config.domain,
+  auth: config.auth,
+  signingSecretName,
+  signingSecretRegion: env.region,
+  signingSecretArnPattern: authEnabled
+    ? `arn:aws:secretsmanager:${env.region}:${env.account}:secret:${signingSecretName}-*`
+    : undefined,
 });
 
 // タグを追加

@@ -56,3 +56,6 @@ temp/
 
 # デプロイ先固有の設定（ドメイン・認証など）
 packages/cdk/comet.config.json
+
+# Edge認証のデプロイ用ステージング（synth時に生成）
+packages/cdk/edge-auth-build/

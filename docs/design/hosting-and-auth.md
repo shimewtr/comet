@@ -105,16 +105,17 @@ webの配信物に含まれる `/comet-config.json` はCDK（BucketDeployment）
   - webは `authEnabled` 時に `/auth/token` からチケットを取得してWS/APIに添付
   - 拡張はpopupのトークン欄（Step 3で web→拡張の自動連携に置き換え予定）
 
-### Step 3: Lambda@Edge OIDC認証 — 🔜 未実装（設計のみ）
+### Step 3: Lambda@Edge OIDC認証 — ✅ 実装済み（実IdPでのE2Eは未検証）
 
-- `cloudfront.experimental.EdgeFunction`（us-east-1、認証ON利用者のみus-east-1のbootstrapが必要）
-- viewer-requestで:
-  - セッションCookie（署名付きJWT）を検証。なければIdPの認可エンドポイントへリダイレクト（認可コード + PKCE。`state`/`nonce`/`code_verifier`は一時Cookieで往復）
-  - `/auth/callback`: コード交換 → IDトークンをIdPのJWKSで検証 → セッションCookie発行
-  - `/auth/token`: セッション確認のうえ、署名鍵で短命チケットを発行して返す
-- 設定（issuer/clientId/鍵ARN）はEdgeが環境変数を使えないため、アセットバンドル時に埋め込む
-- 認証OFFへの切り替えは「Edge関数の関連付けを外すだけ」にして高速化（関数削除はレプリカ回収待ちが長いため行わない）
-- **拡張との連携**: manifestの `externally_connectable` でwebのオリジンを許可し、認証済みのwebページから `chrome.runtime.sendMessage` でチケットを拡張に渡す（「拡張と連携」ボタン）。投影専用の長命チケット発行も代替案
+- `packages/edge-auth`: viewer-requestで動くOIDC認証Lambda（`cloudfront.experimental.EdgeFunction`でus-east-1にデプロイ。認証ON利用者のみus-east-1のbootstrapが必要）
+  - セッションCookie（署名付きJWT、12時間）を検証。なければIdPの認可エンドポイントへリダイレクト（認可コード + PKCE。`state`/`nonce`/`code_verifier`は署名付き一時Cookieで往復）
+  - `/auth/callback`: コード交換 → IDトークンをIdPのJWKS + nonceで検証 → セッションCookie発行
+  - `/auth/token`: セッション確認のうえ、署名鍵で短命チケット（15分）を発行して返す
+  - `/auth/logout`: セッションCookieを破棄
+  - redirect_uriはHostヘッダーから動的に組み立てる（ドメイン変更でEdgeの再ビルド不要）
+- 設定（issuer/clientId/署名鍵名）はEdgeが環境変数を使えないため、CDKがsynth時に`config.json`としてアセットに同梱する
+- `/comet-config.json` のビヘイビアにはEdgeを付けない（拡張が未認証で接続設定を取得できるように）
+- **拡張との連携（未実装・次フェーズ）**: manifestの `externally_connectable` でwebのオリジンを許可し、認証済みのwebページから `chrome.runtime.sendMessage` でチケットを拡張に渡す。現状はpopupのチケット欄に手動設定
 
 ### Step 4（任意）: 運用強化
 

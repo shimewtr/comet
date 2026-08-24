@@ -47,8 +47,12 @@ jobs:
         run: pnpm exec cdk synth --context env=dev
 
       # 認証+カスタムドメインを有効化した構成でも壊れていないことを確認する
+      # （Lambda@Edgeのクロスリージョンスタックは明示的なaccount/regionを要求するためダミーを設定）
       - name: CDK synth (auth + domain enabled)
         working-directory: packages/cdk
+        env:
+          CDK_DEFAULT_ACCOUNT: '123456789012'
+          CDK_DEFAULT_REGION: 'ap-northeast-1'
         run: |
           cat > comet.config.json <<'EOF'
           {

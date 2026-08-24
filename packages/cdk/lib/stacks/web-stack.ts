@@ -6,10 +6,13 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import * as fs from 'fs';
 import { physicalName } from '../naming';
-import { DomainConfig } from '../config';
+import { AuthConfig, DomainConfig } from '../config';
 
 export interface WebStackProps extends cdk.StackProps {
   envName: string;
@@ -19,6 +22,14 @@ export interface WebStackProps extends cdk.StackProps {
   authEnabled: boolean;
   /** カスタムドメイン設定（未指定ならCloudFrontの自動ドメイン） */
   domain?: DomainConfig;
+  /** OIDC認証設定（指定するとviewer-requestにEdge認証を装着する） */
+  auth?: AuthConfig;
+  /** チケット署名鍵のシークレット名（authと併せて指定。Edgeが参照する） */
+  signingSecretName?: string;
+  /** 署名鍵のあるリージョン */
+  signingSecretRegion?: string;
+  /** 署名鍵へのIAMポリシー用ARNパターン */
+  signingSecretArnPattern?: string;
 }
 
 /**
@@ -80,12 +91,78 @@ export class WebStack extends cdk.Stack {
       originAccessIdentity,
     });
 
+    // 認証有効時: OIDC認証+チケット発行を行うLambda@Edgeをviewer-requestに装着する。
+    // Lambda@Edgeは環境変数を使えないため、設定はアセットにconfig.jsonとして同梱する
+    let edgeLambdas: cloudfront.EdgeLambda[] | undefined;
+    if (props.auth) {
+      if (
+        !props.signingSecretName ||
+        !props.signingSecretRegion ||
+        !props.signingSecretArnPattern
+      ) {
+        throw new Error('auth有効時はsigningSecret系のプロパティが必要です');
+      }
+
+      const edgeAssetDir = path.join(
+        __dirname,
+        '../../edge-auth-build',
+        props.envName
+      );
+      fs.mkdirSync(edgeAssetDir, { recursive: true });
+      fs.copyFileSync(
+        path.join(__dirname, '../../../edge-auth/dist/index.js'),
+        path.join(edgeAssetDir, 'index.js')
+      );
+      fs.writeFileSync(
+        path.join(edgeAssetDir, 'config.json'),
+        JSON.stringify(
+          {
+            issuer: props.auth.issuer,
+            clientId: props.auth.clientId,
+            signingSecretName: props.signingSecretName,
+            signingSecretRegion: props.signingSecretRegion,
+          },
+          null,
+          2
+        )
+      );
+
+      const edgeFn = new cloudfront.experimental.EdgeFunction(
+        this,
+        'EdgeAuthFn',
+        {
+          runtime: lambda.Runtime.NODEJS_20_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromAsset(edgeAssetDir),
+          memorySize: 128,
+          timeout: cdk.Duration.seconds(5),
+        }
+      );
+
+      // Edgeがチケット署名鍵を読めるようにする
+      // （Secrets Managerはシークレット名の後ろにランダムなサフィックスを付けるためワイルドカード指定）
+      edgeFn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [props.signingSecretArnPattern],
+        })
+      );
+
+      edgeLambdas = [
+        {
+          eventType: cloudfront.LambdaEdgeEventType.VIEWER_REQUEST,
+          functionVersion: edgeFn.currentVersion,
+        },
+      ];
+    }
+
     this.distribution = new cloudfront.Distribution(this, 'WebDistribution', {
       defaultBehavior: {
         origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        edgeLambdas,
       },
       additionalBehaviors: {
         // Chrome拡張が接続設定を取得するファイル。

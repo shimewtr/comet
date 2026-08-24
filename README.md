@@ -114,6 +114,47 @@ pnpm --filter @comet/chrome-extension build
 
 接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はCDKデプロイ時にインフラ側の値から生成され、CloudFrontでこのファイルのみCORSが許可されています）。WebSocket URLを手入力することも可能です。
 
+## 認証（OIDC）の有効化 — Okta / Auth0 / Cognito など
+
+デフォルトは認証なしの公開構成です（URLを知っていれば誰でも投稿できます）。任意のOIDCプロバイダによる認証をオプトインで有効化できます。設計の全体像は `docs/design/hosting-and-auth.md` を参照してください。
+
+> **現在のステータス**: ログイン（Lambda@EdgeのOIDC認証）からチケット検証まで一通り実装済みです。認可リダイレクト・未認証時の拒否はテスト済みですが、実IdPでのログイン完走はまだ検証されていないため、有効化の際はまずdev環境で動作確認してください。
+
+### 有効化の手順
+
+1. **IdP側でOIDCアプリを登録する**
+   - アプリ種別: SPA（認可コード + PKCE。client secretは不要）
+   - リダイレクトURI: `https://<WebのURL>/auth/callback`
+   - 取得するもの: **issuer URL** と **client_id**（どちらも秘密情報ではありません）
+   - 独自ドメインを使う予定がある場合は先にドメインを設定しておくと、IdPへの再申請が不要になります
+2. **`packages/cdk/comet.config.json` に設定を書く**
+
+   ```jsonc
+   {
+     "envs": {
+       "prod": {
+         "auth": {
+           "issuer": "https://idp.example.com/oauth2/xxxx",
+           "clientId": "your-client-id"
+         }
+       }
+     }
+   }
+   ```
+
+3. **us-east-1のbootstrap（初回のみ）**: Lambda@Edgeはus-east-1にデプロイされるため、認証を有効化する場合のみ `npx cdk bootstrap aws://<accountId>/us-east-1` が必要です
+4. **デプロイ**: `scripts/deploy.sh <env>` — コマンドは認証なしのときと同じです
+
+有効化すると以下が自動で行われます：
+
+- チケット署名鍵がSecrets Managerに自動生成される（利用者が秘密情報を扱う必要はありません）
+- WebSocket `$connect` とスタンプAPIにオーソライザーが装着され、有効なチケットなしではアクセスできなくなる
+- 配信される `/comet-config.json` の `authEnabled` が `true` になり、**webと拡張は同じビルドのまま自動でトークンを付けて接続する**ようになる
+
+### 無効化
+
+`comet.config.json` から `auth` を消して `scripts/deploy.sh <env>` を実行するだけです。
+
 ## セキュリティ上のポイント
 
 - WebSocketで受信したペイロードはサーバ側で検証し、検証済みフィールドのみブロードキャストします（コメント文字数・スタイルの許可リスト・スタンプ画像URLのCloudFront限定など。`shared/src/utils/validation.ts`）
