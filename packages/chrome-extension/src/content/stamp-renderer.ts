@@ -10,12 +10,12 @@ import { OverlayRenderer } from './overlay-renderer';
 // 連打コンボの判定・演出パラメータ
 const COMBO_WINDOW_MS = 2000; // この間隔以内に同じスタンプが来たらコンボ継続
 const COMBO_BURST_EVERY = 5; // 5連打ごとに破裂演出
-const BURST_STAMP_SIZE = 160;
+const BURST_STAMP_SIZE = 300;
 const BURST_HOLD_MS = 550; // ポップ表示してから破裂するまで
 const BURST_DISPLAY_DURATION = 1400;
-const BURST_PARTICLE_COUNT = 12;
-const PARTICLE_SIZE = 36;
-const PARTICLE_DURATION = 800;
+const BURST_PARTICLE_COUNT = 24;
+const PARTICLE_SIZE = 48;
+const PARTICLE_DURATION = 900;
 
 interface ComboState {
   count: number;
@@ -105,7 +105,7 @@ export class StampRenderer extends OverlayRenderer {
     const label = document.createElement('div');
     label.textContent = `×${comboCount}`;
     label.style.cssText = `
-      font-size: 40px;
+      font-size: 72px;
       font-weight: bold;
       color: #FFD700;
       text-shadow:
@@ -160,7 +160,7 @@ export class StampRenderer extends OverlayRenderer {
       // 全方位に均等 + 少しランダムにばらす
       const angle =
         (Math.PI * 2 * i) / BURST_PARTICLE_COUNT + Math.random() * 0.5;
-      const distance = 120 + Math.random() * 160;
+      const distance = 220 + Math.random() * 300;
       const dx = Math.cos(angle) * distance;
       const dy = Math.sin(angle) * distance;
       const rotation = Math.random() * 360 - 180;
