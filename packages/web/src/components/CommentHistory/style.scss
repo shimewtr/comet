@@ -33,6 +33,11 @@
 .comment-history-list {
   max-height: 100%;
   overflow-y: auto;
+
+  // 縦積みレイアウトでは親に高さ制約がないため、リスト自体に上限を設ける
+  @media (max-width: $breakpoint-sm) {
+    max-height: 320px;
+  }
 }
 
 .comment-history-item {

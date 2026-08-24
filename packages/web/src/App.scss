@@ -65,6 +65,12 @@
     flex-direction: row;
     max-height: 1200px;
     gap: $space-lg;
+
+    // スマホ幅では縦積みにして、コメント履歴をスタンプの下に表示する
+    @media (max-width: $breakpoint-sm) {
+      flex-direction: column;
+      max-height: none;
+    }
   }
 
   .app-main {
@@ -82,7 +88,7 @@
     gap: $space-lg;
 
     @media (max-width: $breakpoint-sm) {
-      display: none;
+      width: 100%;
     }
   }
 }
