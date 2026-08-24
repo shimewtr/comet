@@ -253,7 +253,11 @@ input[type='range'] {
 }
 
 .save-message {
-  min-height: 15px;
   font-size: 12px;
   text-align: center;
+}
+
+/* メッセージがない間は領域を確保しない（カードの上下パディングを揃える） */
+.save-message:empty {
+  display: none;
 }
