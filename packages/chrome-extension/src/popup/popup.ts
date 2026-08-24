@@ -20,7 +20,7 @@ function showSaveMessage(
   type: 'success' | 'error'
 ) {
   saveMessage.textContent = message;
-  saveMessage.style.color = type === 'success' ? '#7ee2a8' : '#ff9a9a';
+  saveMessage.style.color = type === 'success' ? '#4a90e2' : '#f56565';
 
   // 3秒後にメッセージを消す
   setTimeout(() => {
