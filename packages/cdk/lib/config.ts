@@ -37,6 +37,8 @@ export interface CometEnvConfig {
   logRetentionDays: number;
   domain?: DomainConfig;
   auth?: AuthConfig;
+  /** scripts/deploy.sh が使うAWSプロファイル（CDKスタック自体は参照しない） */
+  profile?: string;
 }
 
 const DEFAULT_ENV_CONFIGS: Record<string, CometEnvConfig> = {

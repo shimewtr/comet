@@ -80,21 +80,24 @@ comet-{env}-{リソースタイプ}-{accountId}-{region}
 
 ## デプロイ
 
-インフラ・Lambda・webの配信まで1コマンドに統合されています：
+ビルドからデプロイまで1コマンドで行えます：
 
 ```bash
-# 各パッケージのビルド成果物を最新化
-pnpm --filter @comet/shared build
-pnpm --filter @comet/websocket-handler build
-pnpm --filter @comet/stamp-upload build
-pnpm --filter @comet/web build   # .env.local の VITE_WEBSOCKET_URL を使用
-
-cd packages/cdk
-npx cdk diff --all --context env=dev --profile shimewtr    # 事前確認
-npx cdk deploy --all --context env=dev --profile shimewtr
+scripts/deploy.sh              # devに全デプロイ
+scripts/deploy.sh dev web      # webだけ更新
+scripts/deploy.sh prod         # prodに全デプロイ
 ```
 
-WebStackのデプロイでwebのビルド成果物がS3にアップロードされ、CloudFrontのキャッシュ無効化まで行われます。
+AWSプロファイルは `packages/cdk/comet.config.json` の `envs.<env>.profile`、なければ環境変数 `AWS_PROFILE` が使われます（シェルに別プロジェクトの `AWS_PROFILE` が常設されている環境では、誤アカウントへのデプロイを防ぐためconfigでの指定を推奨）。
+
+内部では各パッケージのビルド → `cdk deploy` を実行しており、WebStackのデプロイでwebのビルド成果物がS3にアップロードされ、CloudFrontのキャッシュ無効化まで行われます（webのビルドは `packages/web/.env.local` の `VITE_WEBSOCKET_URL` を使用）。
+
+事前に差分だけ見たい場合は手動で：
+
+```bash
+cd packages/cdk
+npx cdk diff --all --context env=dev --profile <your-profile>
+```
 
 注意点：
 

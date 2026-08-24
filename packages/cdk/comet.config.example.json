@@ -2,7 +2,8 @@
   "envs": {
     "dev": {
       "lambdaMemorySize": 256,
-      "logRetentionDays": 3
+      "logRetentionDays": 3,
+      "profile": "your-aws-profile"
     },
     "prod": {
       "lambdaMemorySize": 512,
