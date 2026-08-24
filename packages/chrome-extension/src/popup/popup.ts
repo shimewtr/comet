@@ -38,6 +38,7 @@ async function main() {
   const displayAreaSelect = getElement<HTMLSelectElement>('display-area');
   const qrEnabledCheckbox = getElement<HTMLInputElement>('qr-enabled');
   const webAppUrlInput = getElement<HTMLInputElement>('web-app-url');
+  const fetchConfigButton = getElement<HTMLButtonElement>('fetch-config');
   const saveSettingsButton = getElement<HTMLButtonElement>('save-settings');
   const saveMessage = getElement<HTMLDivElement>('save-message');
 
@@ -74,6 +75,55 @@ async function main() {
 
     // 状態を保存
     chrome.storage.local.set({ commentsEnabled: isEnabled });
+  });
+
+  // WebアプリのURLから接続設定（/comet-config.json）を自動取得する
+  fetchConfigButton.addEventListener('click', async () => {
+    const webAppUrl = webAppUrlInput.value.trim().replace(/\/+$/, '');
+
+    if (!webAppUrl) {
+      showSaveMessage(
+        saveMessage,
+        '先に「WebアプリURL」を入力してください',
+        'error'
+      );
+      return;
+    }
+
+    fetchConfigButton.disabled = true;
+    try {
+      const response = await fetch(`${webAppUrl}/comet-config.json`, {
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const config = await response.json();
+      if (
+        typeof config.websocketUrl !== 'string' ||
+        (!config.websocketUrl.startsWith('wss://') &&
+          !config.websocketUrl.startsWith('ws://'))
+      ) {
+        throw new Error('Invalid config');
+      }
+
+      websocketUrlInput.value = config.websocketUrl;
+      showSaveMessage(
+        saveMessage,
+        'WebSocket URLを取得しました。「保存」で確定してください',
+        'success'
+      );
+    } catch (error) {
+      console.error('Failed to fetch comet-config.json:', error);
+      showSaveMessage(
+        saveMessage,
+        '設定の取得に失敗しました。WebアプリURLを確認してください',
+        'error'
+      );
+    } finally {
+      fetchConfigButton.disabled = false;
+    }
   });
 
   // 設定を保存（content scriptはstorage.onChangedで即時反映する）
