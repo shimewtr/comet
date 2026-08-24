@@ -8,6 +8,7 @@ import type {
   StampMessage,
 } from '@comet/shared';
 import { WebSocketMessageType, CometSocket, generateId } from '@comet/shared';
+import { getAuthToken } from '../auth';
 
 const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 const MAX_COMMENT_HISTORY = 100;
@@ -26,6 +27,8 @@ export function useWebSocket() {
     }
 
     const socket = new CometSocket(WEBSOCKET_URL, {
+      // 認証が有効な構成ではチケットを接続に付与する（無効ならnullでno-op）
+      tokenProvider: getAuthToken,
       onStatusChange: (status) => {
         setIsConnected(status === 'open');
 

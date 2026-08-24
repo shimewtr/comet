@@ -65,7 +65,9 @@ CDKで以下の4スタックを管理しています（環境は `--context env=
 - **StorageStack**: WebSocket接続管理のDynamoDB（TTL付き、roomId GSI）
 - **WebSocketStack**: API Gateway WebSocket API + Lambda 3本
 - **StampStack**: スタンプ用S3 + CloudFront + DynamoDB（category GSI） + HTTP API + Lambda
-- **AmplifyStack**: WebアプリのAmplify Hosting（ビルド用に `VITE_*` 環境変数を他スタックから自動配線）
+- **WebStack**: WebアプリのCloudFront + S3ホスティング（webビルド成果物のアップロードと`comet-config.json`の生成までデプロイで行う）
+
+ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json`（gitignore対象、`comet.config.example.json` 参照）に置きます。未設定なら「認証なし・CloudFront自動ドメイン」のデフォルト構成になります。
 
 ### リソース命名規則
 
@@ -78,41 +80,26 @@ comet-{env}-{リソースタイプ}-{accountId}-{region}
 
 ## デプロイ
 
-### インフラ + Lambda
+インフラ・Lambda・webの配信まで1コマンドに統合されています：
 
 ```bash
-# Lambdaのバンドルを最新化
+# 各パッケージのビルド成果物を最新化
 pnpm --filter @comet/shared build
 pnpm --filter @comet/websocket-handler build
 pnpm --filter @comet/stamp-upload build
+pnpm --filter @comet/web build   # .env.local の VITE_WEBSOCKET_URL を使用
 
 cd packages/cdk
 npx cdk diff --all --context env=dev --profile shimewtr    # 事前確認
 npx cdk deploy --all --context env=dev --profile shimewtr
 ```
 
+WebStackのデプロイでwebのビルド成果物がS3にアップロードされ、CloudFrontのキャッシュ無効化まで行われます。
+
 注意点：
 
 - ConnectionsTableの名前/ARNはクロススタック参照でexportされているため、テーブルの置換を伴う変更はStorageStack単独では更新できないことがあります（devなら該当スタックのdestroy→deployが早い）
-- WebSocket APIを再作成するとURLが変わります。その場合は `packages/web/.env.local` の更新・web再デプロイ・拡張ポップアップのURL更新が必要です
-
-### Web（Amplifyへの手動zipデプロイ）
-
-AmplifyはGitリポジトリ未連携のため、ビルド成果物のzipを手動でアップロードします：
-
-```bash
-cd packages/web
-pnpm build
-cd dist && zip -r ../comet-web.zip . && cd ..
-
-APP_ID=$(aws amplify list-apps --profile shimewtr --region ap-northeast-1 \
-  --query "apps[?starts_with(name, 'comet-')]|[0].appId" --output text)
-DEP=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name main \
-  --profile shimewtr --region ap-northeast-1)
-curl -X PUT -T comet-web.zip "$(echo "$DEP" | jq -r .zipUploadUrl)"
-aws amplify start-deployment --app-id "$APP_ID" --branch-name main \
-  --job-id "$(echo "$DEP" | jq -r .jobId)" --profile shimewtr --region ap-northeast-1
-```
+- WebSocket APIを再作成するとURLが変わります。その場合は `packages/web/.env.local` を更新してwebを再ビルド・再デプロイしてください（拡張は「自動取得」で追従できます）
 
 ### Chrome拡張
 
@@ -122,7 +109,7 @@ pnpm --filter @comet/chrome-extension build
 
 `chrome://extensions` で `packages/chrome-extension/dist` を読み込んでください。動作対象は `https://docs.google.com/*` のみです（`manifest.json` の `matches` で制限）。
 
-接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はwebのビルド時に `VITE_WEBSOCKET_URL` から自動生成され、Amplifyのカスタムヘッダーでこのファイルのみ CORS が許可されています）。WebSocket URLを手入力することも可能です。
+接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はCDKデプロイ時にインフラ側の値から生成され、CloudFrontでこのファイルのみCORSが許可されています）。WebSocket URLを手入力することも可能です。
 
 ## セキュリティ上のポイント
 

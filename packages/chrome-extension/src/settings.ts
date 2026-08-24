@@ -14,6 +14,8 @@ export interface CometSettings {
   qrEnabled: boolean;
   /** QRコードに載せるWebアプリのURL */
   webAppUrl: string;
+  /** 認証チケット（認証を有効化した構成でのみ使用。通常は空でよい） */
+  authToken: string;
 }
 
 export const DEFAULT_SETTINGS: CometSettings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: CometSettings = {
   displayArea: 'full',
   qrEnabled: false,
   webAppUrl: '',
+  authToken: '',
 };
 
 /**

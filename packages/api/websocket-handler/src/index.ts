@@ -290,3 +290,6 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     return { statusCode: 500 };
   }
 };
+
+// 認証オーソライザー（CDK側でhandler名 index.wsAuthorizer / index.httpAuthorizer として参照される）
+export { wsAuthorizer, httpAuthorizer } from './authorizer';

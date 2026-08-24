@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type Stamp } from '@comet/shared';
+import { authHeaders } from '../../auth';
 import { TabbedSectionBase, type Tab } from '../common/TabbedSectionBase';
 import { UploadDialog } from './UploadDialog';
 import { EmojiTab } from './EmojiTab';
@@ -26,7 +27,10 @@ export function StampPicker({
   const fetchCustomStamps = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const response = await fetch(STAMPS_API_URL, { signal });
+      const response = await fetch(STAMPS_API_URL, {
+        signal,
+        headers: await authHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         setCustomStamps(data.stamps || []);
@@ -63,6 +67,7 @@ export function StampPicker({
     try {
       const response = await fetch(`${STAMPS_API_URL}/${stampId}`, {
         method: 'DELETE',
+        headers: await authHeaders(),
       });
 
       if (response.ok) {
@@ -88,6 +93,7 @@ export function StampPicker({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(await authHeaders()),
         },
         body: JSON.stringify({
           fileName: file.name,
@@ -121,7 +127,7 @@ export function StampPicker({
       // アップロード完了をサーバに通知してスタンプを有効化する
       const confirmResponse = await fetch(
         `${STAMPS_API_URL}/${stampId}/confirm`,
-        { method: 'POST' }
+        { method: 'POST', headers: await authHeaders() }
       );
 
       if (!confirmResponse.ok) {

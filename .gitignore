@@ -53,3 +53,6 @@ temp/
 
 # Archives
 *.zip
+
+# デプロイ先固有の設定（ドメイン・認証など）
+packages/cdk/comet.config.json

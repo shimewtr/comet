@@ -11,6 +11,7 @@ import { loadSettings, CometSettings } from '../settings';
 
 let wsClient: CometSocket | null = null;
 let currentWebsocketUrl = '';
+let currentAuthToken = '';
 let commentRenderer: CommentRenderer | null = null;
 let stampRenderer: StampRenderer | null = null;
 let qrRenderer: QrRenderer | null = null;
@@ -47,7 +48,10 @@ function connectWebSocket(websocketUrl: string): void {
     return;
   }
 
-  const socket = new CometSocket(websocketUrl);
+  const socket = new CometSocket(websocketUrl, {
+    // 認証を有効化した構成では設定済みチケットを接続に付与する（空ならno-op）
+    tokenProvider: () => currentAuthToken || null,
+  });
 
   // 新規コメント受信ハンドラー
   socket.on<NewCommentPayload>(WebSocketMessageType.NEW_COMMENT, (payload) => {
@@ -90,8 +94,14 @@ function applySettings(settings: CometSettings): void {
     qrRenderer?.hide();
   }
 
-  // WebSocket接続（URLが変わったときだけ張り直す）
-  if (settings.websocketUrl !== currentWebsocketUrl || !wsClient) {
+  // WebSocket接続（URLまたはトークンが変わったときだけ張り直す）
+  const tokenChanged = settings.authToken !== currentAuthToken;
+  currentAuthToken = settings.authToken;
+  if (
+    settings.websocketUrl !== currentWebsocketUrl ||
+    tokenChanged ||
+    !wsClient
+  ) {
     connectWebSocket(settings.websocketUrl);
   }
 }

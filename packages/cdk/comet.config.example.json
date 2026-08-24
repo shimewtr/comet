@@ -1,0 +1,20 @@
+{
+  "envs": {
+    "dev": {
+      "lambdaMemorySize": 256,
+      "logRetentionDays": 3
+    },
+    "prod": {
+      "lambdaMemorySize": 512,
+      "logRetentionDays": 7,
+      "domain": {
+        "domainName": "comet.example.com",
+        "hostedZoneName": "example.com"
+      },
+      "auth": {
+        "issuer": "https://idp.example.com/oauth2/xxxx",
+        "clientId": "your-oidc-client-id"
+      }
+    }
+  }
+}

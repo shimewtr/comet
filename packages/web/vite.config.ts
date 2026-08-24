@@ -16,6 +16,9 @@ function cometConfigPlugin(env: Record<string, string>): Plugin {
         source: JSON.stringify(
           {
             websocketUrl: env.VITE_WEBSOCKET_URL ?? '',
+            // ローカルプレビュー用フォールバック。本番配信ではCDKが生成する
+            // comet-config.jsonで上書きされる
+            authEnabled: false,
           },
           null,
           2

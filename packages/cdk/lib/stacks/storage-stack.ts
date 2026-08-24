@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import { physicalName } from '../naming';
 
@@ -9,11 +10,15 @@ export interface StorageStackProps extends cdk.StackProps {
     lambdaMemorySize: number;
     logRetentionDays: number;
   };
+  /** 認証（チケット検証）を有効にするか */
+  authEnabled: boolean;
 }
 
 export class StorageStack extends cdk.Stack {
   public readonly connectionsTable: dynamodb.Table;
   public readonly commentsTable: dynamodb.Table;
+  /** 認証チケット(JWT)の署名鍵。認証有効時のみ作成される */
+  public readonly authSigningSecret?: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props: StorageStackProps) {
     super(scope, id, props);
@@ -66,6 +71,23 @@ export class StorageStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       timeToLiveAttribute: 'ttl',
     });
+
+    // 認証チケットの署名鍵（認証有効時のみ）。
+    // デプロイ時に自動生成し、利用者が秘密情報を扱わずに済むようにする
+    if (props.authEnabled) {
+      this.authSigningSecret = new secretsmanager.Secret(
+        this,
+        'AuthSigningSecret',
+        {
+          secretName: physicalName(this, props.envName, 'auth-signing-key'),
+          description: 'Comet auth ticket (JWT) HS256 signing key',
+          generateSecretString: {
+            passwordLength: 64,
+            excludePunctuation: true,
+          },
+        }
+      );
+    }
 
     // 出力（環境名を含める）
     new cdk.CfnOutput(this, 'ConnectionsTableName', {
