@@ -10,5 +10,18 @@ export function physicalName(
   envName: string,
   resourceType: string
 ): string {
-  return `comet-${envName}-${resourceType}-${stack.account}-${stack.region}`;
+  return physicalNameParts(stack.account, stack.region, envName, resourceType);
+}
+
+/**
+ * physicalNameのStackに依存しない版。
+ * synth時に具体値が必要な場面（Edge用config生成など）で使う
+ */
+export function physicalNameParts(
+  account: string,
+  region: string,
+  envName: string,
+  resourceType: string
+): string {
+  return `comet-${envName}-${resourceType}-${account}-${region}`;
 }
