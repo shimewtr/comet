@@ -5,6 +5,11 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import {
+  HttpLambdaAuthorizer,
+  HttpLambdaResponseType,
+} from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
@@ -17,6 +22,8 @@ export interface StampStackProps extends cdk.StackProps {
     lambdaMemorySize: number;
     logRetentionDays: number;
   };
+  /** 認証チケットの署名鍵。指定するとAPIにオーソライザーを装着する */
+  authSigningSecret?: secretsmanager.ISecret;
 }
 
 export class StampStack extends cdk.Stack {
@@ -131,10 +138,41 @@ export class StampStack extends cdk.Stack {
     this.stampsTable.grantWriteData(uploadLambda);
     this.stampsTable.grantReadData(uploadLambda);
 
+    // 認証有効時はAuthorizationヘッダーのチケットを検証するオーソライザーを作る
+    let apiAuthorizer: HttpLambdaAuthorizer | undefined;
+    if (props.authSigningSecret) {
+      const authorizerName = physicalName(
+        this,
+        props.envName,
+        'stamp-api-authorizer'
+      );
+      const authorizerFn = new lambda.Function(this, 'StampApiAuthorizer', {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: 'index.httpAuthorizer',
+        // チケット検証コードはwebsocket-handlerのバンドルに含まれる
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../../../api/websocket-handler/dist')
+        ),
+        functionName: authorizerName,
+        timeout: cdk.Duration.seconds(10),
+        memorySize: props.config.lambdaMemorySize,
+        environment: {
+          AUTH_SIGNING_SECRET_ARN: props.authSigningSecret.secretArn,
+        },
+      });
+      props.authSigningSecret.grantRead(authorizerFn);
+
+      apiAuthorizer = new HttpLambdaAuthorizer('StampApiAuth', authorizerFn, {
+        responseTypes: [HttpLambdaResponseType.SIMPLE],
+        identitySource: ['$request.header.Authorization'],
+      });
+    }
+
     // HTTP API Gateway
     this.uploadApi = new apigateway.HttpApi(this, 'StampUploadApi', {
       apiName: physicalName(this, props.envName, 'stamp-upload-api'),
       description: 'API for stamp upload',
+      defaultAuthorizer: apiAuthorizer,
       corsPreflight: {
         allowOrigins: ['*'],
         allowMethods: [

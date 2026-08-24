@@ -250,6 +250,18 @@ describe('CometSocket', () => {
     ).toHaveLength(3);
   });
 
+  it('tokenProviderのトークンを接続URLに付与する', async () => {
+    const socket = new CometSocket('wss://example.com', {
+      tokenProvider: () => 'ticket-123',
+    });
+    const promise = socket.connect();
+    await vi.advanceTimersByTimeAsync(0); // tokenProviderの解決を待つ
+    latestWs().open();
+    await promise;
+
+    expect(latestWs().url).toBe('wss://example.com?token=ticket-123');
+  });
+
   it('keepaliveIntervalMsに0以下を指定するとPINGを送らない', async () => {
     const socket = new CometSocket('wss://example.com', {
       keepaliveIntervalMs: 0,

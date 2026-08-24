@@ -6,6 +6,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { physicalName } from '../naming';
 
 export interface WebSocketStackProps extends cdk.StackProps {
@@ -16,6 +18,8 @@ export interface WebSocketStackProps extends cdk.StackProps {
   };
   connectionsTable: dynamodb.Table;
   commentsTable: dynamodb.Table;
+  /** 認証チケットの署名鍵。指定すると$connectにオーソライザーを装着する */
+  authSigningSecret?: secretsmanager.ISecret;
 }
 
 export class WebSocketStack extends cdk.Stack {
@@ -108,6 +112,37 @@ export class WebSocketStack extends cdk.Stack {
       },
     });
 
+    // 認証有効時は$connectでチケット（?token=）を検証するオーソライザーを作る
+    let connectAuthorizer: WebSocketLambdaAuthorizer | undefined;
+    if (props.authSigningSecret) {
+      const authorizerName = physicalName(
+        this,
+        props.envName,
+        'websocket-authorizer'
+      );
+      const authorizerFn = new lambda.Function(this, 'ConnectAuthorizer', {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: 'index.wsAuthorizer',
+        code: lambda.Code.fromAsset('../api/websocket-handler/dist'),
+        functionName: authorizerName,
+        logGroup: createLogGroup('ConnectAuthorizerLogGroup', authorizerName),
+        timeout: cdk.Duration.seconds(10),
+        memorySize: props.config.lambdaMemorySize,
+        environment: {
+          AUTH_SIGNING_SECRET_ARN: props.authSigningSecret.secretArn,
+        },
+      });
+      props.authSigningSecret.grantRead(authorizerFn);
+
+      connectAuthorizer = new WebSocketLambdaAuthorizer(
+        'ConnectAuth',
+        authorizerFn,
+        {
+          identitySource: ['route.request.querystring.token'],
+        }
+      );
+    }
+
     // WebSocket API
     this.webSocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
       apiName: physicalName(this, props.envName, 'websocket-api'),
@@ -117,6 +152,7 @@ export class WebSocketStack extends cdk.Stack {
           'ConnectIntegration',
           connectHandler
         ),
+        authorizer: connectAuthorizer,
       },
       disconnectRouteOptions: {
         integration: new WebSocketLambdaIntegration(

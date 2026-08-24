@@ -28,6 +28,11 @@ export interface CometSocketOptions {
   keepaliveIntervalMs?: number;
   /** 接続状態が変わったときに呼ばれる */
   onStatusChange?: (status: CometSocketStatus) => void;
+  /**
+   * 認証チケットの取得関数（認証を有効化した構成で使う）。
+   * 返したトークンは接続URLの ?token= に付与される。nullなら付与しない
+   */
+  tokenProvider?: () => string | null | Promise<string | null>;
 }
 
 type MessageHandler<T> = (payload: T, message: WebSocketMessage) => void;
@@ -68,17 +73,28 @@ export class CometSocket {
    * 接続する。openで解決、open前のエラーで棄却する。
    * 棄却された場合も自動再接続は継続する。
    */
-  connect(): Promise<void> {
+  async connect(): Promise<void> {
     this.manuallyClosed = false;
+    this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
+
+    // 認証有効時は接続URLにチケットを付与する
+    let url = this.url;
+    if (this.options.tokenProvider) {
+      try {
+        const token = await this.options.tokenProvider();
+        if (token) {
+          url += `${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+        }
+      } catch (error) {
+        console.error('Failed to get auth token:', error);
+      }
+    }
 
     return new Promise((resolve, reject) => {
       let settled = false;
 
       try {
-        this.setStatus(
-          this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting'
-        );
-        const ws = new WebSocket(this.url);
+        const ws = new WebSocket(url);
         this.ws = ws;
 
         ws.onopen = () => {

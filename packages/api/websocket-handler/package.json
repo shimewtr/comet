@@ -10,10 +10,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@comet/shared": "workspace:*",
     "@aws-sdk/client-apigatewaymanagementapi": "^3.450.0",
     "@aws-sdk/client-dynamodb": "^3.450.0",
-    "@aws-sdk/util-dynamodb": "^3.450.0"
+    "@aws-sdk/client-secrets-manager": "^3.1116.0",
+    "@aws-sdk/util-dynamodb": "^3.450.0",
+    "@comet/shared": "workspace:*",
+    "jose": "^6.2.10"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.130",

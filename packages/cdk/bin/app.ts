@@ -3,8 +3,9 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { WebSocketStack } from '../lib/stacks/websocket-stack';
 import { StorageStack } from '../lib/stacks/storage-stack';
-import { AmplifyStack } from '../lib/stacks/amplify-stack';
+import { WebStack } from '../lib/stacks/web-stack';
 import { StampStack } from '../lib/stacks/stamp-stack';
+import { loadEnvConfig } from '../lib/config';
 
 const app = new cdk.App();
 
@@ -17,29 +18,20 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION || 'ap-northeast-1',
 };
 
-// 環境ごとの設定
-const envConfig = {
-  dev: {
-    lambdaMemorySize: 256,
-    logRetentionDays: 3, // 開発環境は短め
-  },
-  prod: {
-    lambdaMemorySize: 512,
-    logRetentionDays: 7,
-  },
-};
-
-const config = envConfig[envName as keyof typeof envConfig] || envConfig.dev;
+// 環境ごとの設定（comet.config.jsonがあれば上書き。ドメイン・認証は任意）
+const config = loadEnvConfig(envName);
+const authEnabled = Boolean(config.auth);
 
 // スタック名に環境名を含める
 const stackPrefix = `Comet${envName.charAt(0).toUpperCase() + envName.slice(1)}`;
 
-// ストレージスタック（DynamoDB）
+// ストレージスタック（DynamoDB・認証署名鍵）
 const storageStack = new StorageStack(app, `${stackPrefix}StorageStack`, {
   env,
   description: `Comet Storage Stack (DynamoDB) - ${envName}`,
   envName,
   config,
+  authEnabled,
 });
 
 // WebSocketスタック
@@ -50,24 +42,26 @@ const webSocketStack = new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   config,
   connectionsTable: storageStack.connectionsTable,
   commentsTable: storageStack.commentsTable,
+  authSigningSecret: storageStack.authSigningSecret,
 });
 
 // スタンプスタック（S3 + CloudFront + Lambda + DynamoDB）
-const stampStack = new StampStack(app, `${stackPrefix}StampStack`, {
+new StampStack(app, `${stackPrefix}StampStack`, {
   env,
   description: `Comet Stamp Storage & CDN - ${envName}`,
   envName,
   config,
+  authSigningSecret: storageStack.authSigningSecret,
 });
 
-// Amplify Hostingスタック（Web UI）
-// CI上のwebビルドに接続先URLを渡すため、WebSocket/Stampスタックの後に作成する
-new AmplifyStack(app, `${stackPrefix}AmplifyStack`, {
+// Webホスティングスタック（CloudFront + S3）
+new WebStack(app, `${stackPrefix}WebStack`, {
   env,
-  description: `Comet Web UI Hosting - ${envName}`,
+  description: `Comet Web Hosting - ${envName}`,
   envName,
   webSocketUrl: webSocketStack.webSocketUrl,
-  stampApiUrl: stampStack.stampApiBaseUrl,
+  authEnabled,
+  domain: config.domain,
 });
 
 // タグを追加

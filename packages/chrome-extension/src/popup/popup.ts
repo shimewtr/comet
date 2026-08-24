@@ -31,6 +31,7 @@ function showSaveMessage(
 async function main() {
   const toggleCheckbox = getElement<HTMLInputElement>('toggle-checkbox');
   const websocketUrlInput = getElement<HTMLInputElement>('websocket-url');
+  const authTokenInput = getElement<HTMLInputElement>('auth-token');
   const speedScaleInput = getElement<HTMLInputElement>('speed-scale');
   const speedScaleValue = getElement<HTMLSpanElement>('speed-scale-value');
   const fontScaleInput = getElement<HTMLInputElement>('font-scale');
@@ -168,6 +169,7 @@ async function main() {
 
     await chrome.storage.sync.set({
       websocketUrl,
+      authToken: authTokenInput.value.trim(),
       speedScale: Number(speedScaleInput.value) || DEFAULT_SETTINGS.speedScale,
       fontScale: Number(fontScaleInput.value) || DEFAULT_SETTINGS.fontScale,
       displayArea: displayAreaSelect.value,
@@ -184,6 +186,7 @@ async function main() {
 
   const settings = await loadSettings();
   websocketUrlInput.value = settings.websocketUrl;
+  authTokenInput.value = settings.authToken;
   speedScaleInput.value = String(settings.speedScale);
   fontScaleInput.value = String(settings.fontScale);
   displayAreaSelect.value = settings.displayArea;

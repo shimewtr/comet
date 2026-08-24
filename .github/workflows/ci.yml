@@ -45,3 +45,28 @@ jobs:
       - name: CDK synth
         working-directory: packages/cdk
         run: pnpm exec cdk synth --context env=dev
+
+      # 認証+カスタムドメインを有効化した構成でも壊れていないことを確認する
+      - name: CDK synth (auth + domain enabled)
+        working-directory: packages/cdk
+        run: |
+          cat > comet.config.json <<'EOF'
+          {
+            "envs": {
+              "prod": {
+                "lambdaMemorySize": 512,
+                "logRetentionDays": 7,
+                "domain": {
+                  "domainName": "comet.example.com",
+                  "certificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+                },
+                "auth": {
+                  "issuer": "https://idp.example.com/oauth2/default",
+                  "clientId": "dummy-client-id"
+                }
+              }
+            }
+          }
+          EOF
+          pnpm exec cdk synth --context env=prod
+          rm comet.config.json
