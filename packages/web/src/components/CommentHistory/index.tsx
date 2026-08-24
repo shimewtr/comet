@@ -11,6 +11,13 @@ interface CommentHistoryProps {
 export function CommentHistory({ comments }: CommentHistoryProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // 直前と同じ内容のコメントはまとめて1件だけ表示する
+  // （弾幕モードの同一コメント連投で履歴が埋まらないように）
+  const displayComments = comments.filter(
+    (comment, index) =>
+      index === 0 || comment.content !== comments[index - 1].content
+  );
+
   const handleCopy = async (comment: Comment) => {
     try {
       await navigator.clipboard.writeText(comment.content);
@@ -26,14 +33,14 @@ export function CommentHistory({ comments }: CommentHistoryProps) {
       title={
         <div className="comment-history-title">
           <span>コメント履歴</span>
-          <span className="comment-count">{comments.length}件</span>
+          <span className="comment-count">{displayComments.length}件</span>
         </div>
       }
       className="comment-history"
     >
       <div className="comment-history-list">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
+        {displayComments.length > 0 ? (
+          displayComments.map((comment) => (
             <div key={comment.id} className="comment-history-item">
               <button
                 className="copy-button"
