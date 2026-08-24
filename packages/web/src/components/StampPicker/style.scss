@@ -123,6 +123,7 @@
   padding: $space-md;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .emoji-grid {
@@ -130,7 +131,8 @@
 }
 
 .custom-stamps {
-  grid-template-columns: repeat(8, 1fr);
+  /* 幅いっぱいに等間隔で敷き詰め、横スクロールさせない */
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
 }
 
 .stamp-button {
@@ -178,6 +180,11 @@
   color: $color-text-muted;
   text-align: center;
   line-height: 1.2;
+  /* 長い名前でセル幅を押し広げないよう省略表示にする */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* スクロールバーのスタイリング */
