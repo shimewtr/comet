@@ -24,6 +24,13 @@ export class AmplifyStack extends cdk.Stack {
     this.amplifyApp = new amplify.CfnApp(this, 'WebApp', {
       name: physicalName(this, props.envName, 'web'),
       platform: 'WEB',
+      // Chrome拡張が接続設定を自動取得できるよう、comet-config.jsonのみCORSを許可
+      customHeaders: `customHeaders:
+  - pattern: '/comet-config.json'
+    headers:
+      - key: 'Access-Control-Allow-Origin'
+        value: '*'
+`,
       customRules: [
         {
           source:

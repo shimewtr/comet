@@ -120,7 +120,9 @@ aws amplify start-deployment --app-id "$APP_ID" --branch-name main \
 pnpm --filter @comet/chrome-extension build
 ```
 
-`chrome://extensions` で `packages/chrome-extension/dist` を読み込み、ポップアップにWebSocket URLを設定してください。動作対象は `https://docs.google.com/*` のみです（`manifest.json` の `matches` で制限）。
+`chrome://extensions` で `packages/chrome-extension/dist` を読み込んでください。動作対象は `https://docs.google.com/*` のみです（`manifest.json` の `matches` で制限）。
+
+接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はwebのビルド時に `VITE_WEBSOCKET_URL` から自動生成され、Amplifyのカスタムヘッダーでこのファイルのみ CORS が許可されています）。WebSocket URLを手入力することも可能です。
 
 ## セキュリティ上のポイント
 
