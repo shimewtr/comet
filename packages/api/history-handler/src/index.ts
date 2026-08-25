@@ -196,23 +196,27 @@ async function buildAnalysis(events: RoomEvent[], from: number, to: number, room
   for (const candidate of [...minuteBuckets].sort((a, b) => b.totalCount - a.totalCount || a.start - b.start)) {
     if (selected.every((peak) => Math.abs(peak.start - candidate.start) >= 3 * 60_000)) {
       selected.push(candidate);
-      if (selected.length === 3) break;
+      if (selected.length === 10) break;
     }
   }
-  const captures = capturesTable ? await getCaptures(roomId) : [];
-  const peaks = await Promise.all(selected.map(async (peak) => {
-    const nearest = captures
+  const captures = capturesTable ? (await getCaptures(roomId))
+    .filter((capture) => capture.capturedAt >= from && capture.capturedAt <= to)
+    .sort((a, b) => a.capturedAt - b.capturedAt)
+    .slice(-1000) : [];
+  const signedCaptures = await Promise.all(captures.map(async (capture) => ({
+    capturedAt: capture.capturedAt,
+    imageUrl: await getSignedUrl(s3, new GetObjectCommand({ Bucket: captureBucket, Key: capture.s3Key }), { expiresIn: 900 }),
+  })));
+  const peaks = selected.map((peak) => {
+    const nearest = signedCaptures
       .map((capture) => ({ capture, distance: Math.abs(capture.capturedAt - peak.start) }))
       .filter(({ distance }) => distance <= 30_000)
       .sort((a, b) => a.distance - b.distance)[0]?.capture;
     return {
       ...peak,
-      capture: nearest ? {
-        capturedAt: nearest.capturedAt,
-        imageUrl: await getSignedUrl(s3, new GetObjectCommand({ Bucket: captureBucket, Key: nearest.s3Key }), { expiresIn: 900 }),
-      } : undefined,
+      capture: nearest,
     };
-  }));
+  });
   const stampCounts = new Map<string, { stamp: any; count: number }>();
   for (const event of events) if (event.type === 'stamp') {
     const key = event.stamp.stamp.id || event.stamp.stamp.name;
@@ -223,6 +227,7 @@ async function buildAnalysis(events: RoomEvent[], from: number, to: number, room
   const comments = events.filter((event) => event.type === 'comment').length;
   return {
     peaks,
+    captures: signedCaptures,
     metrics: {
       durationMs: Math.max(0, to - from),
       maxPostsPerMinute: minuteBuckets.reduce((max, bucket) => Math.max(max, bucket.totalCount), 0),

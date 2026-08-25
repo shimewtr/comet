@@ -109,8 +109,17 @@
   .summary-stamp strong { font-size: $font-md; }
 }
 
-.history-peaks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: $space-md; }
+.history-peaks {
+  display: flex;
+  overflow-x: auto;
+  padding: 2px 2px $space-sm;
+  gap: $space-md;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
 .history-peak-card {
+  flex: 0 0 calc((100% - 2 * $space-md) / 3);
+  min-width: 260px;
   overflow: hidden;
   padding: 0;
   border: $border-width solid $color-border;
@@ -118,6 +127,7 @@
   background: $color-bg-white;
   color: $color-text-primary;
   text-align: left;
+  scroll-snap-align: start;
   transition: transform $transition-base, border-color $transition-base, box-shadow $transition-base;
   &:hover { transform: translateY(-2px); border-color: $color-primary; box-shadow: $shadow-md; }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba($color-primary, .22); }
@@ -147,8 +157,8 @@
 
 .history-tooltip {
   position: absolute;
-  top: $space-sm;
-  right: $space-sm;
+  right: 0;
+  bottom: calc(100% + $space-sm);
   display: flex;
   flex-direction: column;
   max-width: 360px;
@@ -160,6 +170,7 @@
   box-shadow: $shadow-md;
   font-size: $font-xs;
   pointer-events: none;
+  z-index: 2;
   .tooltip-comment { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: $color-text-secondary; }
   small { margin-top: $space-xs; color: $color-text-muted; }
 }
@@ -248,7 +259,7 @@
   .history-summary { gap: $space-sm; }
   .history-summary { grid-template-columns: 1fr; }
   .history-summary strong { font-size: $font-xl; }
-  .history-peaks { grid-template-columns: 1fr; }
+  .history-peak-card { flex-basis: 85%; min-width: 240px; }
   .history-event { grid-template-columns: 64px minmax(0, 1fr); }
   .history-tooltip { right: 0; left: 0; max-width: none; }
 }
