@@ -1,149 +1,229 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   NewCommentPayload,
-  NewStampPayload,
   HistoryPayload,
   Comment,
   Stamp,
   StampMessage,
+  Room,
+  RoomListPayload,
+  RoomCreatedPayload,
+  RoomJoinedPayload,
+  ErrorPayload,
 } from '@comet/shared';
-import { WebSocketMessageType, CometSocket, generateId } from '@comet/shared';
+import {
+  WebSocketMessageType,
+  CometSocket,
+  generateId,
+  GLOBAL_ROOM,
+  GLOBAL_ROOM_ID,
+} from '@comet/shared';
 import { getAuthToken } from '../auth';
 
 const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 const MAX_COMMENT_HISTORY = 100;
 
+function roomIdFromUrl(): string {
+  return (
+    new URL(window.location.href).searchParams.get('room') || GLOBAL_ROOM_ID
+  );
+}
+
+function updateRoomUrl(roomId: string): void {
+  const url = new URL(window.location.href);
+  if (roomId === GLOBAL_ROOM_ID) url.searchParams.delete('room');
+  else url.searchParams.set('room', roomId);
+  window.history.replaceState({}, '', url);
+}
+
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [commentHistory, setCommentHistory] = useState<Comment[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([GLOBAL_ROOM]);
+  const [currentRoom, setCurrentRoom] = useState<Room>(GLOBAL_ROOM);
   const socketRef = useRef<CometSocket | null>(null);
+  const joinedRoomIdRef = useRef<string | null>(null);
+  const requestedRoomIdRef = useRef(roomIdFromUrl());
 
   useEffect(() => {
     if (!WEBSOCKET_URL) {
-      console.error('VITE_WEBSOCKET_URL is not set');
       setError('WebSocket URL is not configured');
       return;
     }
 
     const socket = new CometSocket(WEBSOCKET_URL, {
-      // 認証が有効な構成ではチケットを接続に付与する（無効ならnullでno-op）
       tokenProvider: getAuthToken,
       onStatusChange: (status) => {
         setIsConnected(status === 'open');
-
         if (status === 'open') {
           setError(null);
-          // 接続（再接続含む）のたびに直近のコメント履歴を取得する
-          socket.send(WebSocketMessageType.HISTORY_REQUEST, {});
+          setIsJoiningRoom(true);
+          joinedRoomIdRef.current = null;
+          socket.send(WebSocketMessageType.ROOM_LIST_REQUEST, {});
+          socket.send(WebSocketMessageType.JOIN_ROOM, {
+            roomId: requestedRoomIdRef.current,
+          });
         } else if (status === 'failed') {
           setError('Failed to connect after multiple attempts');
         }
       },
     });
 
-    // 新しい順（先頭が最新）でIDの重複を除去しつつ最大数まで保持する
     const mergeIntoHistory = (prev: Comment[], incoming: Comment[]) => {
       const merged = [...prev, ...incoming].sort(
         (a, b) => b.timestamp - a.timestamp
       );
-      const distinctHistory = Array.from(
-        new Map(merged.map((c) => [c.id, c])).values()
+      return Array.from(new Map(merged.map((c) => [c.id, c])).values()).slice(
+        0,
+        MAX_COMMENT_HISTORY
       );
-      return distinctHistory.slice(0, MAX_COMMENT_HISTORY);
     };
 
-    const unsubscribeComment = socket.on<NewCommentPayload>(
-      WebSocketMessageType.NEW_COMMENT,
-      (payload) => {
-        setCommentHistory((prev) => mergeIntoHistory(prev, [payload.comment]));
-      }
-    );
+    const unsubscribers = [
+      socket.on<NewCommentPayload>(
+        WebSocketMessageType.NEW_COMMENT,
+        (payload, message) => {
+          if (
+            !joinedRoomIdRef.current ||
+            message.roomId !== joinedRoomIdRef.current
+          )
+            return;
+          setCommentHistory((prev) =>
+            mergeIntoHistory(prev, [payload.comment])
+          );
+        }
+      ),
+      socket.on<HistoryPayload>(
+        WebSocketMessageType.HISTORY,
+        (payload, message) => {
+          if (
+            !joinedRoomIdRef.current ||
+            message.roomId !== joinedRoomIdRef.current
+          )
+            return;
+          setCommentHistory((prev) => mergeIntoHistory(prev, payload.comments));
+        }
+      ),
+      socket.on<RoomListPayload>(WebSocketMessageType.ROOM_LIST, ({ rooms }) =>
+        setRooms(rooms)
+      ),
+      socket.on<RoomCreatedPayload>(
+        WebSocketMessageType.ROOM_CREATED,
+        ({ room }) => {
+          setRooms((prev) => [
+            prev[0] ?? GLOBAL_ROOM,
+            room,
+            ...prev.slice(1).filter((r) => r.id !== room.id),
+          ]);
+        }
+      ),
+      socket.on<RoomJoinedPayload>(
+        WebSocketMessageType.ROOM_JOINED,
+        ({ room }) => {
+          joinedRoomIdRef.current = room.id;
+          requestedRoomIdRef.current = room.id;
+          setCurrentRoom(room);
+          setCommentHistory([]);
+          setIsJoiningRoom(false);
+          setError(null);
+          updateRoomUrl(room.id);
+          socket.send(WebSocketMessageType.HISTORY_REQUEST, {});
+        }
+      ),
+      socket.on<ErrorPayload>(WebSocketMessageType.ERROR, (payload) => {
+        setError(payload.message);
+        if (payload.fallbackRoom) {
+          const room = payload.fallbackRoom;
+          joinedRoomIdRef.current = room.id;
+          requestedRoomIdRef.current = room.id;
+          setCurrentRoom(room);
+          setCommentHistory([]);
+          setIsJoiningRoom(false);
+          updateRoomUrl(room.id);
+          socket.send(WebSocketMessageType.HISTORY_REQUEST, {});
+        } else {
+          setIsJoiningRoom(false);
+        }
+      }),
+    ];
 
-    const unsubscribeHistory = socket.on<HistoryPayload>(
-      WebSocketMessageType.HISTORY,
-      (payload) => {
-        setCommentHistory((prev) => mergeIntoHistory(prev, payload.comments));
-      }
-    );
-
-    socket.connect().catch((err) => {
-      // 初回接続失敗でもCometSocketが自動で再接続を試みる
-      console.error('Failed to connect WebSocket:', err);
-    });
+    socket
+      .connect()
+      .catch((err) => console.error('Failed to connect WebSocket:', err));
     socketRef.current = socket;
-
     return () => {
-      unsubscribeComment();
-      unsubscribeHistory();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
       socket.disconnect();
       socketRef.current = null;
     };
   }, []);
 
+  const joinRoom = useCallback(async (roomId: string) => {
+    const socket = socketRef.current;
+    if (!socket) return false;
+    requestedRoomIdRef.current = roomId;
+    joinedRoomIdRef.current = null;
+    setIsJoiningRoom(true);
+    setCommentHistory([]);
+    return socket.sendWhenOpen(WebSocketMessageType.JOIN_ROOM, { roomId });
+  }, []);
+
+  const createRoom = useCallback(async (name: string) => {
+    const socket = socketRef.current;
+    if (!socket) return false;
+    setIsJoiningRoom(true);
+    return socket.sendWhenOpen(WebSocketMessageType.CREATE_ROOM, { name });
+  }, []);
+
+  const refreshRooms = useCallback(
+    () =>
+      socketRef.current?.send(WebSocketMessageType.ROOM_LIST_REQUEST, {}) ??
+      false,
+    []
+  );
+
   const sendComment = useCallback(
     async (comment: Omit<Comment, 'id' | 'timestamp'>) => {
       const socket = socketRef.current;
-      if (!socket) {
-        return false;
-      }
-
-      const fullComment: Comment = {
-        ...comment,
-        id: generateId(),
-        timestamp: Date.now(),
-      };
-
-      const payload: NewCommentPayload = { comment: fullComment };
-      const sent = await socket.sendWhenOpen(
-        WebSocketMessageType.NEW_COMMENT,
-        payload
-      );
-
-      if (!sent) {
-        console.error('WebSocket is not connected');
-      }
-      return sent;
+      if (!socket || isJoiningRoom) return false;
+      return socket.sendWhenOpen(WebSocketMessageType.NEW_COMMENT, {
+        comment: { ...comment, id: generateId(), timestamp: Date.now() },
+      });
     },
-    []
+    [isJoiningRoom]
   );
 
   const sendStamp = useCallback(
     async (stamp: Stamp, position?: { x: number; y: number }) => {
       const socket = socketRef.current;
-      if (!socket) {
-        return false;
-      }
-
+      if (!socket || isJoiningRoom) return false;
       const stampMessage: StampMessage = {
         id: generateId(),
         stamp,
         timestamp: Date.now(),
         position,
       };
-
-      const payload: NewStampPayload = { stamp: stampMessage };
-      const sent = await socket.sendWhenOpen(
-        WebSocketMessageType.NEW_STAMP,
-        payload
-      );
-
-      if (!sent) {
-        console.error('WebSocket is not connected');
-      }
-      return sent;
+      return socket.sendWhenOpen(WebSocketMessageType.NEW_STAMP, {
+        stamp: stampMessage,
+      });
     },
-    []
+    [isJoiningRoom]
   );
 
-  const reconnect = useCallback(() => {
-    socketRef.current?.reconnectNow();
-  }, []);
+  const reconnect = useCallback(() => socketRef.current?.reconnectNow(), []);
 
   return {
     isConnected,
+    isJoiningRoom,
     error,
     commentHistory,
+    rooms,
+    currentRoom,
+    joinRoom,
+    createRoom,
+    refreshRooms,
     sendComment,
     sendStamp,
     reconnect,

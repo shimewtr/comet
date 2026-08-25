@@ -31,6 +31,8 @@
       margin: 0;
       gap: $space-md;
       font-size: 48px;
+      font-weight: $font-bold;
+      line-height: 1;
       font-family: 'Space Grotesk', sans-serif;
 
       @media (max-width: $breakpoint-sm) {
@@ -49,6 +51,11 @@
           animation: float-small 3s ease-in-out infinite;
         }
       }
+    }
+
+    &.compact-header {
+      padding-bottom: $space-lg;
+      gap: 0;
     }
   }
 

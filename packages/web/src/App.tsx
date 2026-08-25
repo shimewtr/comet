@@ -4,10 +4,12 @@ import { CommentHistory } from './components/CommentHistory';
 import { StatusToast } from './components/StatusToast';
 import { StampPicker } from './components/StampPicker';
 import { useWebSocket } from './hooks/useWebSocket';
+import { RoomSelector } from './components/RoomSelector';
 import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
+import { HistoryPage } from './components/HistoryPage';
 
-function App() {
+function LiveApp() {
   const {
     isConnected,
     error,
@@ -15,6 +17,12 @@ function App() {
     sendComment,
     sendStamp,
     reconnect,
+    isJoiningRoom,
+    rooms,
+    currentRoom,
+    joinRoom,
+    createRoom,
+    refreshRooms,
   } = useWebSocket();
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const prevConnectedRef = useRef<boolean>(isConnected);
@@ -63,17 +71,26 @@ function App() {
       </header>
 
       <div className="app-content">
+        <RoomSelector
+          rooms={rooms}
+          currentRoom={currentRoom}
+          disabled={!isConnected || isJoiningRoom}
+          onJoin={joinRoom}
+          onCreate={createRoom}
+          onRefresh={refreshRooms}
+        />
+
         <div className="app-content-main">
           <main className="app-main">
             <CommentForm
               onSubmit={handleCommentSubmit}
-              disabled={!isConnected}
+              disabled={!isConnected || isJoiningRoom}
             />
 
             <div className="stamp-section">
               <StampPicker
                 onSelectStamp={handleStampSelect}
-                disabled={!isConnected}
+                disabled={!isConnected || isJoiningRoom}
               />
             </div>
           </main>
@@ -85,6 +102,21 @@ function App() {
       </div>
 
       {toast && <StatusToast message={toast.message} onReconnect={reconnect} />}
+    </div>
+  );
+}
+
+function App() {
+  if (!window.location.pathname.startsWith('/history')) return <LiveApp />;
+  return (
+    <div className="app">
+      <header className="app-header compact-header">
+        <a className="app-title" href="/">
+          <img className="comet-icon" src="/comet-icon.png" alt="Comet Icon" />
+          Comet
+        </a>
+      </header>
+      <HistoryPage />
     </div>
   );
 }

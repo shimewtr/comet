@@ -1,5 +1,5 @@
 {
-  "name": "@comet/websocket-handler",
+  "name": "@comet/history-handler",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -7,16 +7,14 @@
     "build": "node build.js",
     "build:tsc": "tsc",
     "test": "vitest run src",
-    "watch": "tsc -w",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aws-sdk/client-apigatewaymanagementapi": "^3.450.0",
     "@aws-sdk/client-dynamodb": "^3.450.0",
-    "@aws-sdk/client-secrets-manager": "^3.1116.0",
+    "@aws-sdk/client-s3": "^3.450.0",
+    "@aws-sdk/s3-request-presigner": "^3.450.0",
     "@aws-sdk/util-dynamodb": "^3.450.0",
-    "@comet/shared": "workspace:*",
-    "jose": "^6.2.10"
+    "@comet/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.130",

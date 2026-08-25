@@ -9,6 +9,7 @@ import { COMMENT_COLORS, COMMENT_SIZE_OPTIONS } from '../constants/index.js';
  * コメント内容の最大文字数
  */
 const MAX_COMMENT_LENGTH = 100;
+export const MAX_ROOM_NAME_LENGTH = 50;
 
 /**
  * コメント内容の検証
@@ -19,6 +20,20 @@ export function isValidCommentContent(content: string): boolean {
     content.trim().length > 0 &&
     content.length <= MAX_COMMENT_LENGTH
   );
+}
+
+/** room表示名を正規化・検証する */
+export function normalizeRoomName(name: unknown): string | null {
+  if (typeof name !== 'string') return null;
+  const normalized = name.trim();
+  if (
+    normalized.length === 0 ||
+    normalized.length > MAX_ROOM_NAME_LENGTH ||
+    /[\u0000-\u001f\u007f]/.test(normalized)
+  ) {
+    return null;
+  }
+  return normalized;
 }
 
 /**
@@ -32,9 +47,10 @@ export function isValidCommentColor(color: string): boolean {
 /**
  * コメント投稿リクエストの検証
  */
-export function validatePostCommentRequest(
-  request: PostCommentRequest
-): { valid: boolean; error?: string } {
+export function validatePostCommentRequest(request: PostCommentRequest): {
+  valid: boolean;
+  error?: string;
+} {
   if (!isValidCommentContent(request.content)) {
     return {
       valid: false,

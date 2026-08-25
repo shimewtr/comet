@@ -14,103 +14,122 @@
       </header>
 
       <div class="card">
-      <div class="section">
-        <div class="section-row">
-          <span class="label">コメント表示</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-checkbox" />
-            <span class="toggle-slider"></span>
-          </label>
+        <div class="section">
+          <div class="section-row">
+            <span class="label">コメント表示</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div class="section">
-        <h3 class="section-title">接続設定</h3>
-        <div class="form-group">
-          <label for="web-app-url">WebアプリURL</label>
-          <input
-            type="text"
-            id="web-app-url"
-            class="input-field"
-            placeholder="https://xxxx.amplifyapp.com"
-          />
+        <div class="section">
+          <h3 class="section-title">接続設定</h3>
+          <div class="form-group">
+            <label for="web-app-url">WebアプリURL</label>
+            <input
+              type="text"
+              id="web-app-url"
+              class="input-field"
+              placeholder="https://xxxx.amplifyapp.com"
+            />
+          </div>
+          <button id="fetch-config" class="button">
+            WebアプリからWebSocket URLを自動取得
+          </button>
+          <div class="form-group">
+            <label for="websocket-url">WebSocket URL</label>
+            <input
+              type="text"
+              id="websocket-url"
+              class="input-field"
+              placeholder="wss://xxxxx/prod"
+            />
+          </div>
+          <div class="form-group">
+            <label for="auth-token">認証チケット（認証が有効な場合のみ）</label>
+            <input
+              type="password"
+              id="auth-token"
+              class="input-field"
+              placeholder="通常は空のまま"
+            />
+          </div>
+          <div class="form-group">
+            <label for="room-select">表示するRoom</label>
+            <select id="room-select" class="input-field">
+              <option value="global">グローバル</option>
+            </select>
+          </div>
+          <button id="refresh-rooms" class="button">Room一覧を更新</button>
         </div>
-        <button id="fetch-config" class="button">
-          WebアプリからWebSocket URLを自動取得
-        </button>
-        <div class="form-group">
-          <label for="websocket-url">WebSocket URL</label>
-          <input
-            type="text"
-            id="websocket-url"
-            class="input-field"
-            placeholder="wss://xxxxx/prod"
-          />
-        </div>
-        <div class="form-group">
-          <label for="auth-token">認証チケット（認証が有効な場合のみ）</label>
-          <input
-            type="password"
-            id="auth-token"
-            class="input-field"
-            placeholder="通常は空のまま"
-          />
-        </div>
-      </div>
 
-      <div class="section">
-        <h3 class="section-title">表示設定</h3>
-        <div class="form-group">
-          <label for="speed-scale"
-            >コメント速度: <span id="speed-scale-value">1.0</span>x</label
-          >
-          <input
-            type="range"
-            id="speed-scale"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value="1"
-          />
+        <div class="section">
+          <h3 class="section-title">表示設定</h3>
+          <div class="form-group">
+            <label for="speed-scale"
+              >コメント速度: <span id="speed-scale-value">1.0</span>x</label
+            >
+            <input
+              type="range"
+              id="speed-scale"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value="1"
+            />
+          </div>
+          <div class="form-group">
+            <label for="font-scale"
+              >文字サイズ: <span id="font-scale-value">1.0</span>x</label
+            >
+            <input
+              type="range"
+              id="font-scale"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value="1"
+            />
+          </div>
+          <div class="form-group">
+            <label for="display-area">表示領域</label>
+            <select id="display-area" class="input-field">
+              <option value="full">画面全体</option>
+              <option value="top-half">上半分</option>
+              <option value="top-third">上1/3</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="font-scale"
-            >文字サイズ: <span id="font-scale-value">1.0</span>x</label
-          >
-          <input
-            type="range"
-            id="font-scale"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value="1"
-          />
-        </div>
-        <div class="form-group">
-          <label for="display-area">表示領域</label>
-          <select id="display-area" class="input-field">
-            <option value="full">画面全体</option>
-            <option value="top-half">上半分</option>
-            <option value="top-third">上1/3</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="section">
-        <h3 class="section-title">参加用QRコード</h3>
-        <div class="section-row">
-          <span class="label">画面に表示する（WebアプリURLを使用）</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="qr-enabled" />
-            <span class="toggle-slider"></span>
-          </label>
+        <div class="section">
+          <h3 class="section-title">参加用QRコード</h3>
+          <div class="section-row">
+            <span class="label">画面に表示する（WebアプリURLを使用）</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="qr-enabled" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div class="section">
-        <button id="save-settings" class="button button-success">保存</button>
-        <div id="save-message" class="save-message"></div>
-      </div>
+        <div class="section">
+          <h3 class="section-title">配信画面の記録</h3>
+          <div class="section-row">
+            <span class="label">Google Slidesを履歴に保存する</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="capture-enabled" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <p class="help-text">選択中のRoomに、スライドが変わった瞬間の画面を保存します。</p>
+        </div>
+
+        <div class="section">
+          <button id="save-settings" class="button button-success">保存</button>
+          <div id="save-message" class="save-message"></div>
+        </div>
       </div>
     </div>
 

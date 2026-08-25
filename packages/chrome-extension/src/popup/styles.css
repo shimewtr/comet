@@ -31,10 +31,10 @@ body {
   min-width: 380px;
   background-color: var(--color-bg-page);
   color: var(--color-text-primary);
+  font-size: 13px;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Meiryo',
     Roboto, sans-serif;
-  font-size: 13px;
 }
 
 .container {
@@ -48,8 +48,8 @@ body {
 .popup-header {
   display: flex;
   align-items: center;
-  gap: 10px;
   padding: 2px 4px 6px;
+  gap: 10px;
 }
 
 .popup-logo {
@@ -140,8 +140,8 @@ body {
 
 .input-field:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
   outline: none;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
 }
 
 .input-field::placeholder {
@@ -149,7 +149,23 @@ body {
 }
 
 select.input-field {
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23718096' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-size: 16px;
+  background-repeat: no-repeat;
   cursor: pointer;
+}
+
+select.input-field:hover:not(:disabled) {
+  border-color: var(--color-border-light);
+}
+
+.input-field:disabled {
+  background: var(--color-bg-light);
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* スライダー */
@@ -195,9 +211,9 @@ input[type='range'] {
   height: 18px;
   border-radius: 50%;
   background-color: var(--color-bg-white);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   content: '';
   transition: 0.25s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -210,6 +226,13 @@ input[type='range'] {
 
 .toggle-switch input:focus-visible + .toggle-slider {
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
+}
+
+.help-text {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 /* ボタン */
@@ -234,9 +257,19 @@ input[type='range'] {
   background: var(--color-bg-lighter);
 }
 
+.button:focus-visible {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .button:disabled {
-  opacity: 0.5;
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* プライマリボタン（web本体の送信ボタンと同じ配色） */

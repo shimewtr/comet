@@ -1,0 +1,159 @@
+.room-selector {
+  .room-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: $space-md;
+  }
+
+  .room-history-link {
+    padding: $space-xs $space-sm;
+    border: $border-width-thin solid $color-border;
+    border-radius: $radius-sm;
+    background-color: $color-bg-light;
+    color: $color-text-secondary;
+    font-weight: $font-semibold;
+    font-size: $font-xs;
+    transition: border-color $transition-base, background-color $transition-base, color $transition-base;
+
+    &:hover {
+      border-color: $color-primary;
+      background-color: $color-bg-lighter;
+      color: $color-primary-dark;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.18);
+    }
+  }
+
+  .room-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $space-lg;
+  }
+
+  .room-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: $space-sm;
+
+    > label {
+      color: $color-text-primary;
+      font-weight: $font-semibold;
+      font-size: $font-sm;
+    }
+  }
+
+  .room-input-row {
+    display: flex;
+    min-width: 0;
+    gap: $space-sm;
+  }
+
+  select,
+  input {
+    flex: 1;
+    min-width: 0;
+    height: $button-height-md;
+    padding: 0 $space-sm;
+    border: $border-width solid $color-border;
+    border-radius: $radius-sm;
+    outline: none;
+    background-color: $color-bg-white;
+    color: $color-text-primary;
+    font-size: $font-sm;
+    font-family: inherit;
+    transition:
+      border-color $transition-base,
+      box-shadow $transition-base,
+      background-color $transition-base;
+
+    &:hover:not(:disabled) {
+      border-color: $color-border-light;
+    }
+
+    &:focus-visible {
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.18);
+    }
+
+    &:disabled {
+      background-color: $color-bg-light;
+      cursor: not-allowed;
+      opacity: $opacity-disabled;
+    }
+  }
+
+  select {
+    appearance: none;
+    padding-right: $space-xl;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23718096' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right $space-sm center;
+    background-size: $space-md;
+    background-repeat: no-repeat;
+    cursor: pointer;
+  }
+
+  .room-button {
+    min-width: $button-width-md;
+    height: $button-height-md;
+    padding: 0 $space-md;
+    border-radius: $radius-sm;
+    font-weight: $font-semibold;
+    font-size: $font-sm;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      border-color $transition-base,
+      background-color $transition-base,
+      box-shadow $transition-base,
+      opacity $transition-base;
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.22);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: $opacity-disabled;
+    }
+  }
+
+  .room-button-secondary {
+    border: $border-width solid $color-border;
+    background-color: $color-bg-light;
+    color: $color-text-secondary;
+
+    &:hover:not(:disabled) {
+      border-color: $color-border-light;
+      background-color: $color-bg-lighter;
+    }
+  }
+
+  .room-button-primary {
+    border: $border-width solid $color-primary;
+    background-color: $color-primary;
+    color: white;
+
+    &:hover:not(:disabled) {
+      border-color: $color-primary-dark;
+      background-color: $color-primary-dark;
+    }
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    .room-selector-grid {
+      grid-template-columns: 1fr;
+      gap: $space-md;
+    }
+
+    .room-button {
+      min-width: 72px;
+      padding: 0 $space-sm;
+    }
+  }
+}

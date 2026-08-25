@@ -6,6 +6,7 @@ import {
   applyDefaultCommentStyle,
   sanitizeCommentStyle,
   isAllowedStampImageUrl,
+  normalizeRoomName,
 } from './validation.js';
 import { COMMENT_COLORS } from '../constants/index.js';
 
@@ -28,6 +29,18 @@ describe('isValidCommentContent', () => {
 
   it('空白のみを拒否する', () => {
     expect(isValidCommentContent('   ')).toBe(false);
+  });
+});
+
+describe('normalizeRoomName', () => {
+  it('trims a valid room name', () => {
+    expect(normalizeRoomName('  発表会  ')).toBe('発表会');
+  });
+
+  it('rejects empty, too long, and control-character names', () => {
+    expect(normalizeRoomName('   ')).toBeNull();
+    expect(normalizeRoomName('a'.repeat(51))).toBeNull();
+    expect(normalizeRoomName('room\nname')).toBeNull();
   });
 });
 
@@ -130,9 +143,7 @@ describe('isAllowedStampImageUrl', () => {
       false
     );
     // サブドメイン偽装（evil-cloudfront.netのような紛らわしいホスト）も拒否する
-    expect(
-      isAllowedStampImageUrl('https://xcloudfront.net/x.png')
-    ).toBe(false);
+    expect(isAllowedStampImageUrl('https://xcloudfront.net/x.png')).toBe(false);
   });
 
   it('data:やURLとして不正な文字列を拒否する', () => {
