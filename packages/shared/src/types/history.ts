@@ -11,6 +11,10 @@ export interface PopularStamp {
   count: number;
 }
 
+export type PopularHistoryItem =
+  | { type: 'comment'; content: string; count: number }
+  | { type: 'stamp'; stamp: StampMessage['stamp']; count: number };
+
 export interface HistoryBucket {
   start: number;
   end: number;
@@ -18,6 +22,7 @@ export interface HistoryBucket {
   commentCount: number;
   stampCount: number;
   popularStamps: PopularStamp[];
+  popularItems: PopularHistoryItem[];
   sampleComments: Comment[];
 }
 
@@ -59,6 +64,7 @@ export interface HistoryPeak {
   commentCount: number;
   stampCount: number;
   popularStamps: PopularStamp[];
+  popularItems: PopularHistoryItem[];
   sampleComments: Comment[];
   capture?: HistoryCapture;
 }
