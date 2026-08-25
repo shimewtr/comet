@@ -141,6 +141,7 @@
 .history-peak-heading time { margin-left: auto; color: $color-text-secondary; font-size: $font-sm; font-variant-numeric: tabular-nums; }
 
 .history-chart-wrap { position: relative; min-height: 300px; }
+.history-chart-section { overflow: visible; }
 .history-chart { display: block; width: 100%; min-height: 230px; cursor: crosshair; color: $color-text-muted; font-size: 11px; }
 .chart-grid { stroke: $color-border; stroke-width: 1; }
 .chart-comment { fill: $color-primary; }

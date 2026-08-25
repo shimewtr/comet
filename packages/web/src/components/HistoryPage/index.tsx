@@ -295,7 +295,7 @@ function HistoryDetailView({ roomId }: { roomId: string }) {
         <div><strong>{detail.commentCount}</strong><span>合計コメント</span></div>
       </div>
       <PeakList peaks={detail.peaks ?? []} onSelect={setSelected} />
-      <SectionBase title="盛り上がり"><HistoryChart detail={detail} onSelect={setSelected} /></SectionBase>
+      <SectionBase title="盛り上がり" className="history-chart-section"><HistoryChart detail={detail} onSelect={setSelected} /></SectionBase>
       {selected && <EventList roomId={roomId} bucket={selected} />}
     </div>
   );
