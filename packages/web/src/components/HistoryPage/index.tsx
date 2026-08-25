@@ -98,6 +98,10 @@ function HistoryChart({
   const chartHeight = height - bottom - 12;
   const max = Math.max(1, ...detail.buckets.map((bucket) => bucket.totalCount));
   const barWidth = chartWidth / Math.max(detail.buckets.length, 1);
+  const capturedPeaks = (detail.peaks ?? []).filter((peak) => peak.capture);
+  const hoveredCapture = hovered
+    ? capturedPeaks.find((peak) => peak.start >= hovered.start && peak.start < hovered.end)?.capture
+    : undefined;
 
   const pickBucket = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -134,19 +138,30 @@ function HistoryChart({
             </g>
           );
         })}
+        {capturedPeaks.map((peak) => {
+          const x = left + ((peak.start - detail.from) / Math.max(1, detail.to - detail.from)) * chartWidth;
+          return (
+            <g className="chart-capture-marker" key={`capture-${peak.start}`} transform={`translate(${x} 22)`}>
+              <circle r="10" />
+              <text textAnchor="middle" dominantBaseline="central" aria-hidden="true">●</text>
+              <title>{`${dateTime(peak.capture!.capturedAt)}の配信画面あり`}</title>
+            </g>
+          );
+        })}
         <text x={left} y={height - 4}>{dateTime(detail.from)}</text>
         <text x={width - 12} y={height - 4} textAnchor="end">{dateTime(detail.to)}</text>
       </svg>
       {hovered && (
         <div className="history-tooltip">
           <strong>{dateTime(hovered.start)}〜</strong>
+          {hoveredCapture && <img className="history-tooltip-capture" src={hoveredCapture.imageUrl} alt={`${dateTime(hoveredCapture.capturedAt)}の配信画面`} />}
           <span>合計 {hovered.totalCount}件（コメント {hovered.commentCount} / スタンプ {hovered.stampCount}）</span>
           {hovered.popularStamps.length > 0 && <span className="tooltip-popular"><span>人気:</span> {hovered.popularStamps.map((item) => <span className="tooltip-stamp" key={item.stamp.id || item.stamp.name}><HistoryStamp stamp={item.stamp} compact /><b>×{item.count}</b></span>)}</span>}
           {hovered.sampleComments.map((comment) => <span key={comment.id} className="tooltip-comment">「{comment.content}」</span>)}
           <small>クリックしてこの時間帯の全投稿を表示</small>
         </div>
       )}
-      <div className="chart-legend"><span className="legend-comment">コメント</span><span className="legend-stamp">スタンプ</span></div>
+      <div className="chart-legend"><span className="legend-comment">コメント</span><span className="legend-stamp">スタンプ</span>{capturedPeaks.length > 0 && <span className="legend-capture">配信画面あり</span>}</div>
     </div>
   );
 }
