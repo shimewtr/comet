@@ -44,9 +44,27 @@ function hasSameHostname(firstUrl: string, secondUrl: string): boolean {
   }
 }
 
+async function fetchCometConfig(webAppUrl: string): Promise<{ websocketUrl: string; historyApiUrl: string }> {
+  const response = await fetch(`${webAppUrl.replace(/\/+$/, '')}/comet-config.json`, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const config = await response.json();
+  if (
+    typeof config.websocketUrl !== 'string' ||
+    (!config.websocketUrl.startsWith('wss://') && !config.websocketUrl.startsWith('ws://'))
+  ) throw new Error('Invalid WebSocket URL');
+  if (hasSameHostname(config.websocketUrl, webAppUrl)) {
+    throw new Error('WebSocket URL points to the web hosting domain');
+  }
+  return {
+    websocketUrl: config.websocketUrl,
+    historyApiUrl: typeof config.historyApiUrl === 'string' ? config.historyApiUrl.replace(/\/+$/, '') : '',
+  };
+}
+
 async function main() {
   const toggleCheckbox = getElement<HTMLInputElement>('toggle-checkbox');
   const websocketUrlInput = getElement<HTMLInputElement>('websocket-url');
+  const historyApiUrlInput = getElement<HTMLInputElement>('history-api-url');
   const authTokenInput = getElement<HTMLInputElement>('auth-token');
   const roomSelect = getElement<HTMLSelectElement>('room-select');
   const refreshRoomsButton = getElement<HTMLButtonElement>('refresh-rooms');
@@ -162,30 +180,13 @@ async function main() {
 
     fetchConfigButton.disabled = true;
     try {
-      const response = await fetch(`${webAppUrl}/comet-config.json`, {
-        cache: 'no-store',
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const config = await response.json();
-      if (
-        typeof config.websocketUrl !== 'string' ||
-        (!config.websocketUrl.startsWith('wss://') &&
-          !config.websocketUrl.startsWith('ws://'))
-      ) {
-        throw new Error('Invalid config');
-      }
-
-      if (hasSameHostname(config.websocketUrl, webAppUrl)) {
-        throw new Error('WebSocket URL points to the web hosting domain');
-      }
+      const config = await fetchCometConfig(webAppUrl);
 
       websocketUrlInput.value = config.websocketUrl;
       historyApiUrl = typeof config.historyApiUrl === 'string'
         ? config.historyApiUrl.replace(/\/+$/, '')
         : '';
+      historyApiUrlInput.value = historyApiUrl;
       const settings = await loadSettings();
       await loadRooms(
         config.websocketUrl,
@@ -266,6 +267,21 @@ async function main() {
       return;
     }
 
+    if (captureEnabledCheckbox.checked && !historyApiUrl) {
+      try {
+        const config = await fetchCometConfig(webAppUrl);
+        historyApiUrl = config.historyApiUrl;
+        historyApiUrlInput.value = historyApiUrl;
+        websocketUrlInput.value = config.websocketUrl;
+      } catch (error) {
+        console.error('Failed to get History API URL:', error);
+      }
+      if (!historyApiUrl) {
+        showSaveMessage(saveMessage, '配信画面を記録するにはWebアプリから接続設定を取得してください', 'error');
+        return;
+      }
+    }
+
     await chrome.storage.sync.set({
       websocketUrl,
       authToken: authTokenInput.value.trim(),
@@ -288,6 +304,7 @@ async function main() {
 
   const settings = await loadSettings();
   historyApiUrl = settings.historyApiUrl;
+  historyApiUrlInput.value = historyApiUrl;
   websocketUrlInput.value = settings.websocketUrl;
   authTokenInput.value = settings.authToken;
   speedScaleInput.value = String(settings.speedScale);
@@ -299,6 +316,17 @@ async function main() {
   roomSelect.innerHTML = `<option value="global">${GLOBAL_ROOM.name}</option>`;
   roomSelect.value = settings.roomId;
   updateScaleLabels();
+  if (!historyApiUrl && settings.webAppUrl) {
+    try {
+      const config = await fetchCometConfig(settings.webAppUrl);
+      historyApiUrl = config.historyApiUrl;
+      historyApiUrlInput.value = historyApiUrl;
+      websocketUrlInput.value = config.websocketUrl;
+      await chrome.storage.sync.set({ historyApiUrl, websocketUrl: config.websocketUrl });
+    } catch (error) {
+      console.warn('Comet popup: Failed to initialize runtime config:', error);
+    }
+  }
   await loadRooms(settings.websocketUrl, settings.authToken, settings.roomId);
 }
 
