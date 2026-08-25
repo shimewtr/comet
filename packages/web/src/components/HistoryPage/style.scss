@@ -141,8 +141,8 @@
 .chart-stamp { fill: #ed8936; }
 .chart-capture-marker {
   pointer-events: none;
-  circle { fill: $color-bg-white; stroke: #805ad5; stroke-width: 2; }
-  text { fill: #805ad5; font-size: 8px; }
+  circle { fill: $color-bg-white; stroke: #805ad5; stroke-width: 1.5; }
+  text { fill: #805ad5; font-size: 5px; }
 }
 .chart-legend { display: flex; justify-content: center; gap: $space-lg; color: $color-text-secondary; font-size: $font-xs; }
 .chart-legend span::before { display: inline-block; width: 10px; height: 10px; margin-right: $space-xs; border-radius: 2px; content: ''; }

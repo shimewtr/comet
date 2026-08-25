@@ -147,7 +147,7 @@ function HistoryChart({
           const x = left + ((peak.start - detail.from) / Math.max(1, detail.to - detail.from)) * chartWidth;
           return (
             <g className="chart-capture-marker" key={`capture-${peak.start}`} transform={`translate(${x} 22)`}>
-              <circle r="10" />
+              <circle r="6" />
               <text textAnchor="middle" dominantBaseline="central" aria-hidden="true">●</text>
               <title>{`${dateTime(peak.capture!.capturedAt)}の配信画面あり`}</title>
             </g>
