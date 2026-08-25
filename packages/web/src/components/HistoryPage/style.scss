@@ -229,9 +229,9 @@
 }
 
 .history-events .section-content { gap: 0; }
-.history-event { display: grid; grid-template-columns: 110px 72px 1fr; align-items: start; padding: $space-sm 0; gap: $space-sm; border-bottom: $border-width-thin solid $color-border; }
-.history-event time { color: $color-text-muted; font-size: $font-xs; }
-.history-event p { min-width: 0; overflow-wrap: anywhere; font-size: $font-sm; }
+.history-event { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; min-height: 40px; padding: $space-xs 0; gap: $space-sm; border-bottom: $border-width-thin solid $color-border; }
+.history-event p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: $font-sm; }
+.event-count { color: $color-text-secondary; font-size: $font-sm; font-weight: $font-semibold; white-space: nowrap; }
 .event-kind { padding: 2px $space-xs; border-radius: $radius-sm; text-align: center; font-size: $font-xs; }
 .event-kind.comment { background: #ebf8ff; color: #2b6cb0; }
 .event-kind.stamp { background: #fffaf0; color: #c05621; }
@@ -253,7 +253,6 @@
   .history-summary { grid-template-columns: repeat(2, 1fr); }
   .history-summary strong { font-size: $font-xl; }
   .history-peaks { grid-template-columns: 1fr; }
-  .history-event { grid-template-columns: 1fr auto; }
-  .history-event p { grid-column: 1 / -1; }
+  .history-event { grid-template-columns: 64px minmax(0, 1fr) auto; }
   .history-tooltip { right: 0; left: 0; max-width: none; }
 }
