@@ -195,7 +195,7 @@ async function main() {
       );
       showSaveMessage(
         saveMessage,
-        'WebSocket URLを取得しました。「保存」で確定してください',
+        '接続設定を取得しました。「保存」で確定してください',
         'success'
       );
     } catch (error) {
@@ -220,24 +220,15 @@ async function main() {
 
   // 設定を保存（content scriptはstorage.onChangedで即時反映する）
   saveSettingsButton.addEventListener('click', async () => {
-    const websocketUrl = websocketUrlInput.value.trim();
-    const webAppUrl = webAppUrlInput.value.trim();
+    let websocketUrl = websocketUrlInput.value.trim();
+    const webAppUrl = webAppUrlInput.value.trim().replace(/\/+$/, '');
 
-    if (
-      websocketUrl &&
-      !websocketUrl.startsWith('wss://') &&
-      !websocketUrl.startsWith('ws://')
-    ) {
-      showSaveMessage(
-        saveMessage,
-        'WebSocket URLは wss:// または ws:// で始まる必要があります',
-        'error'
-      );
+    if (!webAppUrl) {
+      showSaveMessage(saveMessage, 'WebアプリURLを入力してください', 'error');
       return;
     }
 
     if (
-      webAppUrl &&
       !webAppUrl.startsWith('https://') &&
       !webAppUrl.startsWith('http://')
     ) {
@@ -249,12 +240,17 @@ async function main() {
       return;
     }
 
-    if (hasSameHostname(websocketUrl, webAppUrl)) {
-      showSaveMessage(
-        saveMessage,
-        'WebSocket URLにはWebアプリURLではなく、execute-apiのURLを指定してください',
-        'error'
-      );
+    saveSettingsButton.disabled = true;
+    try {
+      const config = await fetchCometConfig(webAppUrl);
+      websocketUrl = config.websocketUrl;
+      historyApiUrl = config.historyApiUrl;
+      websocketUrlInput.value = websocketUrl;
+      historyApiUrlInput.value = historyApiUrl;
+    } catch (error) {
+      console.error('Failed to fetch connection settings:', error);
+      showSaveMessage(saveMessage, '接続設定の取得に失敗しました。WebアプリURLを確認してください', 'error');
+      saveSettingsButton.disabled = false;
       return;
     }
 
@@ -268,18 +264,9 @@ async function main() {
     }
 
     if (captureEnabledCheckbox.checked && !historyApiUrl) {
-      try {
-        const config = await fetchCometConfig(webAppUrl);
-        historyApiUrl = config.historyApiUrl;
-        historyApiUrlInput.value = historyApiUrl;
-        websocketUrlInput.value = config.websocketUrl;
-      } catch (error) {
-        console.error('Failed to get History API URL:', error);
-      }
-      if (!historyApiUrl) {
-        showSaveMessage(saveMessage, '配信画面を記録するにはWebアプリから接続設定を取得してください', 'error');
-        return;
-      }
+      showSaveMessage(saveMessage, 'このWebアプリには履歴APIが設定されていません', 'error');
+      saveSettingsButton.disabled = false;
+      return;
     }
 
     await chrome.storage.sync.set({
@@ -296,6 +283,7 @@ async function main() {
     });
 
     showSaveMessage(saveMessage, '設定を保存しました！', 'success');
+    saveSettingsButton.disabled = false;
   });
 
   // 保存された状態を読み込む
@@ -327,7 +315,7 @@ async function main() {
       console.warn('Comet popup: Failed to initialize runtime config:', error);
     }
   }
-  await loadRooms(settings.websocketUrl, settings.authToken, settings.roomId);
+  await loadRooms(websocketUrlInput.value, settings.authToken, settings.roomId);
 }
 
 main().catch((error) => {
