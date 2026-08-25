@@ -18,6 +18,8 @@ export interface WebStackProps extends cdk.StackProps {
   envName: string;
   /** comet-config.jsonとして配信するWebSocket URL */
   webSocketUrl: string;
+  /** 履歴画面が参照するHTTP API URL */
+  historyApiUrl: string;
   /** 認証（チケット検証）が有効かどうか。クライアントはこのフラグで自動追従する */
   authEnabled: boolean;
   /** カスタムドメイン設定（未指定ならCloudFrontの自動ドメイン） */
@@ -215,6 +217,7 @@ export class WebStack extends cdk.Stack {
         s3deploy.Source.asset(path.join(__dirname, '../../../web/dist')),
         s3deploy.Source.jsonData('comet-config.json', {
           websocketUrl: props.webSocketUrl,
+          historyApiUrl: props.historyApiUrl,
           authEnabled: props.authEnabled,
         }),
       ],

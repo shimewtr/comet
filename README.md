@@ -2,7 +2,7 @@
 
 リアルタイムコメント・スタンプシステム
 
-Webアプリからコメント・スタンプを投稿すると、WebSocket経由で全接続端末にブロードキャストされ、Chrome拡張が投影中のページ（Googleスライドなど）にニコニコ動画風のオーバーレイとして描画します。
+Webアプリからコメント・スタンプを投稿すると、WebSocket経由で同じroomの接続端末にブロードキャストされ、Chrome拡張が投影中のページ（Googleスライドなど）にニコニコ動画風のオーバーレイとして描画します。
 
 ```mermaid
 flowchart LR
@@ -113,6 +113,14 @@ pnpm --filter @comet/chrome-extension build
 `chrome://extensions` で `packages/chrome-extension/dist` を読み込んでください。動作対象は `https://docs.google.com/*` のみです（`manifest.json` の `matches` で制限）。
 
 接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はCDKデプロイ時にインフラ側の値から生成され、CloudFrontでこのファイルのみCORSが許可されています）。WebSocket URLを手入力することも可能です。
+
+## Room
+
+- `global` は常に利用できる期限なしのroomです。
+- Webアプリではroomを作成・選択できます。作成したroomは最終利用から3時間で期限切れになります。
+- room選択後のURL（`?room=<roomId>`）を共有すると、参加者は同じroomへ直接参加できます。
+- Chrome拡張ではpopupから表示対象roomを選択します。参加用QRコードにも選択中roomが反映されます。
+- カスタムスタンプの一覧・アップロード・削除はroom間で共通です。
 
 ## 認証（OIDC）の有効化 — Okta / Auth0 / Cognito など
 

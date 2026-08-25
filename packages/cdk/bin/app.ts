@@ -5,6 +5,7 @@ import { WebSocketStack } from '../lib/stacks/websocket-stack';
 import { StorageStack } from '../lib/stacks/storage-stack';
 import { WebStack } from '../lib/stacks/web-stack';
 import { StampStack } from '../lib/stacks/stamp-stack';
+import { HistoryStack } from '../lib/stacks/history-stack';
 import { loadEnvConfig } from '../lib/config';
 import { physicalNameParts } from '../lib/naming';
 
@@ -43,7 +44,19 @@ const webSocketStack = new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   config,
   connectionsTable: storageStack.connectionsTable,
   commentsTable: storageStack.commentsTable,
+  roomsTable: storageStack.roomsTable,
+  roomEventsTable: storageStack.roomEventsTable,
   authSigningSecret: storageStack.authSigningSecret,
+});
+
+const historyStack = new HistoryStack(app, `${stackPrefix}HistoryStack`, {
+  env,
+  description: `Comet History API Stack - ${envName}`,
+  envName,
+  config,
+  roomsTable: storageStack.roomsTable,
+  roomEventsTable: storageStack.roomEventsTable,
+  roomCapturesTable: storageStack.roomCapturesTable,
 });
 
 // スタンプスタック（S3 + CloudFront + Lambda + DynamoDB）
@@ -71,6 +84,7 @@ new WebStack(app, `${stackPrefix}WebStack`, {
   description: `Comet Web Hosting - ${envName}`,
   envName,
   webSocketUrl: webSocketStack.webSocketUrl,
+  historyApiUrl: historyStack.historyApiUrl,
   authEnabled,
   domain: config.domain,
   auth: config.auth,

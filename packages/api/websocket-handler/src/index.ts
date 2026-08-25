@@ -14,13 +14,30 @@ import {
   sanitizeCommentStyle,
   isAllowedStampImageUrl,
   generateId,
+  GLOBAL_ROOM_ID,
+  GLOBAL_ROOM,
+  normalizeRoomName,
+  CreateRoomPayload,
+  JoinRoomPayload,
+  RoomListPayload,
+  RoomCreatedPayload,
+  RoomJoinedPayload,
+  ErrorPayload,
 } from '@comet/shared';
 import {
   saveConnection,
   removeConnection,
   getRoomConnections,
   saveComment,
+  saveRoomEvent,
+  saveStampEvent,
   getRecentComments,
+  getConnectionRoom,
+  moveConnectionToRoom,
+  getActiveRooms,
+  createRoom,
+  touchRoom,
+  getActiveRoom,
 } from './dynamodb-client';
 import {
   createApiGatewayClient,
@@ -32,8 +49,6 @@ const HANDLER_TYPE = process.env.HANDLER_TYPE || 'message';
 // イベント全文などの冗長なログはデバッグ時のみ出す（CloudWatch Logsのコスト削減と
 // コメント本文をログに残さないため）
 const DEBUG_LOGGING = process.env.LOG_LEVEL === 'debug';
-const GLOBAL_ROOM_ID = 'global'; // 全ユーザー共通のルームID
-
 const MAX_STAMP_NAME_LENGTH = 50;
 const STAMP_CATEGORIES: readonly StampCategory[] = [
   'emotion',
@@ -102,6 +117,46 @@ async function handleMessage(
     const endpoint = `https://${domainName}/${stage}`;
     const apiGatewayClient = createApiGatewayClient(endpoint);
 
+    const sendToRequester = async <T>(
+      type: WebSocketMessageType,
+      payload: T,
+      roomId?: string
+    ) => {
+      const response: WebSocketMessage<T> = {
+        type,
+        payload,
+        timestamp: Date.now(),
+        roomId,
+      };
+      await sendMessageToConnection(
+        apiGatewayClient,
+        connectionId,
+        Buffer.from(JSON.stringify(response))
+      );
+    };
+
+    const fallbackToGlobal = async () => {
+      await moveConnectionToRoom(connectionId, GLOBAL_ROOM_ID);
+      const payload: ErrorPayload = {
+        code: 'ROOM_EXPIRED',
+        message: 'Room is unavailable or expired',
+        fallbackRoom: GLOBAL_ROOM,
+      };
+      await sendToRequester(
+        WebSocketMessageType.ERROR,
+        payload,
+        GLOBAL_ROOM_ID
+      );
+    };
+
+    const currentRoomForActivity = async (): Promise<string | null> => {
+      const roomId = await getConnectionRoom(connectionId);
+      if (roomId === GLOBAL_ROOM_ID) return roomId;
+      if (await touchRoom(roomId)) return roomId;
+      await fallbackToGlobal();
+      return null;
+    };
+
     switch (message.type) {
       case WebSocketMessageType.NEW_COMMENT: {
         const payload = message.payload as NewCommentPayload;
@@ -120,6 +175,9 @@ async function handleMessage(
           return { statusCode: 400 };
         }
 
+        const roomId = await currentRoomForActivity();
+        if (!roomId) break;
+
         // 検証済みのフィールドのみでブロードキャスト用コメントを組み立てる
         const comment: Comment = {
           id: generateId(),
@@ -129,18 +187,24 @@ async function handleMessage(
         };
 
         // 履歴保存の失敗は配信を妨げない
-        const savePromise = saveComment(GLOBAL_ROOM_ID, comment).catch(
-          (error) => {
-            console.error('Failed to save comment history:', error);
-          }
-        );
+        const savePromise = Promise.all([
+          saveComment(roomId, comment),
+          saveRoomEvent(roomId, {
+            type: 'comment',
+            timestamp: comment.timestamp,
+            comment,
+          }),
+        ]).catch((error) => {
+          console.error('Failed to save comment history:', error);
+        });
 
-        // グローバルルーム内の全接続にブロードキャスト
-        const connectionIds = await getRoomConnections(GLOBAL_ROOM_ID);
+        // 現在参加しているroom内の全接続にブロードキャスト
+        const connectionIds = await getRoomConnections(roomId);
         const broadcastPayload: WebSocketMessage<NewCommentPayload> = {
           type: WebSocketMessageType.NEW_COMMENT,
           payload: { comment },
           timestamp: Date.now(),
+          roomId,
         };
 
         const result = await broadcastMessage(
@@ -172,12 +236,17 @@ async function handleMessage(
           return { statusCode: 400 };
         }
 
+        const roomId = await currentRoomForActivity();
+        if (!roomId) break;
+
         // カスタムスタンプは許可された配信元の画像URLのみ受け付ける
         if (
           rawStamp.category === 'custom' &&
           !isAllowedStampImageUrl(rawStamp.imageUrl)
         ) {
-          console.warn(`Rejected stamp: disallowed imageUrl ${rawStamp.imageUrl}`);
+          console.warn(
+            `Rejected stamp: disallowed imageUrl ${rawStamp.imageUrl}`
+          );
           return { statusCode: 400 };
         }
 
@@ -206,12 +275,19 @@ async function handleMessage(
           position,
         };
 
-        // グローバルルーム内の全接続にブロードキャスト
-        const connectionIds = await getRoomConnections(GLOBAL_ROOM_ID);
+        const savePromise = saveStampEvent(roomId, stampMessage).catch(
+          (error) => {
+            console.error('Failed to save stamp history:', error);
+          }
+        );
+
+        // 現在参加しているroom内の全接続にブロードキャスト
+        const connectionIds = await getRoomConnections(roomId);
         const broadcastPayload: WebSocketMessage<NewStampPayload> = {
           type: WebSocketMessageType.NEW_STAMP,
           payload: { stamp: stampMessage },
           timestamp: Date.now(),
+          roomId,
         };
 
         const stampResult = await broadcastMessage(
@@ -219,6 +295,7 @@ async function handleMessage(
           connectionIds,
           broadcastPayload
         );
+        await savePromise;
 
         console.log(
           `Broadcast stamp to ${stampResult.sent} connections, ${stampResult.failed} failed`
@@ -227,18 +304,82 @@ async function handleMessage(
       }
 
       case WebSocketMessageType.HISTORY_REQUEST: {
+        const roomId = await getConnectionRoom(connectionId);
+        if (roomId !== GLOBAL_ROOM_ID && !(await getActiveRoom(roomId))) {
+          await fallbackToGlobal();
+          break;
+        }
         // 直近のコメント履歴をリクエスト元の接続にだけ返す
-        const comments = await getRecentComments(GLOBAL_ROOM_ID);
-        await sendMessageToConnection(
-          apiGatewayClient,
-          connectionId,
-          Buffer.from(
-            JSON.stringify({
-              type: WebSocketMessageType.HISTORY,
-              payload: { comments },
-              timestamp: Date.now(),
-            })
-          )
+        const comments = await getRecentComments(roomId);
+        await sendToRequester(
+          WebSocketMessageType.HISTORY,
+          { comments },
+          roomId
+        );
+        break;
+      }
+
+      case WebSocketMessageType.ROOM_LIST_REQUEST: {
+        const rooms = [GLOBAL_ROOM, ...(await getActiveRooms())];
+        const payload: RoomListPayload = { rooms };
+        await sendToRequester(WebSocketMessageType.ROOM_LIST, payload);
+        break;
+      }
+
+      case WebSocketMessageType.CREATE_ROOM: {
+        const payload = message.payload as CreateRoomPayload;
+        const name = normalizeRoomName(payload?.name);
+        if (!name) {
+          await sendToRequester<ErrorPayload>(WebSocketMessageType.ERROR, {
+            code: 'INVALID_ROOM_NAME',
+            message:
+              'Room name must be 1-50 characters without control characters',
+          });
+          break;
+        }
+        const room = await createRoom(name);
+        await moveConnectionToRoom(connectionId, room.id);
+        await sendToRequester<RoomCreatedPayload>(
+          WebSocketMessageType.ROOM_CREATED,
+          { room },
+          room.id
+        );
+        await sendToRequester<RoomJoinedPayload>(
+          WebSocketMessageType.ROOM_JOINED,
+          { room },
+          room.id
+        );
+        break;
+      }
+
+      case WebSocketMessageType.JOIN_ROOM: {
+        const payload = message.payload as JoinRoomPayload;
+        if (payload?.roomId === GLOBAL_ROOM_ID) {
+          await moveConnectionToRoom(connectionId, GLOBAL_ROOM_ID);
+          await sendToRequester<RoomJoinedPayload>(
+            WebSocketMessageType.ROOM_JOINED,
+            { room: GLOBAL_ROOM },
+            GLOBAL_ROOM_ID
+          );
+          break;
+        }
+        if (typeof payload?.roomId !== 'string') {
+          await sendToRequester<ErrorPayload>(WebSocketMessageType.ERROR, {
+            code: 'INVALID_MESSAGE',
+            message: 'roomId is required',
+          });
+          break;
+        }
+        const room = await touchRoom(payload.roomId);
+        if (!room) {
+          await fallbackToGlobal();
+          break;
+        }
+        await moveConnectionToRoom(connectionId, room.id);
+        await sendToRequester<RoomJoinedPayload>(
+          WebSocketMessageType.ROOM_JOINED,
+          { room },
+          room.id
         );
         break;
       }

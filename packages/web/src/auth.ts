@@ -6,6 +6,7 @@
 
 interface RuntimeConfig {
   websocketUrl?: string;
+  historyApiUrl?: string;
   authEnabled?: boolean;
 }
 

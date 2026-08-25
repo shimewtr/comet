@@ -14,8 +14,14 @@ export interface CometSettings {
   qrEnabled: boolean;
   /** QRコードに載せるWebアプリのURL */
   webAppUrl: string;
+  /** Room履歴APIのURL（comet-config.jsonから取得） */
+  historyApiUrl: string;
+  /** Google Slidesの表示画面をRoom履歴に記録するか */
+  captureEnabled: boolean;
   /** 認証チケット（認証を有効化した構成でのみ使用。通常は空でよい） */
   authToken: string;
+  /** 表示対象room */
+  roomId: string;
 }
 
 export const DEFAULT_SETTINGS: CometSettings = {
@@ -25,7 +31,10 @@ export const DEFAULT_SETTINGS: CometSettings = {
   displayArea: 'full',
   qrEnabled: false,
   webAppUrl: '',
+  historyApiUrl: '',
+  captureEnabled: false,
   authToken: '',
+  roomId: 'global',
 };
 
 /**

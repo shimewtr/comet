@@ -17,6 +17,9 @@ export interface StorageStackProps extends cdk.StackProps {
 export class StorageStack extends cdk.Stack {
   public readonly connectionsTable: dynamodb.Table;
   public readonly commentsTable: dynamodb.Table;
+  public readonly roomsTable: dynamodb.Table;
+  public readonly roomEventsTable: dynamodb.Table;
+  public readonly roomCapturesTable: dynamodb.Table;
   /** 認証チケット(JWT)の署名鍵。認証有効時のみ作成される */
   public readonly authSigningSecret?: secretsmanager.Secret;
 
@@ -69,6 +72,51 @@ export class StorageStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl',
+    });
+
+    // 誰でも作成できる一時room。期限切れはTTLと読み出し時検証の両方で除外する
+    this.roomsTable = new dynamodb.Table(this, 'RoomsTable', {
+      tableName: physicalName(this, props.envName, 'rooms'),
+      partitionKey: {
+        name: 'id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl',
+    });
+
+    this.roomsTable.addGlobalSecondaryIndex({
+      indexName: 'HistoryIndex',
+      partitionKey: { name: 'historyPk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.NUMBER },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    this.roomEventsTable = new dynamodb.Table(this, 'RoomEventsTable', {
+      tableName: physicalName(this, props.envName, 'room-events'),
+      partitionKey: { name: 'roomId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy:
+        props.envName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: props.envName === 'prod',
+      timeToLiveAttribute: 'ttl',
+    });
+
+    this.roomCapturesTable = new dynamodb.Table(this, 'RoomCapturesTable', {
+      tableName: physicalName(this, props.envName, 'room-captures'),
+      partitionKey: { name: 'roomId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy:
+        props.envName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: props.envName === 'prod',
       timeToLiveAttribute: 'ttl',
     });
 
