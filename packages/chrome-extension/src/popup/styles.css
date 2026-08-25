@@ -29,8 +29,8 @@
 body {
   width: 380px;
   min-width: 380px;
-  min-height: 600px;
   max-height: 600px;
+  overflow-y: auto;
   background-color: var(--color-bg-page);
   color: var(--color-text-primary);
   font-size: 13px;
@@ -42,8 +42,7 @@ body {
 .container {
   display: flex;
   flex-direction: column;
-  height: 600px;
-  overflow-y: auto;
+  min-height: 560px;
   padding: 16px;
   gap: 12px;
 }
