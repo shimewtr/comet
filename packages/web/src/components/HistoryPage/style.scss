@@ -139,10 +139,16 @@
 .chart-grid { stroke: $color-border; stroke-width: 1; }
 .chart-comment { fill: $color-primary; }
 .chart-stamp { fill: #ed8936; }
+.chart-capture-marker {
+  pointer-events: none;
+  circle { fill: $color-bg-white; stroke: #805ad5; stroke-width: 2; }
+  text { fill: #805ad5; font-size: 8px; }
+}
 .chart-legend { display: flex; justify-content: center; gap: $space-lg; color: $color-text-secondary; font-size: $font-xs; }
 .chart-legend span::before { display: inline-block; width: 10px; height: 10px; margin-right: $space-xs; border-radius: 2px; content: ''; }
 .legend-comment::before { background: $color-primary; }
 .legend-stamp::before { background: #ed8936; }
+.legend-capture::before { border: 2px solid #805ad5; border-radius: 50% !important; background: $color-bg-white; }
 
 .history-tooltip {
   position: absolute;
@@ -161,6 +167,16 @@
   pointer-events: none;
   .tooltip-comment { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: $color-text-secondary; }
   small { margin-top: $space-xs; color: $color-text-muted; }
+}
+
+.history-tooltip-capture {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  margin: $space-xs 0;
+  border: $border-width-thin solid $color-border;
+  border-radius: $radius-sm;
+  object-fit: cover;
 }
 
 .tooltip-popular,
