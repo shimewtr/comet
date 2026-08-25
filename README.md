@@ -32,7 +32,7 @@ pnpm workspaceのmonorepoです。
 ## 開発環境
 
 - Node.js 22 / pnpm 10
-- AWS CLI（デプロイ時。プロファイルは `shimewtr` を使用）
+- AWS CLI（デプロイ時。利用者自身のAWSプロファイルを使用）
 
 ```bash
 pnpm install
