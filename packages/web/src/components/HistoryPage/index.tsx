@@ -198,11 +198,11 @@ function EventList({ roomId, bucket }: { roomId: string; bucket: HistoryBucket }
       {events.length === 0 && !loading && <p className="history-empty">この時間帯に投稿はありません。</p>}
       {grouped.map(({ event, count }) => event.type === 'comment' ? (
         <div className="history-event" key={`comment-${event.comment.content}`}>
-          <span className="event-kind comment">コメント</span><p title={event.comment.content}>{event.comment.content}</p>{count > 1 && <strong className="event-count">× {count}</strong>}
+          <span className="event-kind comment">コメント</span><p><span className="event-content" title={event.comment.content}>{event.comment.content}</span>{count > 1 && <strong className="event-count">× {count}</strong>}</p>
         </div>
       ) : (
         <div className="history-event" key={`stamp-${event.stamp.stamp.id || event.stamp.stamp.name}`}>
-          <span className="event-kind stamp">スタンプ</span><p><HistoryStamp stamp={event.stamp.stamp} compact /></p>{count > 1 && <strong className="event-count">× {count}</strong>}
+          <span className="event-kind stamp">スタンプ</span><p><HistoryStamp stamp={event.stamp.stamp} compact />{count > 1 && <strong className="event-count">× {count}</strong>}</p>
         </div>
       ))}
       {cursor && <button className="history-button secondary" disabled={loading} onClick={() => void load(cursor)}>さらに表示</button>}
