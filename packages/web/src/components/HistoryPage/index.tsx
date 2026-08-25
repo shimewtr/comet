@@ -93,6 +93,7 @@ function HistoryChart({
   onSelect: (bucket: HistoryBucket) => void;
 }) {
   const [hovered, setHovered] = useState<HistoryBucket | null>(null);
+  const [hoveredAt, setHoveredAt] = useState<number | null>(null);
   const width = 900;
   const height = 260;
   const left = 44;
@@ -102,14 +103,19 @@ function HistoryChart({
   const max = Math.max(1, ...detail.buckets.map((bucket) => bucket.totalCount));
   const barWidth = chartWidth / Math.max(detail.buckets.length, 1);
   const capturedPeaks = (detail.peaks ?? []).filter((peak) => peak.capture);
+  const captures = detail.captures ?? capturedPeaks.map((peak) => peak.capture!);
   const hoveredCapture = hovered
-    ? capturedPeaks.find((peak) => peak.start >= hovered.start && peak.start < hovered.end)?.capture
+    ? captures
+      .filter((capture) => capture.capturedAt >= hovered.start && capture.capturedAt < hovered.end)
+      .sort((a, b) => Math.abs(a.capturedAt - (hoveredAt ?? hovered.start)) - Math.abs(b.capturedAt - (hoveredAt ?? hovered.start)))[0]
     : undefined;
 
   const pickBucket = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
     const index = Math.max(0, Math.min(detail.buckets.length - 1, Math.floor((x - left) / barWidth)));
+    const ratio = Math.max(0, Math.min(1, (x - left) / chartWidth));
+    setHoveredAt(detail.from + ratio * (detail.to - detail.from));
     setHovered(detail.buckets[index] ?? null);
   };
 
@@ -121,7 +127,7 @@ function HistoryChart({
         role="img"
         aria-label="時間帯ごとのコメントとスタンプ数"
         onPointerMove={pickBucket}
-        onPointerLeave={() => setHovered(null)}
+        onPointerLeave={() => { setHovered(null); setHoveredAt(null); }}
         onClick={() => hovered && onSelect(hovered)}
       >
         {[0, 0.5, 1].map((ratio) => {
@@ -141,12 +147,12 @@ function HistoryChart({
             </g>
           );
         })}
-        {capturedPeaks.map((peak) => {
-          const x = left + ((peak.start - detail.from) / Math.max(1, detail.to - detail.from)) * chartWidth;
+        {captures.map((capture) => {
+          const x = left + ((capture.capturedAt - detail.from) / Math.max(1, detail.to - detail.from)) * chartWidth;
           return (
-            <g className="chart-capture-marker" key={`capture-${peak.start}`} transform={`translate(${x} 22)`}>
+            <g className="chart-capture-marker" key={`capture-${capture.capturedAt}`} transform={`translate(${x} 22)`}>
               <circle r="3" />
-              <title>{`${dateTime(peak.capture!.capturedAt)}の配信画面あり`}</title>
+              <title>{`${dateTime(capture.capturedAt)}の配信画面あり`}</title>
             </g>
           );
         })}
@@ -163,7 +169,7 @@ function HistoryChart({
           <small>クリックしてこの時間帯の全投稿を表示</small>
         </div>
       )}
-      <div className="chart-legend"><span className="legend-comment">コメント</span><span className="legend-stamp">スタンプ</span>{capturedPeaks.length > 0 && <span className="legend-capture">配信画面あり</span>}</div>
+      <div className="chart-legend"><span className="legend-comment">コメント</span><span className="legend-stamp">スタンプ</span>{captures.length > 0 && <span className="legend-capture">配信画面あり</span>}</div>
     </div>
   );
 }

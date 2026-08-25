@@ -36,6 +36,12 @@ export interface RoomHistoryDetail extends RoomHistorySummary {
   buckets: HistoryBucket[];
   metrics: RoomHistoryMetrics;
   peaks: HistoryPeak[];
+  captures: HistoryCapture[];
+}
+
+export interface HistoryCapture {
+  capturedAt: number;
+  imageUrl: string;
 }
 
 export interface RoomHistoryMetrics {
@@ -54,10 +60,7 @@ export interface HistoryPeak {
   stampCount: number;
   popularStamps: PopularStamp[];
   sampleComments: Comment[];
-  capture?: {
-    capturedAt: number;
-    imageUrl: string;
-  };
+  capture?: HistoryCapture;
 }
 
 export interface PaginatedRoomHistories {
