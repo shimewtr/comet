@@ -63,8 +63,6 @@ async function fetchCometConfig(webAppUrl: string): Promise<{ websocketUrl: stri
 
 async function main() {
   const toggleCheckbox = getElement<HTMLInputElement>('toggle-checkbox');
-  const websocketUrlInput = getElement<HTMLInputElement>('websocket-url');
-  const historyApiUrlInput = getElement<HTMLInputElement>('history-api-url');
   const authTokenInput = getElement<HTMLInputElement>('auth-token');
   const roomSelect = getElement<HTMLSelectElement>('room-select');
   const refreshRoomsButton = getElement<HTMLButtonElement>('refresh-rooms');
@@ -79,6 +77,7 @@ async function main() {
   const fetchConfigButton = getElement<HTMLButtonElement>('fetch-config');
   const saveSettingsButton = getElement<HTMLButtonElement>('save-settings');
   const saveMessage = getElement<HTMLDivElement>('save-message');
+  let websocketUrl = '';
   let historyApiUrl = '';
 
   const loadRooms = async (
@@ -182,11 +181,10 @@ async function main() {
     try {
       const config = await fetchCometConfig(webAppUrl);
 
-      websocketUrlInput.value = config.websocketUrl;
+      websocketUrl = config.websocketUrl;
       historyApiUrl = typeof config.historyApiUrl === 'string'
         ? config.historyApiUrl.replace(/\/+$/, '')
         : '';
-      historyApiUrlInput.value = historyApiUrl;
       const settings = await loadSettings();
       await loadRooms(
         config.websocketUrl,
@@ -212,7 +210,7 @@ async function main() {
 
   refreshRoomsButton.addEventListener('click', async () => {
     await loadRooms(
-      websocketUrlInput.value.trim(),
+      websocketUrl,
       authTokenInput.value.trim(),
       roomSelect.value || GLOBAL_ROOM.id
     );
@@ -220,7 +218,6 @@ async function main() {
 
   // 設定を保存（content scriptはstorage.onChangedで即時反映する）
   saveSettingsButton.addEventListener('click', async () => {
-    let websocketUrl = websocketUrlInput.value.trim();
     const webAppUrl = webAppUrlInput.value.trim().replace(/\/+$/, '');
 
     if (!webAppUrl) {
@@ -245,8 +242,6 @@ async function main() {
       const config = await fetchCometConfig(webAppUrl);
       websocketUrl = config.websocketUrl;
       historyApiUrl = config.historyApiUrl;
-      websocketUrlInput.value = websocketUrl;
-      historyApiUrlInput.value = historyApiUrl;
     } catch (error) {
       console.error('Failed to fetch connection settings:', error);
       showSaveMessage(saveMessage, '接続設定の取得に失敗しました。WebアプリURLを確認してください', 'error');
@@ -291,9 +286,8 @@ async function main() {
   toggleCheckbox.checked = localResult.commentsEnabled !== false; // デフォルトはtrue
 
   const settings = await loadSettings();
+  websocketUrl = settings.websocketUrl;
   historyApiUrl = settings.historyApiUrl;
-  historyApiUrlInput.value = historyApiUrl;
-  websocketUrlInput.value = settings.websocketUrl;
   authTokenInput.value = settings.authToken;
   speedScaleInput.value = String(settings.speedScale);
   fontScaleInput.value = String(settings.fontScale);
@@ -307,15 +301,14 @@ async function main() {
   if (!historyApiUrl && settings.webAppUrl) {
     try {
       const config = await fetchCometConfig(settings.webAppUrl);
+      websocketUrl = config.websocketUrl;
       historyApiUrl = config.historyApiUrl;
-      historyApiUrlInput.value = historyApiUrl;
-      websocketUrlInput.value = config.websocketUrl;
       await chrome.storage.sync.set({ historyApiUrl, websocketUrl: config.websocketUrl });
     } catch (error) {
       console.warn('Comet popup: Failed to initialize runtime config:', error);
     }
   }
-  await loadRooms(websocketUrlInput.value, settings.authToken, settings.roomId);
+  await loadRooms(websocketUrl, settings.authToken, settings.roomId);
 }
 
 main().catch((error) => {
