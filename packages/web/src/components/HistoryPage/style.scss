@@ -250,7 +250,7 @@
   .history-actions .history-button { flex: 1; }
   .history-room-grid { grid-template-columns: 1fr; gap: $space-md; }
   .history-summary { gap: $space-sm; }
-  .history-summary { grid-template-columns: repeat(2, 1fr); }
+  .history-summary { grid-template-columns: 1fr; }
   .history-summary strong { font-size: $font-xl; }
   .history-peaks { grid-template-columns: 1fr; }
   .history-event { grid-template-columns: 64px minmax(0, 1fr); }

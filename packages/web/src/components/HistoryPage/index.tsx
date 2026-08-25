@@ -37,13 +37,6 @@ const eventDate = (from: number, to: number) => {
   return start === end ? start : `${start} 〜 ${end}`;
 };
 
-const durationText = (durationMs: number) => {
-  const minutes = Math.max(0, Math.round(durationMs / 60_000));
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return hours ? `${hours}時間${rest ? `${rest}分` : ''}` : `${rest}分`;
-};
-
 function HistoryStamp({ stamp, compact = false }: { stamp: Stamp; compact?: boolean }) {
   const [imageUnavailable, setImageUnavailable] = useState(
     stamp.category === 'custom' && !stamp.imageUrl
@@ -269,24 +262,15 @@ function HistoryDetailView({ roomId }: { roomId: string }) {
 
   if (!detail && !error) return <p className="history-page-message">履歴を読み込んでいます...</p>;
   if (!detail) return <p className="history-page-message error">{error}</p>;
-  const metrics = detail.metrics ?? {
-    durationMs: detail.to - detail.from,
-    maxPostsPerMinute: 0,
-    peakAt: null,
-    topStamp: null,
-    commentRatio: detail.totalCount ? detail.commentCount / detail.totalCount : 0,
-  };
+  const topStamp = detail.metrics?.topStamp ?? null;
   return (
     <div className="history-detail">
       <div className="history-heading-row"><div><a className="history-back" href="/history">← 履歴一覧</a><h2>{detail.room.name}</h2><div className="history-title-meta"><time>{eventDate(detail.from, detail.to)}</time><span className={`history-status ${detail.status}`}>{detail.status === 'active' ? '開催中' : '終了済み'}</span></div></div><div className="history-actions"><button className="history-button secondary" disabled={exporting} onClick={() => void runExport('csv')}>CSV出力</button><button className="history-button secondary" disabled={exporting} onClick={() => void runExport('json')}>JSON出力</button></div></div>
       {error && <p className="history-inline-error">{error}</p>}
       <div className="history-summary">
-        <div><strong>{detail.totalCount}</strong><span>合計投稿</span></div>
-        <div><strong>{durationText(metrics.durationMs)}</strong><span>イベント時間</span></div>
-        <div><strong>{metrics.maxPostsPerMinute}</strong><span>最大投稿数/分</span></div>
-        <div><strong>{metrics.peakAt ? new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit' }).format(metrics.peakAt) : '—'}</strong><span>最大ピーク</span></div>
-        <div className="summary-stamp"><strong>{metrics.topStamp ? <HistoryStamp stamp={metrics.topStamp.stamp} compact /> : '—'}</strong><span>最多スタンプ{metrics.topStamp ? ` ×${metrics.topStamp.count}` : ''}</span></div>
-        <div><strong>{Math.round(metrics.commentRatio * 100)}%</strong><span>コメント比率</span></div>
+        <div className="summary-stamp"><strong>{topStamp ? <HistoryStamp stamp={topStamp.stamp} compact /> : '—'}</strong><span>最多スタンプ{topStamp ? ` ×${topStamp.count}` : ''}</span></div>
+        <div><strong>{detail.stampCount}</strong><span>合計スタンプ</span></div>
+        <div><strong>{detail.commentCount}</strong><span>合計コメント</span></div>
       </div>
       <PeakList peaks={detail.peaks ?? []} onSelect={setSelected} />
       <SectionBase title="盛り上がり"><HistoryChart detail={detail} onSelect={setSelected} /></SectionBase>
@@ -308,7 +292,7 @@ function HistoryListView() {
   };
   useEffect(() => { void load(); }, []);
   return (
-    <div className="history-list"><div className="history-heading-row"><div><h2>Room履歴</h2><p>開催中・終了済みのRoomの盛り上がりを確認できます。</p></div></div>
+    <div className="history-list"><div className="history-heading-row"><div><a className="history-back" href="/">← Room画面</a><h2>Room履歴</h2><p>開催中・終了済みのRoomの盛り上がりを確認できます。</p></div></div>
       {error && <p className="history-inline-error">{error}</p>}
       <div className="history-room-grid">{rooms.map((summary) => <a className="history-room-card" href={`/history/${encodeURIComponent(summary.room.id)}`} key={summary.room.id}><div><h3>{summary.room.name}</h3><span className={`history-status ${summary.status}`}>{summary.status === 'active' ? '開催中' : '終了済み'}</span></div><p>{dateTime(summary.room.createdAt)}〜</p><dl><div><dt>合計</dt><dd>{summary.totalCount}</dd></div><div><dt>コメント</dt><dd>{summary.commentCount}</dd></div><div><dt>スタンプ</dt><dd>{summary.stampCount}</dd></div></dl></a>)}</div>
       {!loading && rooms.length === 0 && <p className="history-page-message">履歴のあるRoomはまだありません。</p>}
