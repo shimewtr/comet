@@ -141,14 +141,13 @@
 .chart-stamp { fill: #ed8936; }
 .chart-capture-marker {
   pointer-events: none;
-  circle { fill: $color-bg-white; stroke: #805ad5; stroke-width: 1.5; }
-  text { fill: #805ad5; font-size: 5px; }
+  circle { fill: #805ad5; }
 }
 .chart-legend { display: flex; justify-content: center; gap: $space-lg; color: $color-text-secondary; font-size: $font-xs; }
 .chart-legend span::before { display: inline-block; width: 10px; height: 10px; margin-right: $space-xs; border-radius: 2px; content: ''; }
 .legend-comment::before { background: $color-primary; }
 .legend-stamp::before { background: #ed8936; }
-.legend-capture::before { border: 2px solid #805ad5; border-radius: 50% !important; background: $color-bg-white; }
+.legend-capture::before { width: 6px !important; height: 6px !important; border-radius: 50% !important; background: #805ad5; }
 
 .history-tooltip {
   position: absolute;
