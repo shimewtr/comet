@@ -146,6 +146,13 @@ export function aggregateEvents(
     const comments = values.filter((event) => event.type === 'comment');
     const stamps = values.filter((event) => event.type === 'stamp');
     const stampCounts = new Map<string, { stamp: any; count: number }>();
+    const itemCounts = new Map<string, any>();
+    for (const event of comments) {
+      if (event.type !== 'comment') continue;
+      const key = `comment:${event.comment.content}`;
+      const current = itemCounts.get(key);
+      itemCounts.set(key, { type: 'comment', content: event.comment.content, count: (current?.count ?? 0) + 1 });
+    }
     for (const event of stamps) {
       if (event.type !== 'stamp') continue;
       const key = event.stamp.stamp.id || event.stamp.stamp.name;
@@ -154,6 +161,9 @@ export function aggregateEvents(
         stamp: event.stamp.stamp,
         count: (current?.count ?? 0) + 1,
       });
+      const itemKey = `stamp:${key}`;
+      const item = itemCounts.get(itemKey);
+      itemCounts.set(itemKey, { type: 'stamp', stamp: event.stamp.stamp, count: (item?.count ?? 0) + 1 });
     }
     result.push({
       start,
@@ -162,6 +172,9 @@ export function aggregateEvents(
       commentCount: comments.length,
       stampCount: stamps.length,
       popularStamps: [...stampCounts.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3),
+      popularItems: [...itemCounts.values()]
         .sort((a, b) => b.count - a.count)
         .slice(0, 3),
       sampleComments: comments

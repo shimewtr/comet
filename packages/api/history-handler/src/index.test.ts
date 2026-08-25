@@ -33,5 +33,9 @@ describe('aggregateEvents', () => {
     expect(bucket).toMatchObject({ totalCount: 2, commentCount: 1, stampCount: 1 });
     expect(bucket.sampleComments[0].content).toBe('hello');
     expect(bucket.popularStamps[0].count).toBe(1);
+    expect(bucket.popularItems).toEqual([
+      { type: 'comment', content: 'hello', count: 1 },
+      { type: 'stamp', stamp: { id: 'like', name: '👍', imageUrl: '', category: 'reaction' }, count: 1 },
+    ]);
   });
 });
