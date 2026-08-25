@@ -145,6 +145,7 @@
 .chart-grid { stroke: $color-border; stroke-width: 1; }
 .chart-comment { fill: $color-primary; }
 .chart-stamp { fill: #ed8936; }
+.chart-hover-line { stroke: rgba($color-text-primary, .35); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
 .chart-capture-marker {
   pointer-events: none;
   circle { fill: #805ad5; }
@@ -157,7 +158,6 @@
 
 .history-tooltip {
   position: absolute;
-  right: 0;
   bottom: calc(100% + $space-sm);
   display: flex;
   flex-direction: column;

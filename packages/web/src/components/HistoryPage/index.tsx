@@ -94,6 +94,7 @@ function HistoryChart({
 }) {
   const [hovered, setHovered] = useState<HistoryBucket | null>(null);
   const [hoveredAt, setHoveredAt] = useState<number | null>(null);
+  const [hoveredX, setHoveredX] = useState<number | null>(null);
   const width = 900;
   const height = 260;
   const left = 44;
@@ -117,6 +118,7 @@ function HistoryChart({
   const pickBucket = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
+    setHoveredX(Math.max(left, Math.min(width - 12, x)));
     const index = Math.max(0, Math.min(detail.buckets.length - 1, Math.floor((x - left) / barWidth)));
     const ratio = Math.max(0, Math.min(1, (x - left) / chartWidth));
     setHoveredAt(detail.from + ratio * (detail.to - detail.from));
@@ -131,7 +133,7 @@ function HistoryChart({
         role="img"
         aria-label="時間帯ごとのコメントとスタンプ数"
         onPointerMove={pickBucket}
-        onPointerLeave={() => { setHovered(null); setHoveredAt(null); }}
+        onPointerLeave={() => { setHovered(null); setHoveredAt(null); setHoveredX(null); }}
         onClick={() => hovered && onSelect(hovered)}
       >
         {[0, 0.5, 1].map((ratio) => {
@@ -160,11 +162,19 @@ function HistoryChart({
             </g>
           );
         })}
+        {hoveredX !== null && <line className="chart-hover-line" x1={hoveredX} x2={hoveredX} y1="12" y2={12 + chartHeight} />}
         <text x={left} y={height - 4}>{dateTime(detail.from)}</text>
         <text x={width - 12} y={height - 4} textAnchor="end">{dateTime(detail.to)}</text>
       </svg>
       {hovered && (
-        <div className="history-tooltip">
+        <div
+          className="history-tooltip"
+          style={hoveredX === null || hoveredX < width / 3
+            ? { left: 0 }
+            : hoveredX > width * 2 / 3
+              ? { right: 0 }
+              : { left: `${(hoveredX / width) * 100}%`, transform: 'translateX(-50%)' }}
+        >
           <strong>{dateTime(hovered.start)}〜</strong>
           {hoveredCaptures.length > 0 && <div className="history-tooltip-captures">{hoveredCaptures.map((capture) => <img key={capture.capturedAt} src={capture.imageUrl} alt={`${dateTime(capture.capturedAt)}の配信画面`} />)}</div>}
           <span>合計 {hovered.totalCount}件（コメント {hovered.commentCount} / スタンプ {hovered.stampCount}）</span>
