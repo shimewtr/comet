@@ -31,6 +31,11 @@ const dateMinute = (value: number) =>
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(value);
 
+const timeOnly = (value: number) =>
+  new Intl.DateTimeFormat('ja-JP', {
+    hour: '2-digit', minute: '2-digit',
+  }).format(value);
+
 const eventDate = (from: number, to: number) => {
   const start = dateOnly(from);
   const end = dateOnly(to);
@@ -210,13 +215,11 @@ function PeakList({ peaks, onSelect }: { peaks: HistoryPeak[]; onSelect: (peak: 
         <div className="history-peaks">
           {peaks.map((peak, index) => (
             <button className="history-peak-card" key={peak.start} onClick={() => onSelect(peak)}>
-              {peak.capture && <img src={peak.capture.imageUrl} alt={`${dateTime(peak.capture.capturedAt)}の配信画面`} />}
+              {peak.capture
+                ? <img src={peak.capture.imageUrl} alt={`${dateTime(peak.capture.capturedAt)}の配信画面`} />
+                : <div className="history-peak-placeholder">配信画面なし</div>}
               <div className="history-peak-body">
-                <div className="history-peak-heading"><strong>#{index + 1}</strong><time>{dateTime(peak.start)}</time><b>{peak.totalCount}件/分</b></div>
-                <p>コメント {peak.commentCount}件・スタンプ {peak.stampCount}件</p>
-                {peak.popularStamps.length > 0 && <div className="history-peak-stamps">{peak.popularStamps.map((item) => <span key={item.stamp.id || item.stamp.name}><HistoryStamp stamp={item.stamp} compact /><b>×{item.count}</b></span>)}</div>}
-                {peak.sampleComments.length > 0 && <p className="history-peak-comment">「{peak.sampleComments.at(-1)?.content}」</p>}
-                <small>クリックして周辺の投稿を表示</small>
+                <div className="history-peak-heading"><strong>#{index + 1}</strong><b>{peak.totalCount}件/分</b><time>{timeOnly(peak.start)}</time></div>
               </div>
             </button>
           ))}

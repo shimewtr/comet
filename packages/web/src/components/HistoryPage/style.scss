@@ -123,16 +123,12 @@
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba($color-primary, .22); }
   > img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: $border-width-thin solid $color-border; background: $color-bg-light; }
 }
-.history-peak-body { display: flex; flex-direction: column; padding: $space-md; gap: $space-xs; font-size: $font-sm; }
-.history-peak-heading { display: flex; align-items: center; gap: $space-xs; }
+.history-peak-placeholder { display: grid; width: 100%; aspect-ratio: 16 / 9; place-items: center; border-bottom: $border-width-thin solid $color-border; background: $color-bg-light; color: $color-text-muted; font-size: $font-xs; }
+.history-peak-body { padding: $space-sm $space-md; }
+.history-peak-heading { display: flex; align-items: baseline; gap: $space-sm; }
 .history-peak-heading strong { color: #ed8936; font-size: $font-lg; }
-.history-peak-heading time { flex: 1; color: $color-text-secondary; font-size: $font-xs; }
-.history-peak-heading b { color: $color-primary; }
-.history-peak-body > p { color: $color-text-secondary; }
-.history-peak-body > small { color: $color-text-muted; }
-.history-peak-stamps { display: flex; flex-wrap: wrap; gap: $space-sm; }
-.history-peak-stamps > span { display: inline-flex; align-items: center; gap: 2px; }
-.history-peak-comment { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-peak-heading b { color: $color-primary; font-size: $font-sm; }
+.history-peak-heading time { margin-left: auto; color: $color-text-secondary; font-size: $font-sm; font-variant-numeric: tabular-nums; }
 
 .history-chart-wrap { position: relative; min-height: 300px; }
 .history-chart { display: block; width: 100%; min-height: 230px; cursor: crosshair; color: $color-text-muted; font-size: 11px; }
