@@ -26,6 +26,11 @@ const dateOnly = (value: number) =>
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(value);
 
+const dateMinute = (value: number) =>
+  new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).format(value);
+
 const eventDate = (from: number, to: number) => {
   const start = dateOnly(from);
   const end = dateOnly(to);
@@ -179,16 +184,25 @@ function EventList({ roomId, bucket }: { roomId: string; bucket: HistoryBucket }
     } finally { setLoading(false); }
   }, [roomId, bucket.start, bucket.end]);
   useEffect(() => { void load(); }, [load]);
+  const grouped = [...events.reduce((groups, event) => {
+    const key = event.type === 'comment'
+      ? `comment:${event.comment.content}`
+      : `stamp:${event.stamp.stamp.id || event.stamp.stamp.name}`;
+    const current = groups.get(key);
+    if (current) current.count += 1;
+    else groups.set(key, { event, count: 1 });
+    return groups;
+  }, new Map<string, { event: RoomEvent; count: number }>()).values()];
   return (
-    <SectionBase title={`${dateTime(bucket.start)} 周辺の投稿`} className="history-events">
+    <SectionBase title={`${dateMinute(bucket.start)} 周辺の投稿`} className="history-events">
       {events.length === 0 && !loading && <p className="history-empty">この時間帯に投稿はありません。</p>}
-      {events.map((event) => event.type === 'comment' ? (
-        <div className="history-event" key={`comment-${event.comment.id}`}>
-          <time>{dateTime(event.timestamp)}</time><span className="event-kind comment">コメント</span><p>{event.comment.content}</p>
+      {grouped.map(({ event, count }) => event.type === 'comment' ? (
+        <div className="history-event" key={`comment-${event.comment.content}`}>
+          <span className="event-kind comment">コメント</span><p title={event.comment.content}>{event.comment.content}</p>{count > 1 && <strong className="event-count">× {count}</strong>}
         </div>
       ) : (
-        <div className="history-event" key={`stamp-${event.stamp.id}`}>
-          <time>{dateTime(event.timestamp)}</time><span className="event-kind stamp">スタンプ</span><p><HistoryStamp stamp={event.stamp.stamp} /></p>
+        <div className="history-event" key={`stamp-${event.stamp.stamp.id || event.stamp.stamp.name}`}>
+          <span className="event-kind stamp">スタンプ</span><p><HistoryStamp stamp={event.stamp.stamp} compact /></p>{count > 1 && <strong className="event-count">× {count}</strong>}
         </div>
       ))}
       {cursor && <button className="history-button secondary" disabled={loading} onClick={() => void load(cursor)}>さらに表示</button>}
