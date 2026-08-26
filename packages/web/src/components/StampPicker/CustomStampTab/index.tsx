@@ -57,7 +57,7 @@ export function CustomStampTab({
 
       {loading && <div className="stamp-loading">読み込み中...</div>}
 
-      {!loading && stamps.length === 0 && (
+      {!loading && stamps.length === 0 && !searchQuery && (
         <div className="stamp-no-results">カスタムスタンプがありません</div>
       )}
 
@@ -67,7 +67,7 @@ export function CustomStampTab({
         </div>
       )}
 
-      {!loading && filteredStamps.length > 0 && (
+      {!loading && (
         <div className="stamp-grid custom-stamps">
           {filteredStamps.map((stamp) => (
             <div key={stamp.id} className="stamp-button-wrapper">
