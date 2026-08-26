@@ -67,7 +67,13 @@ CDKで以下の4スタックを管理しています（環境は `--context env=
 - **StampStack**: スタンプ用S3 + CloudFront + DynamoDB（category GSI） + HTTP API + Lambda
 - **WebStack**: WebアプリのCloudFront + S3ホスティング（webビルド成果物のアップロードと`comet-config.json`の生成までデプロイで行う）
 
-ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json`（gitignore対象、`comet.config.example.json` 参照）に置きます。未設定なら「認証なし・CloudFront自動ドメイン」のデフォルト構成になります。
+ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json` に置きます。このファイルはgitignore対象なので、AWSアカウントや組織固有のIdP情報がOSSリポジトリに混ざることはありません。初回はテンプレートをコピーしてください。
+
+```bash
+cp packages/cdk/comet.config.example.json packages/cdk/comet.config.json
+```
+
+コピー後、自分のAWSプロファイルや必要な環境だけを設定します。設定ファイルがない場合は「認証なし・CloudFront自動ドメイン」のデフォルト構成になります。
 
 ### リソース命名規則
 
@@ -89,6 +95,13 @@ scripts/deploy.sh prod         # prodに全デプロイ
 ```
 
 AWSプロファイルは `packages/cdk/comet.config.json` の `envs.<env>.profile`、なければ環境変数 `AWS_PROFILE` が使われます（シェルに別プロジェクトの `AWS_PROFILE` が常設されている環境では、誤アカウントへのデプロイを防ぐためconfigでの指定を推奨）。
+
+通常のアクセスキー形式だけでなく、AWS IAM Identity Center（SSO）や`source_profile`からロールを引き受ける形式のプロファイルも利用できます。SSOプロファイルの場合は、デプロイ前にAWS CLIでログインし、対象アカウントを確認してください。
+
+```bash
+aws sso login --profile <your-sso-profile>
+aws sts get-caller-identity --profile <your-deploy-profile>
+```
 
 内部では各パッケージのビルド → `cdk deploy` を実行しており、WebStackのデプロイでwebのビルド成果物がS3にアップロードされ、CloudFrontのキャッシュ無効化まで行われます（webのビルドは `packages/web/.env.local` の `VITE_WEBSOCKET_URL` を使用）。
 
@@ -135,12 +148,14 @@ pnpm --filter @comet/chrome-extension build
    - リダイレクトURI: `https://<WebのURL>/auth/callback`
    - 取得するもの: **issuer URL** と **client_id**（どちらも秘密情報ではありません）
    - 独自ドメインを使う予定がある場合は先にドメインを設定しておくと、IdPへの再申請が不要になります
+   - CloudFrontの自動ドメインを使う場合は、最初に認証なしでデプロイしてWeb URLを取得し、IdPへリダイレクトURIを登録してから認証を有効化します
 2. **`packages/cdk/comet.config.json` に設定を書く**
 
-   ```jsonc
+   ```json
    {
      "envs": {
        "prod": {
+         "profile": "your-production-aws-profile",
          "auth": {
            "issuer": "https://idp.example.com/oauth2/xxxx",
            "clientId": "your-client-id"
@@ -157,7 +172,9 @@ pnpm --filter @comet/chrome-extension build
 
 - チケット署名鍵がSecrets Managerに自動生成される（利用者が秘密情報を扱う必要はありません）
 - WebSocket `$connect` とスタンプAPIにオーソライザーが装着され、有効なチケットなしではアクセスできなくなる
-- 配信される `/comet-config.json` の `authEnabled` が `true` になり、**webと拡張は同じビルドのまま自動でトークンを付けて接続する**ようになる
+- 配信される `/comet-config.json` の `authEnabled` が `true` になり、webは同じビルドのまま自動でトークンを付けて接続する
+
+Chrome拡張への認証チケット自動連携は未実装です。認証付き環境で拡張を使う場合は、現状はポップアップの「認証チケット」に短命チケットを手動設定する必要があります。
 
 ### 無効化
 
