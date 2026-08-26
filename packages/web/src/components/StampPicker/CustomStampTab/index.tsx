@@ -57,10 +57,6 @@ export function CustomStampTab({
 
       {loading && <div className="stamp-loading">読み込み中...</div>}
 
-      {!loading && stamps.length === 0 && !searchQuery && (
-        <div className="stamp-no-results">カスタムスタンプがありません</div>
-      )}
-
       {!loading && filteredStamps.length === 0 && searchQuery && (
         <div className="stamp-no-results">
           「{searchQuery}」に一致するカスタムスタンプが見つかりません
