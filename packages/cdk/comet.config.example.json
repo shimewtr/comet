@@ -3,11 +3,12 @@
     "dev": {
       "lambdaMemorySize": 256,
       "logRetentionDays": 3,
-      "profile": "your-aws-profile"
+      "profile": "your-development-aws-profile"
     },
     "prod": {
       "lambdaMemorySize": 512,
       "logRetentionDays": 7,
+      "profile": "your-production-aws-profile",
       "domain": {
         "domainName": "comet.example.com",
         "hostedZoneName": "example.com"
