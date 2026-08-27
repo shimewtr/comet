@@ -93,6 +93,27 @@ export class WebStack extends cdk.Stack {
       originAccessIdentity,
     });
 
+    // Chrome拡張（chrome-extension:// origin）からも設定ファイルを取得できるよう、
+    // CloudFront側でOriginの値に依存せずCORSヘッダーを付与する。
+    const runtimeConfigCorsPolicy = new cloudfront.ResponseHeadersPolicy(
+      this,
+      'RuntimeConfigCorsPolicy',
+      {
+        responseHeadersPolicyName: physicalName(
+          this,
+          props.envName,
+          'runtime-config-cors'
+        ),
+        corsBehavior: {
+          accessControlAllowCredentials: false,
+          accessControlAllowHeaders: ['*'],
+          accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
+          accessControlAllowOrigins: ['*'],
+          originOverride: true,
+        },
+      }
+    );
+
     // 認証有効時: OIDC認証+チケット発行を行うLambda@Edgeをviewer-requestに装着する。
     // Lambda@Edgeは環境変数を使えないため、設定はアセットにconfig.jsonとして同梱する
     let edgeLambdas: cloudfront.EdgeLambda[] | undefined;
@@ -191,8 +212,7 @@ export class WebStack extends cdk.Stack {
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          responseHeadersPolicy:
-            cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
+          responseHeadersPolicy: runtimeConfigCorsPolicy,
         },
       },
       defaultRootObject: 'index.html',
