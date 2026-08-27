@@ -57,7 +57,9 @@ interface CometRuntimeConfig {
 async function ensureWebAppPermission(webAppUrl: string): Promise<boolean> {
   const originPattern = `${new URL(webAppUrl).origin}/*`;
   const permissions = { origins: [originPattern] };
-  if (await chrome.permissions.contains(permissions)) return true;
+  // contains()をawaitしてからrequest()を呼ぶと、popupのクリックによる
+  // ユーザージェスチャーが失われ、Chromeの権限ダイアログが完了しない。
+  // request()は既に許可済みの場合もtrueを返すため、直接呼び出す。
   return chrome.permissions.request(permissions);
 }
 
