@@ -1,3 +1,8 @@
 packages:
   - 'packages/*'
   - 'packages/api/*'
+# ネイティブバイナリの配置にインストールスクリプトが必要な依存を明示的に許可する
+# (未指定だと pnpm 11 が ERR_PNPM_IGNORED_BUILDS で install / -r build を失敗させる)
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
