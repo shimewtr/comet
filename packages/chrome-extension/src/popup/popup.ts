@@ -50,6 +50,17 @@ interface CometRuntimeConfig {
   authEnabled: boolean;
 }
 
+/**
+ * 独自ドメインのランタイム設定を取得するため、そのoriginだけの権限を要求する。
+ * permissions.requestはクリックなどのユーザージェスチャー内で呼ぶ必要がある。
+ */
+async function ensureWebAppPermission(webAppUrl: string): Promise<boolean> {
+  const originPattern = `${new URL(webAppUrl).origin}/*`;
+  const permissions = { origins: [originPattern] };
+  if (await chrome.permissions.contains(permissions)) return true;
+  return chrome.permissions.request(permissions);
+}
+
 async function fetchCometConfig(
   webAppUrl: string
 ): Promise<CometRuntimeConfig> {
@@ -212,6 +223,14 @@ async function main() {
 
     fetchConfigButton.disabled = true;
     try {
+      if (!(await ensureWebAppPermission(webAppUrl))) {
+        showSaveMessage(
+          saveMessage,
+          'Webアプリへのアクセスを許可してください',
+          'error'
+        );
+        return;
+      }
       const config = await fetchCometConfig(webAppUrl);
 
       websocketUrl = config.websocketUrl;
@@ -306,6 +325,15 @@ async function main() {
 
     saveSettingsButton.disabled = true;
     try {
+      if (!(await ensureWebAppPermission(webAppUrl))) {
+        showSaveMessage(
+          saveMessage,
+          'Webアプリへのアクセスを許可してください',
+          'error'
+        );
+        saveSettingsButton.disabled = false;
+        return;
+      }
       const config = await fetchCometConfig(webAppUrl);
       websocketUrl = config.websocketUrl;
       historyApiUrl = config.historyApiUrl;

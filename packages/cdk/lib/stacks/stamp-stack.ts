@@ -181,7 +181,9 @@ export class StampStack extends cdk.Stack {
           apigateway.CorsHttpMethod.DELETE,
           apigateway.CorsHttpMethod.OPTIONS,
         ],
-        allowHeaders: ['Content-Type'],
+        // 認証有効時、ブラウザはBearerトークン付きリクエストの前に
+        // Authorizationを申告したOPTIONSプリフライトを送る。
+        allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
 
