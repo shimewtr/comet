@@ -20,14 +20,14 @@ flowchart LR
 
 pnpm workspaceのmonorepoです。
 
-| パッケージ | 内容 |
-|---|---|
-| `packages/shared` | 型定義・定数・バリデーション・`CometSocket`（共通WebSocketクライアント）・`generateId` |
-| `packages/web` | 投稿用Webアプリ（React + Vite） |
-| `packages/chrome-extension` | オーバーレイ描画用Chrome拡張（Manifest V3、docs.google.com上でのみ動作） |
-| `packages/api/websocket-handler` | WebSocket用Lambda（connect / disconnect / message） |
-| `packages/api/stamp-upload` | スタンプAPI用Lambda（一覧・アップロードURL発行・削除） |
-| `packages/cdk` | インフラ定義（AWS CDK、4スタック構成） |
+| パッケージ                       | 内容                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `packages/shared`                | 型定義・定数・バリデーション・`CometSocket`（共通WebSocketクライアント）・`generateId` |
+| `packages/web`                   | 投稿用Webアプリ（React + Vite）                                                        |
+| `packages/chrome-extension`      | オーバーレイ描画用Chrome拡張（Manifest V3、docs.google.com上でのみ動作）               |
+| `packages/api/websocket-handler` | WebSocket用Lambda（connect / disconnect / message）                                    |
+| `packages/api/stamp-upload`      | スタンプAPI用Lambda（一覧・アップロードURL発行・削除）                                 |
+| `packages/cdk`                   | インフラ定義（AWS CDK、4スタック構成）                                                 |
 
 ## 開発環境
 
@@ -144,9 +144,10 @@ pnpm --filter @comet/chrome-extension build
 ### 有効化の手順
 
 1. **IdP側でOIDCアプリを登録する**
-   - アプリ種別: SPA（認可コード + PKCE。client secretは不要）
+   - public clientの場合: SPA（認可コード + PKCE。client secretは不要）
+   - confidential clientの場合: Webアプリ（認可コード + PKCE）。client secretはSecrets Managerへ保存
    - リダイレクトURI: `https://<WebのURL>/auth/callback`
-   - 取得するもの: **issuer URL** と **client_id**（どちらも秘密情報ではありません）
+   - 取得するもの: **issuer URL** と **client_id**（どちらも秘密情報ではありません）。confidential clientではclient secretのSecrets Manager IDも取得します
    - 独自ドメインを使う予定がある場合は先にドメインを設定しておくと、IdPへの再申請が不要になります
    - CloudFrontの自動ドメインを使う場合は、最初に認証なしでデプロイしてWeb URLを取得し、IdPへリダイレクトURIを登録してから認証を有効化します
 2. **`packages/cdk/comet.config.json` に設定を書く**
@@ -158,12 +159,16 @@ pnpm --filter @comet/chrome-extension build
          "profile": "your-production-aws-profile",
          "auth": {
            "issuer": "https://idp.example.com/oauth2/xxxx",
-           "clientId": "your-client-id"
+           "clientId": "your-client-id",
+           "clientSecretId": "optional/oidc/client-secret",
+           "clientSecretMethod": "client_secret_post"
          }
        }
      }
    }
    ```
+
+   `clientSecretMethod`はIdPの設定に合わせて`client_secret_basic`（デフォルト）または`client_secret_post`を指定します。Secrets Managerの値は生のsecret文字列、または`secret` / `client_secret` / `clientSecret`キーを持つJSONを利用できます。
 
 3. **us-east-1のbootstrap（初回のみ）**: Lambda@Edgeはus-east-1にデプロイされるため、認証を有効化する場合のみ `npx cdk bootstrap aws://<accountId>/us-east-1` が必要です
 4. **デプロイ**: `scripts/deploy.sh <env>` — コマンドは認証なしのときと同じです
@@ -174,7 +179,7 @@ pnpm --filter @comet/chrome-extension build
 - WebSocket `$connect` とスタンプAPIにオーソライザーが装着され、有効なチケットなしではアクセスできなくなる
 - 配信される `/comet-config.json` の `authEnabled` が `true` になり、webは同じビルドのまま自動でトークンを付けて接続する
 
-Chrome拡張への認証チケット自動連携は未実装です。認証付き環境で拡張を使う場合は、現状はポップアップの「認証チケット」に短命チケットを手動設定する必要があります。
+Chrome拡張は認証付き環境を検出すると「ログイン」を表示します。認証済みWebページから短命チケットを安全に受け取り、期限前にはWebセッションを使って自動更新します。
 
 ### 無効化
 

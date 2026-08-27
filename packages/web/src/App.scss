@@ -30,8 +30,8 @@
       justify-content: center;
       margin: 0;
       gap: $space-md;
-      font-size: 48px;
       font-weight: $font-bold;
+      font-size: 48px;
       line-height: 1;
       font-family: 'Space Grotesk', sans-serif;
 
@@ -97,6 +97,50 @@
     @media (max-width: $breakpoint-sm) {
       width: 100%;
     }
+  }
+}
+
+.extension-auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.extension-auth-card {
+  width: min(100%, 520px);
+  padding: 28px;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  background: $color-bg-white;
+  box-shadow: $shadow-md;
+  text-align: center;
+
+  h2 {
+    margin: 0 0 $space-md;
+    color: $color-text-primary;
+    font-size: $font-lg;
+  }
+
+  p {
+    margin: 0;
+    color: $color-text-muted;
+    line-height: 1.7;
+  }
+
+  button {
+    margin-top: $space-lg;
+    padding: $space-sm $space-lg;
+    border: 0;
+    border-radius: $radius-md;
+    background: $color-primary;
+    color: $color-bg-white;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  &.error {
+    border-color: $color-error;
   }
 }
 

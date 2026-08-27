@@ -15,7 +15,9 @@
       },
       "auth": {
         "issuer": "https://idp.example.com/oauth2/xxxx",
-        "clientId": "your-oidc-client-id"
+        "clientId": "your-oidc-client-id",
+        "clientSecretId": "optional/oidc/client-secret",
+        "clientSecretMethod": "client_secret_post"
       }
     }
   }

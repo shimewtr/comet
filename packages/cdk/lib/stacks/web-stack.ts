@@ -121,6 +121,11 @@ export class WebStack extends cdk.Stack {
           {
             issuer: props.auth.issuer,
             clientId: props.auth.clientId,
+            clientSecretId: props.auth.clientSecretId,
+            clientSecretRegion:
+              props.auth.clientSecretRegion ?? props.signingSecretRegion,
+            clientSecretMethod:
+              props.auth.clientSecretMethod ?? 'client_secret_basic',
             signingSecretName: props.signingSecretName,
             signingSecretRegion: props.signingSecretRegion,
           },
@@ -146,7 +151,19 @@ export class WebStack extends cdk.Stack {
       edgeFn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [props.signingSecretArnPattern],
+          resources: [
+            props.signingSecretArnPattern,
+            ...(props.auth.clientSecretId
+              ? [
+                  props.auth.clientSecretId.startsWith('arn:')
+                    ? props.auth.clientSecretId
+                    : `arn:${cdk.Aws.PARTITION}:secretsmanager:${
+                        props.auth.clientSecretRegion ??
+                        props.signingSecretRegion
+                      }:${cdk.Aws.ACCOUNT_ID}:secret:${props.auth.clientSecretId}*`,
+                ]
+              : []),
+          ],
         })
       );
 

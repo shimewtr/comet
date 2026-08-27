@@ -66,7 +66,8 @@ jobs:
                 },
                 "auth": {
                   "issuer": "https://idp.example.com/oauth2/default",
-                  "clientId": "dummy-client-id"
+                  "clientId": "dummy-client-id",
+                  "clientSecretId": "dummy/oidc/client-secret"
                 }
               }
             }

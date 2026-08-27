@@ -23,6 +23,9 @@ import {
 interface EdgeConfig {
   issuer: string;
   clientId: string;
+  clientSecretId?: string;
+  clientSecretRegion?: string;
+  clientSecretMethod?: 'client_secret_basic' | 'client_secret_post';
   signingSecretName: string;
   signingSecretRegion: string;
 }
@@ -49,6 +52,7 @@ interface OidcDiscovery {
 
 // コールドスタート間で使い回すキャッシュ
 let cachedSigningKey: Uint8Array | null = null;
+let cachedClientSecret: string | null = null;
 let cachedDiscovery: OidcDiscovery | null = null;
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
@@ -67,6 +71,37 @@ async function getSigningKey(): Promise<Uint8Array> {
   }
   cachedSigningKey = new TextEncoder().encode(result.SecretString);
   return cachedSigningKey;
+}
+
+async function getClientSecret(): Promise<string | null> {
+  if (!config.clientSecretId) {
+    return null;
+  }
+  if (cachedClientSecret) {
+    return cachedClientSecret;
+  }
+  const client = new SecretsManagerClient({
+    region: config.clientSecretRegion ?? config.signingSecretRegion,
+  });
+  const result = await client.send(
+    new GetSecretValueCommand({ SecretId: config.clientSecretId })
+  );
+  if (!result.SecretString) {
+    throw new Error('OIDC client secret is empty');
+  }
+  let clientSecret = result.SecretString;
+  try {
+    const value = JSON.parse(result.SecretString) as Record<string, unknown>;
+    const nestedSecret =
+      value.secret ?? value.client_secret ?? value.clientSecret;
+    if (typeof nestedSecret === 'string') {
+      clientSecret = nestedSecret;
+    }
+  } catch {
+    // JSONでなければSecretString全体をclient secretとして扱う
+  }
+  cachedClientSecret = clientSecret;
+  return cachedClientSecret;
 }
 
 async function getDiscovery(): Promise<OidcDiscovery> {
@@ -127,7 +162,12 @@ function redirect(
       location: [{ key: 'Location', value: location }],
       'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
       ...(setCookies.length > 0
-        ? { 'set-cookie': setCookies.map((value) => ({ key: 'Set-Cookie', value })) }
+        ? {
+            'set-cookie': setCookies.map((value) => ({
+              key: 'Set-Cookie',
+              value,
+            })),
+          }
         : {}),
     },
   };
@@ -144,7 +184,12 @@ function jsonResponse(
       'content-type': [{ key: 'Content-Type', value: 'application/json' }],
       'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
       ...(setCookies.length > 0
-        ? { 'set-cookie': setCookies.map((value) => ({ key: 'Set-Cookie', value })) }
+        ? {
+            'set-cookie': setCookies.map((value) => ({
+              key: 'Set-Cookie',
+              value,
+            })),
+          }
         : {}),
     },
     body: JSON.stringify(body),
@@ -161,17 +206,19 @@ async function startLogin(
   host: string,
   destinationPath: string
 ): Promise<CloudFrontRequestResult> {
-  const discovery = await getDiscovery();
-  const key = await getSigningKey();
+  const [discovery, key] = await Promise.all([getDiscovery(), getSigningKey()]);
 
   const state = base64url(randomBytes(16));
   const nonce = base64url(randomBytes(16));
   const verifier = base64url(randomBytes(32));
-  const challenge = base64url(
-    createHash('sha256').update(verifier).digest()
-  );
+  const challenge = base64url(createHash('sha256').update(verifier).digest());
 
-  const txn = await new SignJWT({ state, nonce, verifier, dest: destinationPath })
+  const txn = await new SignJWT({
+    state,
+    nonce,
+    verifier,
+    dest: destinationPath,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuer(TXN_ISSUER)
     .setExpirationTime(`${TXN_TTL_SECONDS}s`)
@@ -201,7 +248,11 @@ async function handleCallback(
   querystring: string,
   cookies: Record<string, string>
 ): Promise<CloudFrontRequestResult> {
-  const key = await getSigningKey();
+  const [key, discovery, clientSecret] = await Promise.all([
+    getSigningKey(),
+    getDiscovery(),
+    getClientSecret(),
+  ]);
   const query = new URLSearchParams(querystring);
   const code = query.get('code');
   const state = query.get('state');
@@ -228,17 +279,29 @@ async function handleCallback(
   }
 
   // 認可コードをトークンに交換
-  const discovery = await getDiscovery();
+  const tokenParams = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: `https://${host}/auth/callback`,
+    client_id: config.clientId,
+    code_verifier: txn.verifier ?? '',
+  });
+  const tokenHeaders: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+  if (clientSecret) {
+    if (config.clientSecretMethod === 'client_secret_post') {
+      tokenParams.set('client_secret', clientSecret);
+    } else {
+      tokenHeaders.Authorization = `Basic ${Buffer.from(
+        `${encodeURIComponent(config.clientId)}:${encodeURIComponent(clientSecret)}`
+      ).toString('base64')}`;
+    }
+  }
   const tokenResponse = await fetch(discovery.token_endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: `https://${host}/auth/callback`,
-      client_id: config.clientId,
-      code_verifier: txn.verifier ?? '',
-    }),
+    headers: tokenHeaders,
+    body: tokenParams,
   });
 
   if (!tokenResponse.ok) {
@@ -358,7 +421,10 @@ export const handler = async (
       return request;
     }
 
-    return await startLogin(host, `${request.uri}${request.querystring ? `?${request.querystring}` : ''}`);
+    return await startLogin(
+      host,
+      `${request.uri}${request.querystring ? `?${request.querystring}` : ''}`
+    );
   } catch (error) {
     console.error('Edge auth error:', error);
     return jsonResponse(500, { error: 'Authentication error' });

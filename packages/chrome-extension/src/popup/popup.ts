@@ -44,26 +44,45 @@ function hasSameHostname(firstUrl: string, secondUrl: string): boolean {
   }
 }
 
-async function fetchCometConfig(webAppUrl: string): Promise<{ websocketUrl: string; historyApiUrl: string }> {
-  const response = await fetch(`${webAppUrl.replace(/\/+$/, '')}/comet-config.json`, { cache: 'no-store' });
+interface CometRuntimeConfig {
+  websocketUrl: string;
+  historyApiUrl: string;
+  authEnabled: boolean;
+}
+
+async function fetchCometConfig(
+  webAppUrl: string
+): Promise<CometRuntimeConfig> {
+  const response = await fetch(
+    `${webAppUrl.replace(/\/+$/, '')}/comet-config.json`,
+    { cache: 'no-store' }
+  );
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const config = await response.json();
   if (
     typeof config.websocketUrl !== 'string' ||
-    (!config.websocketUrl.startsWith('wss://') && !config.websocketUrl.startsWith('ws://'))
-  ) throw new Error('Invalid WebSocket URL');
+    (!config.websocketUrl.startsWith('wss://') &&
+      !config.websocketUrl.startsWith('ws://'))
+  )
+    throw new Error('Invalid WebSocket URL');
   if (hasSameHostname(config.websocketUrl, webAppUrl)) {
     throw new Error('WebSocket URL points to the web hosting domain');
   }
   return {
     websocketUrl: config.websocketUrl,
-    historyApiUrl: typeof config.historyApiUrl === 'string' ? config.historyApiUrl.replace(/\/+$/, '') : '',
+    historyApiUrl:
+      typeof config.historyApiUrl === 'string'
+        ? config.historyApiUrl.replace(/\/+$/, '')
+        : '',
+    authEnabled: config.authEnabled === true,
   };
 }
 
 async function main() {
   const toggleCheckbox = getElement<HTMLInputElement>('toggle-checkbox');
-  const authTokenInput = getElement<HTMLInputElement>('auth-token');
+  const authPanel = getElement<HTMLDivElement>('auth-panel');
+  const authStatus = getElement<HTMLSpanElement>('auth-status');
+  const startAuthButton = getElement<HTMLButtonElement>('start-auth');
   const roomSelect = getElement<HTMLSelectElement>('room-select');
   const refreshRoomsButton = getElement<HTMLButtonElement>('refresh-rooms');
   const speedScaleInput = getElement<HTMLInputElement>('speed-scale');
@@ -72,13 +91,27 @@ async function main() {
   const fontScaleValue = getElement<HTMLSpanElement>('font-scale-value');
   const displayAreaSelect = getElement<HTMLSelectElement>('display-area');
   const qrEnabledCheckbox = getElement<HTMLInputElement>('qr-enabled');
-  const captureEnabledCheckbox = getElement<HTMLInputElement>('capture-enabled');
+  const captureEnabledCheckbox =
+    getElement<HTMLInputElement>('capture-enabled');
   const webAppUrlInput = getElement<HTMLInputElement>('web-app-url');
   const fetchConfigButton = getElement<HTMLButtonElement>('fetch-config');
   const saveSettingsButton = getElement<HTMLButtonElement>('save-settings');
   const saveMessage = getElement<HTMLDivElement>('save-message');
   let websocketUrl = '';
   let historyApiUrl = '';
+  let authEnabled = false;
+
+  const hasValidToken = (token: string, expiresAt: number) =>
+    Boolean(token) && expiresAt - 60_000 > Date.now();
+
+  const updateAuthUi = (token: string, expiresAt: number) => {
+    authPanel.classList.toggle('hidden', !authEnabled);
+    if (!authEnabled) return;
+    const authenticated = hasValidToken(token, expiresAt);
+    authStatus.textContent = authenticated ? 'ログイン済み' : '未ログイン';
+    authStatus.classList.toggle('authenticated', authenticated);
+    startAuthButton.textContent = authenticated ? '再ログイン' : 'ログイン';
+  };
 
   const loadRooms = async (
     websocketUrl: string,
@@ -182,15 +215,23 @@ async function main() {
       const config = await fetchCometConfig(webAppUrl);
 
       websocketUrl = config.websocketUrl;
-      historyApiUrl = typeof config.historyApiUrl === 'string'
-        ? config.historyApiUrl.replace(/\/+$/, '')
-        : '';
+      historyApiUrl =
+        typeof config.historyApiUrl === 'string'
+          ? config.historyApiUrl.replace(/\/+$/, '')
+          : '';
+      authEnabled = config.authEnabled;
       const settings = await loadSettings();
-      await loadRooms(
-        config.websocketUrl,
-        authTokenInput.value.trim(),
-        settings.roomId
-      );
+      updateAuthUi(settings.authToken, settings.authTokenExpiresAt);
+      if (
+        !authEnabled ||
+        hasValidToken(settings.authToken, settings.authTokenExpiresAt)
+      ) {
+        await loadRooms(
+          config.websocketUrl,
+          settings.authToken,
+          settings.roomId
+        );
+      }
       showSaveMessage(
         saveMessage,
         '接続設定を取得しました。「保存」で確定してください',
@@ -209,11 +250,40 @@ async function main() {
   });
 
   refreshRoomsButton.addEventListener('click', async () => {
+    const settings = await loadSettings();
+    if (
+      authEnabled &&
+      !hasValidToken(settings.authToken, settings.authTokenExpiresAt)
+    ) {
+      showSaveMessage(saveMessage, '先にログインしてください', 'error');
+      return;
+    }
     await loadRooms(
       websocketUrl,
-      authTokenInput.value.trim(),
+      settings.authToken,
       roomSelect.value || GLOBAL_ROOM.id
     );
+  });
+
+  startAuthButton.addEventListener('click', async () => {
+    const webAppUrl = webAppUrlInput.value.trim().replace(/\/+$/, '');
+    if (!webAppUrl) {
+      showSaveMessage(
+        saveMessage,
+        '先にWebアプリURLを保存してください',
+        'error'
+      );
+      return;
+    }
+    await chrome.storage.sync.set({ webAppUrl });
+    const response = await chrome.runtime.sendMessage({ type: 'START_AUTH' });
+    if (!response?.success) {
+      showSaveMessage(
+        saveMessage,
+        response?.error ?? 'ログインを開始できませんでした',
+        'error'
+      );
+    }
   });
 
   // 設定を保存（content scriptはstorage.onChangedで即時反映する）
@@ -225,10 +295,7 @@ async function main() {
       return;
     }
 
-    if (
-      !webAppUrl.startsWith('https://') &&
-      !webAppUrl.startsWith('http://')
-    ) {
+    if (!webAppUrl.startsWith('https://') && !webAppUrl.startsWith('http://')) {
       showSaveMessage(
         saveMessage,
         'WebアプリURLは https:// で始まる必要があります',
@@ -242,9 +309,14 @@ async function main() {
       const config = await fetchCometConfig(webAppUrl);
       websocketUrl = config.websocketUrl;
       historyApiUrl = config.historyApiUrl;
+      authEnabled = config.authEnabled;
     } catch (error) {
       console.error('Failed to fetch connection settings:', error);
-      showSaveMessage(saveMessage, '接続設定の取得に失敗しました。WebアプリURLを確認してください', 'error');
+      showSaveMessage(
+        saveMessage,
+        '接続設定の取得に失敗しました。WebアプリURLを確認してください',
+        'error'
+      );
       saveSettingsButton.disabled = false;
       return;
     }
@@ -259,14 +331,24 @@ async function main() {
     }
 
     if (captureEnabledCheckbox.checked && !historyApiUrl) {
-      showSaveMessage(saveMessage, 'このWebアプリには履歴APIが設定されていません', 'error');
+      showSaveMessage(
+        saveMessage,
+        'このWebアプリには履歴APIが設定されていません',
+        'error'
+      );
       saveSettingsButton.disabled = false;
       return;
     }
 
+    const previousSettings = await loadSettings();
+    if (
+      previousSettings.webAppUrl &&
+      previousSettings.webAppUrl !== webAppUrl
+    ) {
+      await chrome.storage.local.remove(['authToken', 'authTokenExpiresAt']);
+    }
     await chrome.storage.sync.set({
       websocketUrl,
-      authToken: authTokenInput.value.trim(),
       roomId: roomSelect.value || GLOBAL_ROOM.id,
       speedScale: Number(speedScaleInput.value) || DEFAULT_SETTINGS.speedScale,
       fontScale: Number(fontScaleInput.value) || DEFAULT_SETTINGS.fontScale,
@@ -276,8 +358,21 @@ async function main() {
       historyApiUrl,
       captureEnabled: captureEnabledCheckbox.checked,
     });
+    await chrome.storage.sync.remove(['authToken', 'authTokenExpiresAt']);
 
-    showSaveMessage(saveMessage, '設定を保存しました！', 'success');
+    const latestSettings = await loadSettings();
+    updateAuthUi(latestSettings.authToken, latestSettings.authTokenExpiresAt);
+    showSaveMessage(
+      saveMessage,
+      authEnabled &&
+        !hasValidToken(
+          latestSettings.authToken,
+          latestSettings.authTokenExpiresAt
+        )
+        ? '設定を保存しました。ログインしてください'
+        : '設定を保存しました！',
+      'success'
+    );
     saveSettingsButton.disabled = false;
   });
 
@@ -288,7 +383,6 @@ async function main() {
   const settings = await loadSettings();
   websocketUrl = settings.websocketUrl;
   historyApiUrl = settings.historyApiUrl;
-  authTokenInput.value = settings.authToken;
   speedScaleInput.value = String(settings.speedScale);
   fontScaleInput.value = String(settings.fontScale);
   displayAreaSelect.value = settings.displayArea;
@@ -298,17 +392,27 @@ async function main() {
   roomSelect.innerHTML = `<option value="global">${GLOBAL_ROOM.name}</option>`;
   roomSelect.value = settings.roomId;
   updateScaleLabels();
-  if (!historyApiUrl && settings.webAppUrl) {
+  if (settings.webAppUrl) {
     try {
       const config = await fetchCometConfig(settings.webAppUrl);
       websocketUrl = config.websocketUrl;
       historyApiUrl = config.historyApiUrl;
-      await chrome.storage.sync.set({ historyApiUrl, websocketUrl: config.websocketUrl });
+      authEnabled = config.authEnabled;
+      await chrome.storage.sync.set({
+        historyApiUrl,
+        websocketUrl: config.websocketUrl,
+      });
     } catch (error) {
       console.warn('Comet popup: Failed to initialize runtime config:', error);
     }
   }
-  await loadRooms(websocketUrl, settings.authToken, settings.roomId);
+  updateAuthUi(settings.authToken, settings.authTokenExpiresAt);
+  if (
+    !authEnabled ||
+    hasValidToken(settings.authToken, settings.authTokenExpiresAt)
+  ) {
+    await loadRooms(websocketUrl, settings.authToken, settings.roomId);
+  }
 }
 
 main().catch((error) => {
