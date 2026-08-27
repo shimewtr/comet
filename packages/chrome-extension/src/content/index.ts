@@ -53,51 +53,88 @@ function slideFingerprint(): string {
     '[aria-label*="Slide"]',
     '[aria-label*="スライド"]',
   ];
-  const slide = candidates.map((selector) => document.querySelector<HTMLElement>(selector)).find(Boolean);
+  const slide = candidates
+    .map((selector) => document.querySelector<HTMLElement>(selector))
+    .find(Boolean);
   return `${location.href}|${slide?.getAttribute('aria-label') ?? ''}|${slide?.textContent?.trim().slice(0, 500) ?? ''}`;
 }
 
-async function claimRecorder(settings: CometSettings, roomId: string, deviceId: string): Promise<boolean> {
-  const response = await fetch(`${settings.historyApiUrl}/rooms/${encodeURIComponent(roomId)}/recorder`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ deviceId }),
-  });
+async function claimRecorder(
+  settings: CometSettings,
+  roomId: string,
+  deviceId: string
+): Promise<boolean> {
+  const response = await fetch(
+    `${settings.historyApiUrl}/rooms/${encodeURIComponent(roomId)}/recorder`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId }),
+    }
+  );
   return response.ok;
 }
 
 async function captureSlide(force = false): Promise<void> {
   const settings = currentSettings;
   const roomId = joinedRoomId;
-  if (captureInProgress || !settings?.captureEnabled || !settings.historyApiUrl || !roomId || roomId === GLOBAL_ROOM_ID) return;
+  if (
+    captureInProgress ||
+    !settings?.captureEnabled ||
+    !settings.historyApiUrl ||
+    !roomId ||
+    roomId === GLOBAL_ROOM_ID
+  )
+    return;
   const fingerprint = slideFingerprint();
   if (!force && fingerprint === lastCaptureFingerprint) return;
   captureInProgress = true;
   try {
     const deviceId = await getDeviceId();
-    if (!await claimRecorder(settings, roomId, deviceId)) {
+    if (!(await claimRecorder(settings, roomId, deviceId))) {
       console.info('Comet: Another presenter is recording this Room.');
       return;
     }
-    const overlays = ['comet-comment-container', 'comet-stamp-container', 'comet-qr-container']
+    const overlays = [
+      'comet-comment-container',
+      'comet-stamp-container',
+      'comet-qr-container',
+    ]
       .map((id) => document.getElementById(id))
       .filter((element): element is HTMLElement => Boolean(element));
     const visibility = overlays.map((element) => element.style.visibility);
-    overlays.forEach((element) => { element.style.visibility = 'hidden'; });
+    overlays.forEach((element) => {
+      element.style.visibility = 'hidden';
+    });
     let result: { success: boolean; dataUrl?: string; error?: string };
     try {
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      result = await chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' });
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      );
+      result = await chrome.runtime.sendMessage({
+        type: 'CAPTURE_VISIBLE_TAB',
+      });
     } finally {
-      overlays.forEach((element, index) => { element.style.visibility = visibility[index]; });
+      overlays.forEach((element, index) => {
+        element.style.visibility = visibility[index];
+      });
     }
-    if (!result.success || !result.dataUrl) throw new Error(result.error ?? 'Capture failed');
-    const response = await fetch(`${settings.historyApiUrl}/rooms/${encodeURIComponent(roomId)}/captures`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ deviceId, dataUrl: result.dataUrl, capturedAt: Date.now() }),
-    });
-    if (!response.ok) throw new Error(`Capture upload failed: HTTP ${response.status}`);
+    if (!result.success || !result.dataUrl)
+      throw new Error(result.error ?? 'Capture failed');
+    const response = await fetch(
+      `${settings.historyApiUrl}/rooms/${encodeURIComponent(roomId)}/captures`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          deviceId,
+          dataUrl: result.dataUrl,
+          capturedAt: Date.now(),
+        }),
+      }
+    );
+    if (!response.ok)
+      throw new Error(`Capture upload failed: HTTP ${response.status}`);
     lastCaptureFingerprint = fingerprint;
   } catch (error) {
     console.warn('Comet: Failed to record the slide:', error);
@@ -113,14 +150,26 @@ function configureCapture(): void {
   captureTimer = null;
   captureDebounceTimer = null;
   captureObserver = null;
-  if (!currentSettings?.captureEnabled || !currentSettings.historyApiUrl || !joinedRoomId || joinedRoomId === GLOBAL_ROOM_ID) return;
+  if (
+    !currentSettings?.captureEnabled ||
+    !currentSettings.historyApiUrl ||
+    !joinedRoomId ||
+    joinedRoomId === GLOBAL_ROOM_ID
+  )
+    return;
 
   const schedule = () => {
-    if (captureDebounceTimer !== null) window.clearTimeout(captureDebounceTimer);
+    if (captureDebounceTimer !== null)
+      window.clearTimeout(captureDebounceTimer);
     captureDebounceTimer = window.setTimeout(() => void captureSlide(), 800);
   };
   captureObserver = new MutationObserver(schedule);
-  captureObserver.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  captureObserver.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true,
+  });
   captureTimer = window.setInterval(() => void captureSlide(true), 60_000);
   void captureSlide(true);
 }
@@ -286,7 +335,7 @@ function cleanup() {
  * popupでの設定変更をリロードなしで反映する
  */
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'sync') {
+  if (area !== 'sync' && area !== 'local') {
     return;
   }
 

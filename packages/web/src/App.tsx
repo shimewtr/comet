@@ -8,6 +8,7 @@ import { RoomSelector } from './components/RoomSelector';
 import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
 import { HistoryPage } from './components/HistoryPage';
+import { ExtensionAuthPage } from './components/ExtensionAuthPage';
 
 function LiveApp() {
   const {
@@ -107,6 +108,23 @@ function LiveApp() {
 }
 
 function App() {
+  if (window.location.pathname === '/auth/extension') {
+    return (
+      <div className="app">
+        <header className="app-header compact-header">
+          <span className="app-title">
+            <img
+              className="comet-icon"
+              src="/comet-icon.png"
+              alt="Comet Icon"
+            />
+            Comet
+          </span>
+        </header>
+        <ExtensionAuthPage />
+      </div>
+    );
+  }
   if (!window.location.pathname.startsWith('/history')) return <LiveApp />;
   return (
     <div className="app">

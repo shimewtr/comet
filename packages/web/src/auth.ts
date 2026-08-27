@@ -27,18 +27,19 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
 
 let cachedTicket: { token: string; expiresAt: number } | null = null;
 
-/**
- * 認証チケットを取得する（認証が無効ならnull）。
- * チケットはエッジの /auth/token が発行し、期限が近づくまでキャッシュする
- */
-export async function getAuthToken(): Promise<string | null> {
+export interface AuthTicket {
+  token: string;
+  expiresAt: number;
+}
+
+export async function getAuthTicket(): Promise<AuthTicket | null> {
   const config = await loadRuntimeConfig();
   if (!config.authEnabled) {
     return null;
   }
 
   if (cachedTicket && cachedTicket.expiresAt - 60_000 > Date.now()) {
-    return cachedTicket.token;
+    return cachedTicket;
   }
 
   try {
@@ -48,15 +49,24 @@ export async function getAuthToken(): Promise<string | null> {
       return null;
     }
     const data = await response.json();
+    if (typeof data.token !== 'string') return null;
     cachedTicket = {
       token: data.token,
       expiresAt: data.expiresAt ?? Date.now() + 5 * 60_000,
     };
-    return cachedTicket.token;
+    return cachedTicket;
   } catch (error) {
     console.error('Failed to get auth token:', error);
     return null;
   }
+}
+
+/**
+ * 認証チケットを取得する（認証が無効ならnull）。
+ * チケットはエッジの /auth/token が発行し、期限が近づくまでキャッシュする
+ */
+export async function getAuthToken(): Promise<string | null> {
+  return (await getAuthTicket())?.token ?? null;
 }
 
 /**

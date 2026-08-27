@@ -20,6 +20,8 @@ export interface CometSettings {
   captureEnabled: boolean;
   /** 認証チケット（認証を有効化した構成でのみ使用。通常は空でよい） */
   authToken: string;
+  /** 認証チケットの有効期限（Unix epoch milliseconds） */
+  authTokenExpiresAt: number;
   /** 表示対象room */
   roomId: string;
 }
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: CometSettings = {
   historyApiUrl: '',
   captureEnabled: false,
   authToken: '',
+  authTokenExpiresAt: 0,
   roomId: 'global',
 };
 
@@ -41,6 +44,21 @@ export const DEFAULT_SETTINGS: CometSettings = {
  * 設定を読み込む（未保存の項目はデフォルト値で埋める）
  */
 export async function loadSettings(): Promise<CometSettings> {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  return { ...DEFAULT_SETTINGS, ...stored } as CometSettings;
+  const [stored, localAuth] = await Promise.all([
+    chrome.storage.sync.get(DEFAULT_SETTINGS),
+    chrome.storage.local.get(['authToken', 'authTokenExpiresAt']),
+  ]);
+  const settings = { ...DEFAULT_SETTINGS, ...stored } as CometSettings;
+  settings.authToken =
+    typeof localAuth.authToken === 'string'
+      ? localAuth.authToken
+      : settings.authToken;
+  settings.authTokenExpiresAt =
+    typeof localAuth.authTokenExpiresAt === 'number'
+      ? localAuth.authTokenExpiresAt
+      : settings.authTokenExpiresAt;
+  if (settings.authTokenExpiresAt <= Date.now()) {
+    settings.authToken = '';
+  }
+  return settings;
 }

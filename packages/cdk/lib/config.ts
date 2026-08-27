@@ -25,8 +25,17 @@ export interface DomainConfig {
 export interface AuthConfig {
   /** OIDCのissuer URL */
   issuer: string;
-  /** OIDCクライアントID（PKCEのpublic clientなので秘密情報ではない） */
+  /** OIDCクライアントID（秘密情報ではない） */
   clientId: string;
+  /**
+   * confidential clientで使うSecrets ManagerのシークレットID（任意）。
+   * 未指定なら従来どおりPKCE public clientとしてコード交換する。
+   */
+  clientSecretId?: string;
+  /** client secretを保存したリージョン（未指定ならデプロイ先リージョン） */
+  clientSecretRegion?: string;
+  /** token endpointで使うclient認証方式（デフォルト: client_secret_basic） */
+  clientSecretMethod?: 'client_secret_basic' | 'client_secret_post';
 }
 
 /**

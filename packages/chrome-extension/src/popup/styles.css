@@ -238,6 +238,35 @@ input[type='range'] {
   line-height: 1.5;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-light);
+}
+
+.auth-status {
+  color: var(--color-error);
+  font-size: 11px;
+}
+
+.auth-status.authenticated {
+  color: var(--color-primary-dark);
+}
+
+.button-auth {
+  border-color: var(--color-primary);
+  background: var(--color-bg-white);
+  color: var(--color-primary-dark);
+}
+
 /* ボタン */
 .button {
   display: inline-block;

@@ -47,28 +47,33 @@ flowchart LR
   "envs": {
     "dev": {
       "lambdaMemorySize": 256,
-      "logRetentionDays": 3
+      "logRetentionDays": 3,
     },
     "prod": {
       "lambdaMemorySize": 512,
       "logRetentionDays": 7,
-      "domain": {                        // 任意。なければCloudFrontの自動ドメイン
+      "domain": {
+        // 任意。なければCloudFrontの自動ドメイン
         "domainName": "comet.example.com",
-        "hostedZoneName": "example.com"  // Route 53管理の場合。証明書発行〜DNSレコードまで自動
+        "hostedZoneName": "example.com", // Route 53管理の場合。証明書発行〜DNSレコードまで自動
         // "certificateArn": "arn:..."   // Route 53以外でDNS管理する場合はus-east-1の証明書ARNを直接指定
       },
-      "auth": {                          // 任意。なければ認証なしの公開構成
+      "auth": {
+        // 任意。なければ認証なしの公開構成
         "issuer": "https://idp.example.com/oauth2/xxxx",
-        "clientId": "xxxxx"
-      }
-    }
-  }
+        "clientId": "xxxxx",
+        "clientSecretId": "optional/oidc/client-secret", // confidential clientのみ
+        "clientSecretMethod": "client_secret_post",
+      },
+    },
+  },
 }
 ```
 
 - ファイルがなければ従来のデフォルト値で動く（OSS利用者は何も書かずに `cdk deploy` できる）
 - `domain` / `auth` は独立に指定可能。**デプロイコマンドはどのモードでも同じ**
-- `auth.clientId` はPKCEのpublic clientなので秘密情報ではない。チケット署名鍵はデプロイ時にSecrets Managerで自動生成し、利用者が秘密を扱う場面を作らない
+- `auth.clientId` は秘密情報ではない。public clientはPKCEだけで交換し、`clientSecretId`を指定したconfidential clientはSecrets Managerからsecretを読み込む
+- チケット署名鍵はデプロイ時にSecrets Managerで自動生成する
 
 ### クライアントの自動追従
 
@@ -103,7 +108,7 @@ webの配信物に含まれる `/comet-config.json` はCDK（BucketDeployment）
 - クライアント:
   - `CometSocket` に `tokenProvider` オプション（接続時にトークンをクエリ付与）
   - webは `authEnabled` 時に `/auth/token` からチケットを取得してWS/APIに添付
-  - 拡張はpopupのトークン欄（Step 3で web→拡張の自動連携に置き換え予定）
+  - 拡張は認証済みWebページから短命チケットを受け取り、端末ローカルへ保存する
 
 ### Step 3: Lambda@Edge OIDC認証 — ✅ 実装済み（実IdPでのE2Eは未検証）
 
@@ -115,7 +120,7 @@ webの配信物に含まれる `/comet-config.json` はCDK（BucketDeployment）
   - redirect_uriはHostヘッダーから動的に組み立てる（ドメイン変更でEdgeの再ビルド不要）
 - 設定（issuer/clientId/署名鍵名）はEdgeが環境変数を使えないため、CDKがsynth時に`config.json`としてアセットに同梱する
 - `/comet-config.json` のビヘイビアにはEdgeを付けない（拡張が未認証で接続設定を取得できるように）
-- **拡張との連携（未実装・次フェーズ）**: manifestの `externally_connectable` でwebのオリジンを許可し、認証済みのwebページから `chrome.runtime.sendMessage` でチケットを拡張に渡す。現状はpopupのチケット欄に手動設定
+- **拡張との連携**: manifestの `externally_connectable` を使い、認証済みのwebページから `chrome.runtime.sendMessage` でチケットを拡張に渡す。拡張は送信元を保存済みWebアプリのoriginと照合し、期限前に認証ページを開いて自動更新する
 
 ### Step 4（任意）: 運用強化
 
@@ -141,4 +146,4 @@ npx cdk deploy --all --context env=dev --profile <your-profile>
 
 - 認証OFF構成（OSSデフォルト）はこれまで通り「URLを知っていれば投稿できる」。防御はサーバ側バリデーション・レート制御・画像URL許可リストのみ
 - チケットはHS256の共有鍵方式。Edgeとオーソライザーだけが鍵にアクセスできる。将来的に非対称鍵（公開鍵検証）への移行も可能な構造にする
-- `auth.clientId`・issuerは秘密情報ではないが、デプロイ先固有の値なのでリポジトリには含めない（configファイルで管理）
+- `auth.clientId`・issuer・`clientSecretId`はデプロイ先固有の値なのでリポジトリには含めない（gitignore対象のconfigファイルで管理）。client secret本体はSecrets Managerだけに保存する
