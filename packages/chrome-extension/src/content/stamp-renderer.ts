@@ -25,14 +25,30 @@ interface ComboState {
 }
 
 /**
+ * ユーザーが調整できるスタンプ表示設定
+ */
+export interface StampDisplaySettings {
+  /** スタンプ表示サイズの倍率（コメント文字サイズと共通の設定値） */
+  sizeScale: number;
+}
+
+/**
  * スタンプ表示を管理するクラス
  */
 export class StampRenderer extends OverlayRenderer {
   /** スタンプごとの連打コンボ状態 */
   private comboStates = new Map<string, ComboState>();
+  private displaySettings: StampDisplaySettings = { sizeScale: 1 };
 
   constructor() {
     super('comet-stamp-container', 999998);
+  }
+
+  /**
+   * 表示設定を更新する（以降に表示されるスタンプから反映される）
+   */
+  updateDisplaySettings(settings: StampDisplaySettings): void {
+    this.displaySettings = settings;
   }
 
   /**
@@ -87,7 +103,7 @@ export class StampRenderer extends OverlayRenderer {
     // コンボ段階（×5=1, ×10=2, ×15=3, ×20以上=4）でサイズを決める
     const tier =
       Math.min(comboCount, BURST_MAX_COMBO) / COMBO_BURST_EVERY;
-    const size = BURST_BASE_SIZE + (tier - 1) * BURST_SIZE_STEP;
+    const size = this.scaleSize(BURST_BASE_SIZE + (tier - 1) * BURST_SIZE_STEP);
 
     // 中央付近にランダム配置
     const x = containerWidth * (0.3 + Math.random() * 0.4);
@@ -151,7 +167,9 @@ export class StampRenderer extends OverlayRenderer {
         user-select: none;
         z-index: 999998;
       `;
-      particle.appendChild(this.createStampFace(stamp, PARTICLE_SIZE));
+      particle.appendChild(
+        this.createStampFace(stamp, this.scaleSize(PARTICLE_SIZE))
+      );
 
       this.addElement(particle, PARTICLE_DURATION + 100);
 
@@ -208,8 +226,10 @@ export class StampRenderer extends OverlayRenderer {
     const element = document.createElement('div');
     element.className = 'comet-stamp';
 
+    const size = this.scaleSize(DEFAULT_STAMP_SIZE);
+
     // 位置を設定（指定がない場合はランダム）
-    const position = stampMessage.position || this.getRandomPosition();
+    const position = stampMessage.position || this.getRandomPosition(size);
 
     element.style.cssText = `
       position: absolute;
@@ -223,9 +243,7 @@ export class StampRenderer extends OverlayRenderer {
       filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
     `;
 
-    element.appendChild(
-      this.createStampFace(stampMessage.stamp, DEFAULT_STAMP_SIZE)
-    );
+    element.appendChild(this.createStampFace(stampMessage.stamp, size));
 
     return element;
   }
@@ -245,22 +263,31 @@ export class StampRenderer extends OverlayRenderer {
   }
 
   /**
-   * ランダムな表示位置を取得
+   * 表示サイズ倍率を適用したピクセルサイズを返す
    */
-  private getRandomPosition(): { x: number; y: number } {
+  private scaleSize(size: number): number {
+    return Math.round(size * this.displaySettings.sizeScale);
+  }
+
+  /**
+   * ランダムな表示位置を取得
+   * @param stampSize 表示するスタンプの一辺（倍率適用後）
+   */
+  private getRandomPosition(stampSize: number): { x: number; y: number } {
     const containerWidth = this.container.clientWidth;
     const containerHeight = this.container.clientHeight;
 
     // 画面端から少し内側に表示
     const margin = 100;
 
+    // 倍率を上げるとスタンプが表示領域より大きくなりうるのでマイナス幅は切り捨てる
     return {
       x:
         margin +
-        Math.random() * (containerWidth - margin * 2 - DEFAULT_STAMP_SIZE),
+        Math.random() * Math.max(0, containerWidth - margin * 2 - stampSize),
       y:
         margin +
-        Math.random() * (containerHeight - margin * 2 - DEFAULT_STAMP_SIZE),
+        Math.random() * Math.max(0, containerHeight - margin * 2 - stampSize),
     };
   }
 }

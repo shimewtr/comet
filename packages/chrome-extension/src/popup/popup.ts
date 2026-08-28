@@ -102,6 +102,12 @@ async function main() {
   const speedScaleValue = getElement<HTMLSpanElement>('speed-scale-value');
   const fontScaleInput = getElement<HTMLInputElement>('font-scale');
   const fontScaleValue = getElement<HTMLSpanElement>('font-scale-value');
+  const commentOpacityInput = getElement<HTMLInputElement>('comment-opacity');
+  const commentOpacityValue = getElement<HTMLSpanElement>(
+    'comment-opacity-value'
+  );
+  const stampOpacityInput = getElement<HTMLInputElement>('stamp-opacity');
+  const stampOpacityValue = getElement<HTMLSpanElement>('stamp-opacity-value');
   const displayAreaSelect = getElement<HTMLSelectElement>('display-area');
   const qrEnabledCheckbox = getElement<HTMLInputElement>('qr-enabled');
   const captureEnabledCheckbox =
@@ -176,12 +182,17 @@ async function main() {
   };
 
   // スライダーの現在値表示
-  const updateScaleLabels = () => {
+  const toPercent = (value: string) => String(Math.round(Number(value) * 100));
+  const updateRangeLabels = () => {
     speedScaleValue.textContent = Number(speedScaleInput.value).toFixed(1);
     fontScaleValue.textContent = Number(fontScaleInput.value).toFixed(1);
+    commentOpacityValue.textContent = toPercent(commentOpacityInput.value);
+    stampOpacityValue.textContent = toPercent(stampOpacityInput.value);
   };
-  speedScaleInput.addEventListener('input', updateScaleLabels);
-  fontScaleInput.addEventListener('input', updateScaleLabels);
+  speedScaleInput.addEventListener('input', updateRangeLabels);
+  fontScaleInput.addEventListener('input', updateRangeLabels);
+  commentOpacityInput.addEventListener('input', updateRangeLabels);
+  stampOpacityInput.addEventListener('input', updateRangeLabels);
 
   // 表示切り替え
   toggleCheckbox.addEventListener('change', async () => {
@@ -382,6 +393,10 @@ async function main() {
       roomId: roomSelect.value || GLOBAL_ROOM.id,
       speedScale: Number(speedScaleInput.value) || DEFAULT_SETTINGS.speedScale,
       fontScale: Number(fontScaleInput.value) || DEFAULT_SETTINGS.fontScale,
+      commentOpacity:
+        Number(commentOpacityInput.value) || DEFAULT_SETTINGS.commentOpacity,
+      stampOpacity:
+        Number(stampOpacityInput.value) || DEFAULT_SETTINGS.stampOpacity,
       displayArea: displayAreaSelect.value,
       qrEnabled: qrEnabledCheckbox.checked,
       webAppUrl,
@@ -415,13 +430,15 @@ async function main() {
   historyApiUrl = settings.historyApiUrl;
   speedScaleInput.value = String(settings.speedScale);
   fontScaleInput.value = String(settings.fontScale);
+  commentOpacityInput.value = String(settings.commentOpacity);
+  stampOpacityInput.value = String(settings.stampOpacity);
   displayAreaSelect.value = settings.displayArea;
   qrEnabledCheckbox.checked = settings.qrEnabled;
   captureEnabledCheckbox.checked = settings.captureEnabled;
   webAppUrlInput.value = settings.webAppUrl;
   roomSelect.innerHTML = `<option value="global">${GLOBAL_ROOM.name}</option>`;
   roomSelect.value = settings.roomId;
-  updateScaleLabels();
+  updateRangeLabels();
   if (settings.webAppUrl) {
     try {
       const config = await fetchCometConfig(settings.webAppUrl);

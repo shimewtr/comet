@@ -273,6 +273,11 @@ function applySettings(settings: CometSettings): void {
     fontScale: settings.fontScale,
     displayArea: settings.displayArea,
   });
+  commentRenderer?.setOpacity(settings.commentOpacity);
+
+  // サイズ倍率はコメント文字とスタンプで共通の設定値を使う
+  stampRenderer?.updateDisplaySettings({ sizeScale: settings.fontScale });
+  stampRenderer?.setOpacity(settings.stampOpacity);
 
   // JOIN_ROOM成功後の確定RoomだけをQRコードと記録対象に反映する
   updateQr(joinedRoomId);
