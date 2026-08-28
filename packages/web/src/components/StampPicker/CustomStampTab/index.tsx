@@ -35,24 +35,37 @@ export function CustomStampTab({
   return (
     <>
       <div className="stamp-search">
-        <input
-          type="text"
-          className="stamp-search-input"
-          placeholder="カスタムスタンプを検索..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          disabled={disabled}
-        />
-        {searchQuery && (
-          <button
-            className="stamp-search-clear"
-            onClick={() => onSearchChange('')}
+        <div className="stamp-search-field">
+          <input
+            type="text"
+            className="stamp-search-input"
+            placeholder="カスタムスタンプを検索..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
             disabled={disabled}
-            aria-label="検索クリア"
-          >
-            ×
-          </button>
-        )}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="stamp-search-clear"
+              onClick={() => onSearchChange('')}
+              disabled={disabled}
+              aria-label="検索クリア"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          className="stamp-add-button"
+          onClick={onOpenUploadDialog}
+          disabled={disabled}
+          title="スタンプを追加"
+          aria-label="スタンプを追加"
+        >
+          +
+        </button>
       </div>
 
       {loading && <div className="stamp-loading">読み込み中...</div>}
@@ -91,14 +104,6 @@ export function CustomStampTab({
               </button>
             </div>
           ))}
-          <button
-            className="stamp-button add-stamp-button"
-            onClick={onOpenUploadDialog}
-            disabled={disabled}
-            title="スタンプを追加"
-          >
-            <span className="add-icon">+</span>
-          </button>
         </div>
       )}
     </>

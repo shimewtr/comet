@@ -18,9 +18,8 @@ import {
   GLOBAL_ROOM,
   GLOBAL_ROOM_ID,
 } from '@comet/shared';
-import { getAuthToken } from '../auth';
+import { getAuthToken, loadRuntimeConfig } from '../auth';
 
-const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 const MAX_COMMENT_HISTORY = 100;
 
 function roomIdFromUrl(): string {
@@ -43,17 +42,33 @@ export function useWebSocket() {
   const [commentHistory, setCommentHistory] = useState<Comment[]>([]);
   const [rooms, setRooms] = useState<Room[]>([GLOBAL_ROOM]);
   const [currentRoom, setCurrentRoom] = useState<Room>(GLOBAL_ROOM);
+  const [websocketUrl, setWebsocketUrl] = useState<string | null>(null);
   const socketRef = useRef<CometSocket | null>(null);
   const joinedRoomIdRef = useRef<string | null>(null);
   const requestedRoomIdRef = useRef(roomIdFromUrl());
 
   useEffect(() => {
-    if (!WEBSOCKET_URL) {
+    let active = true;
+    loadRuntimeConfig().then((config) => {
+      if (active) {
+        setWebsocketUrl(
+          config.websocketUrl || import.meta.env.VITE_WEBSOCKET_URL || ''
+        );
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (websocketUrl === null) return;
+    if (!websocketUrl) {
       setError('WebSocket URL is not configured');
       return;
     }
 
-    const socket = new CometSocket(WEBSOCKET_URL, {
+    const socket = new CometSocket(websocketUrl, {
       tokenProvider: getAuthToken,
       onStatusChange: (status) => {
         setIsConnected(status === 'open');
@@ -153,12 +168,13 @@ export function useWebSocket() {
       .connect()
       .catch((err) => console.error('Failed to connect WebSocket:', err));
     socketRef.current = socket;
+
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [websocketUrl]);
 
   const joinRoom = useCallback(async (roomId: string) => {
     const socket = socketRef.current;

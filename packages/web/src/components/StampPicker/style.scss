@@ -46,9 +46,17 @@
 
 /* 検索フィールド */
 .stamp-search {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
   padding: 15px 10px;
   background-color: $color-bg-white;
+}
+
+.stamp-search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .stamp-search-input {
@@ -105,6 +113,37 @@
 }
 
 .stamp-search-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stamp-add-button {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: $color-text-light;
+  font-size: $font-xl;
+  line-height: 1;
+  background-color: $color-bg-light;
+  border: $border-width dashed $color-border-light;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: all $transition-base;
+}
+
+.stamp-add-button:hover:not(:disabled) {
+  color: $color-primary;
+  background-color: $color-bg-lighter;
+  border-color: $color-primary;
+}
+
+.stamp-add-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.stamp-add-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -265,24 +304,3 @@
   color: $color-text-muted;
   font-size: $font-sm;
 }
-
-/* 追加ボタン */
-.add-stamp-button {
-  background-color: $color-bg-light;
-  border: $border-width dashed $color-border-light;
-
-  .add-icon {
-    font-size: $space-xl;
-    color: $color-text-light;
-  }
-
-  &:hover:not(:disabled) {
-    background-color: $color-bg-lighter;
-    border-color: $color-primary;
-
-    .add-icon {
-      color: $color-primary;
-    }
-  }
-}
-
