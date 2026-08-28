@@ -10,6 +10,18 @@ import './App.scss';
 import { HistoryPage } from './components/HistoryPage';
 import { ExtensionAuthPage } from './components/ExtensionAuthPage';
 
+const REPOSITORY_URL = 'https://github.com/shimewtr/comet';
+
+function AppFooter() {
+  return (
+    <footer className="app-footer">
+      <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">
+        Comet is open source on GitHub
+      </a>
+    </footer>
+  );
+}
+
 function LiveApp() {
   const {
     isConnected,
@@ -102,6 +114,7 @@ function LiveApp() {
         </div>
       </div>
 
+      <AppFooter />
       {toast && <StatusToast message={toast.message} onReconnect={reconnect} />}
     </div>
   );
@@ -122,6 +135,7 @@ function App() {
           </span>
         </header>
         <ExtensionAuthPage />
+        <AppFooter />
       </div>
     );
   }
@@ -135,6 +149,7 @@ function App() {
         </a>
       </header>
       <HistoryPage />
+      <AppFooter />
     </div>
   );
 }
