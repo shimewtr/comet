@@ -6,8 +6,12 @@ export interface CometSettings {
   websocketUrl: string;
   /** コメント速度の倍率（0.5〜2.0） */
   speedScale: number;
-  /** コメント文字サイズの倍率（0.5〜2.0） */
+  /** コメント文字とスタンプの表示サイズの倍率（0.5〜2.0） */
   fontScale: number;
+  /** コメントの不透明度（0.2〜1.0） */
+  commentOpacity: number;
+  /** スタンプの不透明度（0.2〜1.0） */
+  stampOpacity: number;
   /** コメントを流す領域 */
   displayArea: 'full' | 'top-half' | 'top-third';
   /** 参加用QRコードを表示するか */
@@ -30,6 +34,8 @@ export const DEFAULT_SETTINGS: CometSettings = {
   websocketUrl: '',
   speedScale: 1,
   fontScale: 1,
+  commentOpacity: 1,
+  stampOpacity: 1,
   displayArea: 'full',
   qrEnabled: false,
   webAppUrl: '',

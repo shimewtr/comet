@@ -94,6 +94,15 @@ export abstract class OverlayRenderer {
   }
 
   /**
+   * オーバーレイ全体の不透明度を設定する（表示中の要素にも即時反映される）
+   * 個々の要素が持つopacity（フェードアウトやblinkアニメーション）とは
+   * 乗算されるため、演出とは競合しない
+   */
+  setOpacity(opacity: number): void {
+    this.container.style.opacity = String(opacity);
+  }
+
+  /**
    * 表示を有効化
    */
   enable(): void {
