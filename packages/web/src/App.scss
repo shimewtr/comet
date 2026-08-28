@@ -3,11 +3,10 @@
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding-bottom: 200px;
   background-color: #333;
 
   @media (max-width: $breakpoint-sm) {
-    padding: $space-sm $space-sm 50px;
+    padding: $space-sm $space-sm 0;
   }
 
   .app-header {
@@ -96,6 +95,28 @@
 
     @media (max-width: $breakpoint-sm) {
       width: 100%;
+    }
+  }
+
+  .app-footer {
+    margin-top: auto;
+    padding: 160px $space-md $space-xl;
+    color: $color-text-light;
+    font-size: $font-sm;
+    text-align: center;
+
+    @media (max-width: $breakpoint-sm) {
+      padding: 50px $space-sm $space-lg;
+    }
+
+    a {
+      transition: color $transition-base;
+    }
+
+    a:hover,
+    a:focus-visible {
+      color: $color-bg-white;
+      text-decoration: underline;
     }
   }
 }

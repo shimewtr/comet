@@ -67,7 +67,7 @@ CDKで以下の4スタックを管理しています（環境は `--context env=
 - **StampStack**: スタンプ用S3 + CloudFront + DynamoDB（category GSI） + HTTP API + Lambda
 - **WebStack**: WebアプリのCloudFront + S3ホスティング（webビルド成果物のアップロードと`comet-config.json`の生成までデプロイで行う）
 
-ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json` に置きます。このファイルはgitignore対象なので、AWSアカウントや組織固有のIdP情報がOSSリポジトリに混ざることはありません。初回はテンプレートをコピーしてください。
+ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json` に置きます。このファイルと後述の名前付き設定ファイルはgitignore対象なので、AWSアカウントや組織固有のIdP情報がOSSリポジトリに混ざることはありません。初回はテンプレートをコピーしてください。
 
 ```bash
 cp packages/cdk/comet.config.example.json packages/cdk/comet.config.json
@@ -96,7 +96,19 @@ scripts/deploy.sh prod         # prodに全デプロイ
 
 AWSプロファイルは `packages/cdk/comet.config.json` の `envs.<env>.profile`、なければ環境変数 `AWS_PROFILE` が使われます（シェルに別プロジェクトの `AWS_PROFILE` が常設されている環境では、誤アカウントへのデプロイを防ぐためconfigでの指定を推奨）。
 
+複数のデプロイ先を切り替える場合は、名前付き設定ファイルを使えます。`packages/cdk/comet.config.<名前>.json` はgitignore対象です。
+
+```bash
+cp packages/cdk/comet.config.example.json packages/cdk/comet.config.personal.json
+scripts/deploy.sh dev all personal # personal設定で全体をデプロイ
+scripts/deploy.sh dev web personal # personal設定でwebだけデプロイ
+```
+
+第3引数の代わりに `COMET_CONFIG=personal scripts/deploy.sh dev web` と指定することもできます。名前付き設定を選んだ場合、そのファイルが存在しなければデプロイはエラー終了します。
+
 通常のアクセスキー形式だけでなく、AWS IAM Identity Center（SSO）や`source_profile`からロールを引き受ける形式のプロファイルも利用できます。SSOプロファイルの場合は、デプロイ前にAWS CLIでログインし、対象アカウントを確認してください。
+
+デプロイスクリプトは一時認証情報の安全な引き渡しに `aws configure export-credentials` を使用するため、このコマンドに対応したAWS CLI v2が必要です。
 
 ```bash
 aws sso login --profile <your-sso-profile>

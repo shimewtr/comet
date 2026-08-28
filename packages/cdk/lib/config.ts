@@ -63,7 +63,8 @@ const DEFAULT_ENV_CONFIGS: Record<string, CometEnvConfig> = {
 
 /**
  * 環境設定を読み込む。
- * packages/cdk/comet.config.json（gitignore対象）があれば、
+ * packages/cdk/comet.config.json、またはCOMET_CONFIGで選択した
+ * packages/cdk/comet.config.<name>.json（いずれもgitignore対象）があれば、
  * デフォルト値の上に環境ごとの設定を重ねる。
  * ドメイン・認証などデプロイ先固有の値はすべてこのファイルに置き、
  * リポジトリには含めない。
@@ -71,8 +72,21 @@ const DEFAULT_ENV_CONFIGS: Record<string, CometEnvConfig> = {
 export function loadEnvConfig(envName: string): CometEnvConfig {
   const base = DEFAULT_ENV_CONFIGS[envName] ?? DEFAULT_ENV_CONFIGS.dev;
 
-  const configPath = path.join(__dirname, '..', 'comet.config.json');
+  const configName = process.env.COMET_CONFIG?.trim();
+  if (configName && !/^[a-zA-Z0-9._-]+$/.test(configName)) {
+    throw new Error(
+      `COMET_CONFIGには英数字・ピリオド・アンダースコア・ハイフンだけを使用してください（指定値: ${configName}）`
+    );
+  }
+
+  const configFileName = configName
+    ? `comet.config.${configName}.json`
+    : 'comet.config.json';
+  const configPath = path.join(__dirname, '..', configFileName);
   if (!fs.existsSync(configPath)) {
+    if (configName) {
+      throw new Error(`設定ファイルが見つかりません: ${configFileName}`);
+    }
     return { ...base };
   }
 
