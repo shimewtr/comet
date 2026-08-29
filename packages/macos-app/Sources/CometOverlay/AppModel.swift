@@ -1,11 +1,15 @@
 import Combine
 import CometOverlayCore
+import CometOverlayUI
 import Foundation
 
 @MainActor
 final class AppModel: ObservableObject {
   @Published var settings: AppSettings {
-    didSet { settingsStore.save(settings) }
+    didSet {
+      settingsStore.save(settings)
+      overlayPresenter.setEnabled(settings.overlaysEnabled)
+    }
   }
 
   @Published private(set) var connectionState: ConnectionState = .disconnected
@@ -14,17 +18,21 @@ final class AppModel: ObservableObject {
   private let settingsStore: any SettingsStoring
   private let configurationProvider: any RuntimeConfigurationProviding
   private let messageStream: any MessageStreaming
+  private let overlayPresenter: any OverlayPresenting
   private var eventsTask: Task<Void, Never>?
 
   init(
     settingsStore: any SettingsStoring = UserDefaultsSettingsStore(),
     configurationProvider: any RuntimeConfigurationProviding = RuntimeConfigurationLoader(),
-    messageStream: any MessageStreaming = CometWebSocketClient()
+    messageStream: any MessageStreaming = CometWebSocketClient(),
+    overlayPresenter: any OverlayPresenting = OverlayWindowManager()
   ) {
     self.settingsStore = settingsStore
     self.configurationProvider = configurationProvider
     self.messageStream = messageStream
+    self.overlayPresenter = overlayPresenter
     settings = settingsStore.load()
+    overlayPresenter.setEnabled(settings.overlaysEnabled)
     observeEvents()
   }
 
@@ -127,6 +135,10 @@ final class AppModel: ObservableObject {
       if let fallbackRoom = payload.fallbackRoom {
         settings.selectedRoomID = fallbackRoom.id
       }
+    case .message(.comment(let comment, _)):
+      overlayPresenter.show(comment: comment, placement: .scrolling)
+    case .message(.stamp(let stamp, _)):
+      overlayPresenter.show(stamp: stamp)
     default:
       break
     }
