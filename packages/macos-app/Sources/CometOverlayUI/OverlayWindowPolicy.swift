@@ -2,9 +2,11 @@ import AppKit
 
 public struct OverlayWindowPolicy: Sendable {
   public static let presentation = OverlayWindowPolicy(
-    level: .floating,
+    // floating levelはWindow Serverが大型panelを縮小するため、メニューバー直下を使う。
+    level: NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1),
     collectionBehavior: [
-      .canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle,
+      .canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary, .transient,
+      .ignoresCycle,
     ],
     ignoresMouseEvents: true,
     isOpaque: false,
@@ -26,6 +28,9 @@ public struct OverlayWindowPolicy: Sendable {
     window.collectionBehavior = collectionBehavior
     window.ignoresMouseEvents = ignoresMouseEvents
     window.acceptsMouseMovedEvents = false
+    window.isMovable = false
+    window.isMovableByWindowBackground = false
+    window.isExcludedFromWindowsMenu = true
     window.isOpaque = isOpaque
     window.hasShadow = hasShadow
     window.hidesOnDeactivate = hidesOnDeactivate
