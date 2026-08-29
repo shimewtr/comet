@@ -44,3 +44,30 @@ func displaySettingsClampChromeExtensionCompatibleRanges() {
   #expect(settings.stampOpacity == 1)
   #expect(settings.displayArea.heightFraction == 1.0 / 3.0)
 }
+
+@Test
+func displaySelectionFallsBackWithoutForgettingSavedDisplay() {
+  let available: Set<String> = ["built-in", "projector"]
+
+  #expect(
+    DisplaySelectionResolver.visibleDisplayIDs(
+      selectedDisplayID: nil,
+      availableDisplayIDs: available,
+      mainDisplayID: "built-in"
+    ) == available
+  )
+  #expect(
+    DisplaySelectionResolver.visibleDisplayIDs(
+      selectedDisplayID: "projector",
+      availableDisplayIDs: available,
+      mainDisplayID: "built-in"
+    ) == ["projector"]
+  )
+  #expect(
+    DisplaySelectionResolver.visibleDisplayIDs(
+      selectedDisplayID: "disconnected-projector",
+      availableDisplayIDs: available,
+      mainDisplayID: "built-in"
+    ) == ["built-in"]
+  )
+}

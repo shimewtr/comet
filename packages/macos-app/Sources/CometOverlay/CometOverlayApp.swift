@@ -89,7 +89,7 @@ private struct SettingsView: View {
       Section("オーバーレイ") {
         Toggle("表示する", isOn: $model.settings.overlaysEnabled)
         Picker("出力先", selection: $model.settings.selectedDisplayID) {
-          Text("すべてのディスプレイ").tag(UInt32?.none)
+          Text("すべてのディスプレイ").tag(String?.none)
           ForEach(model.displays) { display in
             Text(display.name).tag(Optional(display.id))
           }

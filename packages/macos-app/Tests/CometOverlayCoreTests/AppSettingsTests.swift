@@ -25,7 +25,7 @@ func settingsRoundTripThroughUserDefaults() throws {
     webAppURL: "https://comet.example.com",
     selectedRoomID: "room-1",
     overlaysEnabled: false,
-    selectedDisplayID: 42,
+    selectedDisplayID: "display-42",
     displaySettings: OverlayDisplaySettings(
       speedScale: 1.5,
       sizeScale: 0.8,

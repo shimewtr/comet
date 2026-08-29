@@ -98,20 +98,15 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
       screen: screen
     )
     window.backgroundColor = .clear
-    window.isOpaque = false
-    window.hasShadow = false
-    window.ignoresMouseEvents = true
-    window.acceptsMouseMovedEvents = false
-    window.hidesOnDeactivate = false
-    window.level = .floating
-    window.collectionBehavior = [
-      .canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle,
-    ]
+    OverlayWindowPolicy.presentation.apply(to: window)
     window.contentView = NSHostingView(rootView: OverlayCanvasView(model: model))
     return ScreenOverlay(
       window: window,
       model: model,
-      descriptor: OverlayDisplayDescriptor(id: displayID(for: screen), name: screen.localizedName)
+      descriptor: OverlayDisplayDescriptor(
+        id: stableDisplayID(for: screen),
+        name: screen.localizedName
+      )
     )
   }
 
@@ -131,16 +126,28 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
 
   private func shouldShowOverlay(on displayID: CGDirectDisplayID) -> Bool {
     guard configuration.isEnabled else { return false }
-    guard let selectedDisplayID = configuration.selectedDisplayID else { return true }
-    if overlays[selectedDisplayID] != nil {
-      return displayID == selectedDisplayID
-    }
-    guard let mainScreen = NSScreen.main else { return false }
-    return displayID == self.displayID(for: mainScreen)
+    guard let overlay = overlays[displayID] else { return false }
+    let availableDisplayIDs = Set(overlays.values.map(\.descriptor.id))
+    let mainDisplayID = NSScreen.main.map(stableDisplayID(for:))
+    let visibleDisplayIDs = DisplaySelectionResolver.visibleDisplayIDs(
+      selectedDisplayID: configuration.selectedDisplayID,
+      availableDisplayIDs: availableDisplayIDs,
+      mainDisplayID: mainDisplayID
+    )
+    return visibleDisplayIDs.contains(overlay.descriptor.id)
   }
 
   private func displayID(for screen: NSScreen) -> CGDirectDisplayID {
     (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
       ?? 0
+  }
+
+  private func stableDisplayID(for screen: NSScreen) -> String {
+    let displayID = displayID(for: screen)
+    guard let displayUUID = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue()
+    else {
+      return "display-\(displayID)"
+    }
+    return CFUUIDCreateString(nil, displayUUID) as String
   }
 }

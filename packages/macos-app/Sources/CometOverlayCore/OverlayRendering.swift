@@ -66,10 +66,10 @@ public struct OverlayDisplaySettings: Codable, Equatable, Sendable {
 }
 
 public struct OverlayDisplayDescriptor: Identifiable, Equatable, Sendable {
-  public let id: UInt32
+  public let id: String
   public let name: String
 
-  public init(id: UInt32, name: String) {
+  public init(id: String, name: String) {
     self.id = id
     self.name = name
   }
@@ -77,17 +77,34 @@ public struct OverlayDisplayDescriptor: Identifiable, Equatable, Sendable {
 
 public struct OverlayPresentationConfiguration: Equatable, Sendable {
   public var isEnabled: Bool
-  public var selectedDisplayID: UInt32?
+  public var selectedDisplayID: String?
   public var displaySettings: OverlayDisplaySettings
 
   public init(
     isEnabled: Bool,
-    selectedDisplayID: UInt32?,
+    selectedDisplayID: String?,
     displaySettings: OverlayDisplaySettings
   ) {
     self.isEnabled = isEnabled
     self.selectedDisplayID = selectedDisplayID
     self.displaySettings = displaySettings
+  }
+}
+
+public enum DisplaySelectionResolver {
+  public static func visibleDisplayIDs(
+    selectedDisplayID: String?,
+    availableDisplayIDs: Set<String>,
+    mainDisplayID: String?
+  ) -> Set<String> {
+    guard let selectedDisplayID else { return availableDisplayIDs }
+    if availableDisplayIDs.contains(selectedDisplayID) {
+      return [selectedDisplayID]
+    }
+    if let mainDisplayID, availableDisplayIDs.contains(mainDisplayID) {
+      return [mainDisplayID]
+    }
+    return []
   }
 }
 
