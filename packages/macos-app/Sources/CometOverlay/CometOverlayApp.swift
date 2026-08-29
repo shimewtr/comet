@@ -160,6 +160,13 @@ private struct SettingsView: View {
         }
         .disabled(!model.settings.overlaysEnabled)
       }
+
+      Section("このアプリについて") {
+        LabeledContent("Comet Overlay", value: AppMetadata.versionDescription)
+        Text("診断ログにURL、投稿内容、認証チケットは記録しません。")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
     }
     .formStyle(.grouped)
     .padding()

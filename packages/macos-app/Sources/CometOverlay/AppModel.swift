@@ -2,6 +2,7 @@ import Combine
 import CometOverlayCore
 import CometOverlayUI
 import Foundation
+import OSLog
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -82,10 +83,14 @@ final class AppModel: ObservableObject {
     }
 
     connectionState = .connecting
+    AppLog.connection.notice("Connection requested")
     Task {
       do {
         try await connect(webAppURL: webAppURL)
       } catch {
+        AppLog.connection.error(
+          "Connection failed: \(AppLog.errorType(error), privacy: .public)"
+        )
         connectionState = .failed(message: error.localizedDescription)
       }
     }
@@ -94,6 +99,7 @@ final class AppModel: ObservableObject {
   func disconnect() {
     authRefreshTask?.cancel()
     authRefreshTask = nil
+    AppLog.connection.notice("Disconnect requested")
     Task { await messageStream.disconnect() }
   }
 
@@ -107,6 +113,9 @@ final class AppModel: ObservableObject {
       do {
         try await authenticator.logout(webAppURL: webAppURL)
       } catch {
+        AppLog.connection.error(
+          "Logout failed: \(AppLog.errorType(error), privacy: .public)"
+        )
         connectionState = .failed(message: error.localizedDescription)
       }
     }
@@ -234,6 +243,9 @@ final class AppModel: ObservableObject {
       } catch is CancellationError {
         return
       } catch {
+        AppLog.connection.error(
+          "Authentication refresh failed: \(AppLog.errorType(error), privacy: .public)"
+        )
         self?.isAuthenticated = false
         self?.connectionState = .failed(message: error.localizedDescription)
       }

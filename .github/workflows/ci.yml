@@ -17,13 +17,13 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.34.5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -85,7 +85,7 @@ jobs:
   macos-app:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lint macOS app
         run: xcrun swift-format lint --strict --recursive packages/macos-app
@@ -95,3 +95,16 @@ jobs:
 
       - name: Test macOS app
         run: swift test --package-path packages/macos-app -Xswiftc -warnings-as-errors
+
+      - name: Build unsigned macOS app bundle
+        run: scripts/build-macos-app.sh
+
+      - name: Validate macOS app bundle
+        run: |
+          plutil -lint build/macos/CometOverlay.app/Contents/Info.plist
+          test -x build/macos/CometOverlay.app/Contents/MacOS/CometOverlay
+          test -f build/macos/CometOverlay.app/Contents/Resources/CometOverlay.icns
+          lipo build/macos/CometOverlay.app/Contents/MacOS/CometOverlay -verify_arch arm64 x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/macos/CometOverlay.app/Contents/Info.plist)" = com.shimewtr.comet.overlay
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' build/macos/CometOverlay.app/Contents/Info.plist)" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' build/macos/CometOverlay.app/Contents/Info.plist)" = comet-overlay
