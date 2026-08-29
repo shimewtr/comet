@@ -8,18 +8,20 @@ final class AppModel: ObservableObject {
   @Published var settings: AppSettings {
     didSet {
       settingsStore.save(settings)
-      overlayPresenter.setEnabled(settings.overlaysEnabled)
+      applyOverlayConfiguration()
     }
   }
 
   @Published private(set) var connectionState: ConnectionState = .disconnected
   @Published private(set) var rooms: [CometRoom] = [.global]
+  @Published private(set) var displays: [OverlayDisplayDescriptor] = []
 
   private let settingsStore: any SettingsStoring
   private let configurationProvider: any RuntimeConfigurationProviding
   private let messageStream: any MessageStreaming
   private let overlayPresenter: any OverlayPresenting
   private var eventsTask: Task<Void, Never>?
+  private var displayChangesCancellable: AnyCancellable?
 
   init(
     settingsStore: any SettingsStoring = UserDefaultsSettingsStore(),
@@ -32,8 +34,10 @@ final class AppModel: ObservableObject {
     self.messageStream = messageStream
     self.overlayPresenter = overlayPresenter
     settings = settingsStore.load()
-    overlayPresenter.setEnabled(settings.overlaysEnabled)
+    displays = overlayPresenter.availableDisplays
+    applyOverlayConfiguration()
     observeEvents()
+    observeDisplayChanges()
   }
 
   deinit {
@@ -110,6 +114,31 @@ final class AppModel: ObservableObject {
     }
   }
 
+  func stopOverlayImmediately() {
+    settings.overlaysEnabled = false
+  }
+
+  func previewOverlay() {
+    let timestamp = Int64(Date().timeIntervalSince1970 * 1_000)
+    overlayPresenter.show(
+      comment: CometComment(
+        id: UUID().uuidString,
+        content: "Comet テストコメント",
+        timestamp: timestamp,
+        style: CommentStyle(color: "#ffffff", size: .medium, animation: .bounce, speed: 5)
+      ),
+      placement: .scrolling
+    )
+    overlayPresenter.show(
+      stamp: StampMessage(
+        id: UUID().uuidString,
+        stamp: Stamp(id: "preview", name: "🎉", imageUrl: "", category: .reaction),
+        timestamp: timestamp,
+        position: StampPosition(x: 0.75, y: 0.35)
+      )
+    )
+  }
+
   private func observeEvents() {
     let events = messageStream.events
     eventsTask = Task { [weak self] in
@@ -118,6 +147,26 @@ final class AppModel: ObservableObject {
         self?.handle(event)
       }
     }
+  }
+
+  private func observeDisplayChanges() {
+    displayChangesCancellable = NotificationCenter.default.publisher(
+      for: .cometOverlayDisplaysDidChange
+    ).sink { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.displays = self?.overlayPresenter.availableDisplays ?? []
+      }
+    }
+  }
+
+  private func applyOverlayConfiguration() {
+    overlayPresenter.apply(
+      configuration: OverlayPresentationConfiguration(
+        isEnabled: settings.overlaysEnabled,
+        selectedDisplayID: settings.selectedDisplayID,
+        displaySettings: settings.displaySettings
+      )
+    )
   }
 
   private func handle(_ event: CometClientEvent) {

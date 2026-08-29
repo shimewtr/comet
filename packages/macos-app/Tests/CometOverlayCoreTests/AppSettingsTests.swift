@@ -10,6 +10,8 @@ func defaultSettingsUseGlobalRoomAndEnableOverlay() {
   #expect(settings.webAppURL.isEmpty)
   #expect(settings.selectedRoomID == "global")
   #expect(settings.overlaysEnabled)
+  #expect(settings.selectedDisplayID == nil)
+  #expect(settings.displaySettings == OverlayDisplaySettings())
 }
 
 @Test
@@ -22,7 +24,15 @@ func settingsRoundTripThroughUserDefaults() throws {
   let expected = AppSettings(
     webAppURL: "https://comet.example.com",
     selectedRoomID: "room-1",
-    overlaysEnabled: false
+    overlaysEnabled: false,
+    selectedDisplayID: 42,
+    displaySettings: OverlayDisplaySettings(
+      speedScale: 1.5,
+      sizeScale: 0.8,
+      commentOpacity: 0.7,
+      stampOpacity: 0.6,
+      displayArea: .topHalf
+    )
   )
 
   store.save(expected)
@@ -40,4 +50,36 @@ func invalidStoredSettingsFallBackToDefaults() throws {
   let store = UserDefaultsSettingsStore(defaults: defaults, key: "settings")
 
   #expect(store.load() == AppSettings())
+}
+
+@Test
+func settingsDecodeDataSavedBeforeDisplayControlsWereAdded() throws {
+  let legacyData = Data(
+    #"{"webAppURL":"https://comet.example.com","selectedRoomID":"room-1","overlaysEnabled":false}"#
+      .utf8
+  )
+
+  let settings = try JSONDecoder().decode(AppSettings.self, from: legacyData)
+
+  #expect(settings.webAppURL == "https://comet.example.com")
+  #expect(settings.selectedRoomID == "room-1")
+  #expect(!settings.overlaysEnabled)
+  #expect(settings.selectedDisplayID == nil)
+  #expect(settings.displaySettings == OverlayDisplaySettings())
+}
+
+@Test
+func decodedDisplaySettingsAreClampedToSupportedRanges() throws {
+  let data = Data(
+    #"{"speedScale":9,"sizeScale":0,"commentOpacity":0,"stampOpacity":9,"displayArea":"topThird"}"#
+      .utf8
+  )
+
+  let settings = try JSONDecoder().decode(OverlayDisplaySettings.self, from: data)
+
+  #expect(settings.speedScale == 2)
+  #expect(settings.sizeScale == 0.5)
+  #expect(settings.commentOpacity == 0.2)
+  #expect(settings.stampOpacity == 1)
+  #expect(settings.displayArea == .topThird)
 }
