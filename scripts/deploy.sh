@@ -69,7 +69,8 @@ fi
 eval "$CREDENTIAL_EXPORTS"
 unset CREDENTIAL_EXPORTS
 unset AWS_PROFILE
-export CDK_DEFAULT_ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+CDK_DEFAULT_ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+export CDK_DEFAULT_ACCOUNT
 PROFILE_REGION="$(aws configure get region --profile "$PROFILE" 2>/dev/null || true)"
 export CDK_DEFAULT_REGION="${AWS_REGION:-${PROFILE_REGION:-ap-northeast-1}}"
 
