@@ -22,6 +22,21 @@ func sceneModelBoundsCommentsAndStamps() {
   #expect(model.stamps.isEmpty)
 }
 
+@MainActor
+@Test
+func sceneModelAssignsStableNormalizedStampPositions() {
+  let model = OverlaySceneModel()
+  let providedPosition = StampPosition(x: 0.25, y: 0.75)
+
+  model.show(stamp: stamp(id: "random"))
+  model.show(stamp: stamp(id: "provided", position: providedPosition))
+
+  let randomPosition = model.stamps[0].position
+  #expect((0.1...0.9).contains(randomPosition.x))
+  #expect((0.1...0.9).contains(randomPosition.y))
+  #expect(model.stamps[1].position == providedPosition)
+}
+
 private func comment(id: String) -> CometComment {
   CometComment(
     id: id,
@@ -31,10 +46,11 @@ private func comment(id: String) -> CometComment {
   )
 }
 
-private func stamp(id: String) -> StampMessage {
+private func stamp(id: String, position: StampPosition? = nil) -> StampMessage {
   StampMessage(
     id: id,
     stamp: Stamp(id: id, name: "stamp", imageUrl: "", category: .reaction),
-    timestamp: 0
+    timestamp: 0,
+    position: position
   )
 }
