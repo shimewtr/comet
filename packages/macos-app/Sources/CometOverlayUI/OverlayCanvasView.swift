@@ -161,10 +161,10 @@ private struct StampOverlayView: View {
   private var size: CGFloat { 120 * CGFloat(settings.sizeScale) }
 
   private var position: CGPoint {
-    let normalized = item.message.position ?? StampPosition(x: 0.5, y: 0.5)
     return CGPoint(
-      x: CGFloat(min(max(normalized.x, 0.05), 0.95)) * canvasSize.width,
-      y: CGFloat(min(max(normalized.y, 0.05), 0.95)) * canvasSize.height
+      x: CGFloat(min(max(item.position.x, 0.05), 0.95)) * canvasSize.width,
+      y: CGFloat(min(max(item.position.y, 0.05), 0.95)) * canvasSize.height
+        * CGFloat(settings.displayArea.heightFraction)
     )
   }
 }

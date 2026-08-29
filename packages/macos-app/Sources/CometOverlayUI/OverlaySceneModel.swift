@@ -14,6 +14,7 @@ public struct RenderedComment: Identifiable, Sendable {
 public struct RenderedStamp: Identifiable, Sendable {
   public let id: UUID
   public let message: StampMessage
+  public let position: StampPosition
 }
 
 @MainActor
@@ -62,7 +63,15 @@ public final class OverlaySceneModel: ObservableObject {
   }
 
   public func show(stamp message: StampMessage) {
-    let item = RenderedStamp(id: UUID(), message: message)
+    let item = RenderedStamp(
+      id: UUID(),
+      message: message,
+      position: message.position
+        ?? StampPosition(
+          x: Double.random(in: 0.1...0.9),
+          y: Double.random(in: 0.1...0.9)
+        )
+    )
     if let removed = stampQueue.append(item) {
       removalTasks.removeValue(forKey: removed.id)?.cancel()
     }
