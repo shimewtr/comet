@@ -26,7 +26,7 @@
         "stamp": {
           "id": "stamp-1",
           "name": "Clap",
-          "imageUrl": "https://example.com/stamps/clap.png",
+          "imageUrl": "https://example.cloudfront.net/stamps/clap.png",
           "category": "reaction"
         },
         "timestamp": 1735689600200,
