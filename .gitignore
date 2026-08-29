@@ -58,6 +58,16 @@ temp/
 
 # Archives
 *.zip
+*.app/
+*.xcarchive/
+*.dSYM/
+
+# Apple code signing / notarization credentials
+*.p12
+*.cer
+*.provisionprofile
+*.mobileprovision
+AuthKey_*.p8
 
 # デプロイ先固有の設定（ドメイン・認証など）
 packages/cdk/comet.config.json
