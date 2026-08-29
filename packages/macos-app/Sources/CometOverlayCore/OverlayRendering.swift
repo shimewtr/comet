@@ -43,6 +43,52 @@ public struct OverlayDisplaySettings: Codable, Equatable, Sendable {
     self.stampOpacity = stampOpacity.clamped(to: 0.2...1)
     self.displayArea = displayArea
   }
+
+  private enum CodingKeys: String, CodingKey {
+    case speedScale
+    case sizeScale
+    case commentOpacity
+    case stampOpacity
+    case displayArea
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      speedScale: try container.decodeIfPresent(Double.self, forKey: .speedScale) ?? 1,
+      sizeScale: try container.decodeIfPresent(Double.self, forKey: .sizeScale) ?? 1,
+      commentOpacity: try container.decodeIfPresent(Double.self, forKey: .commentOpacity) ?? 1,
+      stampOpacity: try container.decodeIfPresent(Double.self, forKey: .stampOpacity) ?? 1,
+      displayArea:
+        try container.decodeIfPresent(OverlayDisplayArea.self, forKey: .displayArea) ?? .full
+    )
+  }
+}
+
+public struct OverlayDisplayDescriptor: Identifiable, Equatable, Sendable {
+  public let id: UInt32
+  public let name: String
+
+  public init(id: UInt32, name: String) {
+    self.id = id
+    self.name = name
+  }
+}
+
+public struct OverlayPresentationConfiguration: Equatable, Sendable {
+  public var isEnabled: Bool
+  public var selectedDisplayID: UInt32?
+  public var displaySettings: OverlayDisplaySettings
+
+  public init(
+    isEnabled: Bool,
+    selectedDisplayID: UInt32?,
+    displaySettings: OverlayDisplaySettings
+  ) {
+    self.isEnabled = isEnabled
+    self.selectedDisplayID = selectedDisplayID
+    self.displaySettings = displaySettings
+  }
 }
 
 public struct LaneReservation: Equatable, Sendable {

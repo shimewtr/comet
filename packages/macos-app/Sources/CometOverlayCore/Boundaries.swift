@@ -31,7 +31,9 @@ public protocol MessageStreaming: Sendable {
 
 @MainActor
 public protocol OverlayPresenting: AnyObject {
-  func setEnabled(_ enabled: Bool)
+  var availableDisplays: [OverlayDisplayDescriptor] { get }
+
+  func apply(configuration: OverlayPresentationConfiguration)
   func show(comment: CometComment, placement: CommentPlacement)
   func show(stamp: StampMessage)
 }
