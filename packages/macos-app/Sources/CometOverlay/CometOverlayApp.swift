@@ -29,6 +29,12 @@ private struct MenuContent: View {
         .font(.headline)
       Text(model.connectionDescription)
         .foregroundStyle(.secondary)
+      HStack {
+        Button("接続") { model.connect() }
+          .disabled(!model.canConnect || model.connectionState == .connected)
+        Button("切断") { model.disconnect() }
+          .disabled(model.connectionState == .disconnected)
+      }
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
       Divider()
       SettingsLink {
@@ -49,11 +55,31 @@ private struct SettingsView: View {
   var body: some View {
     Form {
       TextField("WebアプリURL", text: $model.settings.webAppURL)
-      TextField("Room ID", text: $model.settings.selectedRoomID)
+      Picker(
+        "Room",
+        selection: Binding(
+          get: { model.settings.selectedRoomID },
+          set: { model.selectRoom($0) }
+        )
+      ) {
+        ForEach(model.rooms) { room in
+          Text(room.name).tag(room.id)
+        }
+      }
+      HStack {
+        Button("接続") { model.connect() }
+          .disabled(!model.canConnect || model.connectionState == .connected)
+        Button("Room一覧を更新") { model.refreshRooms() }
+          .disabled(model.connectionState != .connected)
+        Button("切断") { model.disconnect() }
+          .disabled(model.connectionState == .disconnected)
+      }
+      Text(model.connectionDescription)
+        .foregroundStyle(.secondary)
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
     }
     .formStyle(.grouped)
     .padding()
-    .frame(width: 480, height: 220)
+    .frame(width: 480, height: 300)
   }
 }
