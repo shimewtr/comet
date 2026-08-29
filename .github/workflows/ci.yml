@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -80,3 +81,17 @@ jobs:
           EOF
           pnpm exec cdk synth --context env=prod
           rm comet.config.json
+
+  macos-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint macOS app
+        run: xcrun swift-format lint --strict --recursive packages/macos-app
+
+      - name: Build macOS app
+        run: swift build --package-path packages/macos-app -Xswiftc -warnings-as-errors
+
+      - name: Test macOS app
+        run: swift test --package-path packages/macos-app -Xswiftc -warnings-as-errors

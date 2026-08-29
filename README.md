@@ -51,6 +51,7 @@ VITE_STAMP_API_URL=https://example.execute-api.ap-northeast-1.amazonaws.com
 - [ローカル開発](docs/development.md) — セットアップ、起動、build・test・lint
 - [AWSへのデプロイ](docs/deployment.md) — CDK、設定ファイル、AWSプロファイル、デプロイ手順
 - [Chrome拡張](docs/chrome-extension.md) — build、Chromeへの読み込み、接続設定、認証
+- [macOSアプリ](docs/macos-app.md) — メニューバーアプリのbuild、起動、現在の対応範囲
 - [OIDC認証](docs/authentication.md) — IdP、Secrets Manager、認証の有効化
 - [ホスティング・認証の設計背景](docs/design/hosting-and-auth.md)
 
@@ -61,6 +62,7 @@ VITE_STAMP_API_URL=https://example.execute-api.ap-northeast-1.amazonaws.com
 | `packages/shared`                | 型、定数、バリデーション、共通WebSocketクライアント |
 | `packages/web`                   | React + Viteの投稿・履歴Webアプリ                   |
 | `packages/chrome-extension`      | Manifest V3のオーバーレイChrome拡張                 |
+| `packages/macos-app`             | macOS全画面オーバーレイアプリ                       |
 | `packages/api/websocket-handler` | WebSocket接続・Room・メッセージ処理Lambda           |
 | `packages/api/stamp-upload`      | カスタムスタンプAPI Lambda                          |
 | `packages/api/history-handler`   | Room履歴・集計API Lambda                            |

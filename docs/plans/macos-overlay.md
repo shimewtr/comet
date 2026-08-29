@@ -42,9 +42,9 @@ Cometのコメントとスタンプを、ChromeやGoogleスライドに限定せ
 
 ## 開発環境の確認結果
 
-計画作成時点のローカル環境はApple Swift 6.3.3とmacOS SDKを利用できる。一方、active developer directoryはCommand Line Toolsで、完全版Xcodeの`xcodebuild`は利用できない。
+計画作成時点のローカル環境にはApple Swift 6.3.3とmacOS SDK 26.5があるが、SDKはSwift 6.3.2で生成されておりtoolchainが一致していない。また、active developer directoryはCommand Line Toolsで、完全版Xcodeの`xcodebuild`は利用できない。
 
-このため、基盤はSwift Packageとして`swift build`と`swift test`で検証可能にする。完全版Xcodeが必要な.app bundle、コード署名、Notarization、GUIの手動操作は後段のリリース工程で扱う。GitHub ActionsのmacOS runnerでもbuildとtestを検証する。
+このため、基盤はSwift Packageとして通常の環境で`swift build`と`swift test`を実行できるようにする。このMacでの自動検証はCommand Line Tools更新後に再実行し、当面はGitHub ActionsのmacOS runnerを正とする。完全版Xcodeが必要な.app bundle、コード署名、Notarization、GUIの手動操作は後段のリリース工程で扱う。
 
 ## ブランチ運用
 
