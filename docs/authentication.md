@@ -98,6 +98,8 @@ IdPのaccess token、ID token、client secret、WebセッションCookieはmacOS
 | 交換コードの再利用         | PKCEと2分の期限で制限する                                           | Edgeはステートレスなため、verifierを持つ同一アプリから期限内の再交換は可能  |
 | CSRF                       | stateとPKCEの両方を要求する                                         | なし                                                                        |
 
+認証コードとチケットの漏えいを防ぐため、macOSアプリはdesktop認証をHTTPSのWebアプリにだけ送信します。ローカル開発用の`localhost`、`127.0.0.1`、`::1`だけはHTTPを許可します。
+
 desktop認証ルートを有効にするCDK変更は、Web stackを次回デプロイすると反映されます。アプリだけを先に配布した場合、認証なし環境は従来どおり接続できますが、認証付き環境のdesktopログインはWeb stack更新まで利用できません。
 
 ## 無効化

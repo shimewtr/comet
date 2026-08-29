@@ -15,11 +15,16 @@ private enum MockIncomingMessage: Sendable {
 private actor MockWebSocketTransport: WebSocketTransport {
   private var incoming: [MockIncomingMessage] = []
   private var receiveContinuation: CheckedContinuation<Data, Error>?
+  private var connectFailuresRemaining = 0
   private(set) var connectedURLs: [URL] = []
   private(set) var sentMessages: [Data] = []
 
   func connect(to url: URL) async throws {
     connectedURLs.append(url)
+    if connectFailuresRemaining > 0 {
+      connectFailuresRemaining -= 1
+      throw MockTransportError.connectionClosed
+    }
   }
 
   func send(_ data: Data) async throws {
@@ -47,6 +52,10 @@ private actor MockWebSocketTransport: WebSocketTransport {
     } else {
       incoming.append(message)
     }
+  }
+
+  func failNextConnections(_ count: Int) {
+    connectFailuresRemaining = max(0, count)
   }
 
   func waitForSentMessageCount(_ count: Int) async -> [Data] {
@@ -112,6 +121,33 @@ func connectsAndSendsRoomBootstrapMessages() async throws {
 }
 
 @Test
+func initialConnectionKeepsRetryingUntilTheNetworkRecovers() async throws {
+  let transport = MockWebSocketTransport()
+  await transport.failNextConnections(2)
+  let client = CometWebSocketClient(
+    transportFactory: { transport },
+    reconnectPolicy: ReconnectPolicy(
+      baseDelayMilliseconds: 0,
+      maximumDelayMilliseconds: 0
+    ),
+    keepaliveIntervalMilliseconds: 0,
+    reconnectSleeper: { _ in }
+  )
+  let configuration = RuntimeConfiguration(
+    websocketURL: try #require(URL(string: "wss://socket.example.com/dev"))
+  )
+
+  try await client.connect(configuration: configuration, roomID: "room-1")
+  let connectionCount = await transport.connectedURLs.count
+  let sentMessageCount = await transport.sentMessages.count
+
+  #expect(connectionCount == 3)
+  #expect(sentMessageCount == 2)
+
+  await client.disconnect()
+}
+
+@Test
 func roomJoinRequestsHistoryAndPublishesEvent() async throws {
   let transport = MockWebSocketTransport()
   let client = CometWebSocketClient(
@@ -165,6 +201,34 @@ func reconnectsAfterUnexpectedTransportClosure() async throws {
   let sentMessageCount = await transport.sentMessages.count
 
   #expect(connections.count == 2)
+  #expect(sentMessageCount == 4)
+
+  await client.disconnect()
+}
+
+@Test
+func keepsReconnectingBeyondFiveFailuresUntilTheNetworkRecovers() async throws {
+  let transport = MockWebSocketTransport()
+  let client = CometWebSocketClient(
+    transportFactory: { transport },
+    reconnectPolicy: ReconnectPolicy(
+      baseDelayMilliseconds: 0,
+      maximumDelayMilliseconds: 0
+    ),
+    keepaliveIntervalMilliseconds: 0,
+    reconnectSleeper: { _ in }
+  )
+  let configuration = RuntimeConfiguration(
+    websocketURL: try #require(URL(string: "wss://socket.example.com/dev"))
+  )
+
+  try await client.connect(configuration: configuration, roomID: "global")
+  await transport.failNextConnections(6)
+  await transport.enqueue(.failure(MockTransportError.connectionClosed))
+  let connections = await transport.waitForConnectionCount(8)
+  let sentMessageCount = await transport.sentMessages.count
+
+  #expect(connections.count == 8)
   #expect(sentMessageCount == 4)
 
   await client.disconnect()

@@ -181,7 +181,9 @@ public enum DesktopAuthURLBuilder {
   private static func webComponents(for url: URL) throws -> URLComponents {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
       let scheme = components.scheme?.lowercased(), ["http", "https"].contains(scheme),
-      components.host != nil, components.user == nil, components.password == nil
+      let host = components.host?.lowercased(),
+      scheme == "https" || (scheme == "http" && isLoopbackHost(host)),
+      components.user == nil, components.password == nil
     else {
       throw DesktopAuthenticationError.invalidWebAppURL
     }
@@ -189,6 +191,10 @@ public enum DesktopAuthURLBuilder {
     components.query = nil
     components.fragment = nil
     return components
+  }
+
+  private static func isLoopbackHost(_ host: String) -> Bool {
+    host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]"
   }
 }
 
