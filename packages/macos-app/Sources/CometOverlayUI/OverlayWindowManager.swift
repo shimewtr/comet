@@ -8,6 +8,12 @@ extension Notification.Name {
   )
 }
 
+final class OverlayPanel: NSPanel {
+  override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+    frameRect
+  }
+}
+
 @MainActor
 public final class OverlayWindowManager: NSObject, OverlayPresenting {
   private struct ScreenOverlay {
@@ -90,7 +96,7 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
 
   private func makeOverlay(for screen: NSScreen) -> ScreenOverlay {
     let model = OverlaySceneModel()
-    let window = NSPanel(
+    let window = OverlayPanel(
       contentRect: screen.frame,
       styleMask: [.borderless, .nonactivatingPanel],
       backing: .buffered,
@@ -100,6 +106,9 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
     window.backgroundColor = .clear
     OverlayWindowPolicy.presentation.apply(to: window)
     window.contentView = NSHostingView(rootView: OverlayCanvasView(model: model))
+    // NSPanelの初期化時にAppKitが画面内へ約90%に縮小する場合があるため、
+    // policy適用後に対象ディスプレイの正確なframeを設定する。
+    window.setFrame(screen.frame, display: false)
     return ScreenOverlay(
       window: window,
       model: model,

@@ -4,7 +4,7 @@
 
 ## 現在の手動ゲート状況
 
-2026-08-29に開発環境を確認しました。macOS 26.6.2、Google Chrome、内蔵画面と外部画面は利用できますが、Keynote、Microsoft PowerPoint、完全版Xcodeが未導入のため、3アプリ横断の手動ゲートは未実施です。自動テストと未署名Universal `.app`の生成はCIで実施しています。生成した`.app`は同日にローカル起動し、LaunchServicesでのBundle ID認識、version/build付き起動ログ、Apple eventによる正常終了ログ、終了後にプロセスが残らないことまで確認しました。このチェックリストの残項目は必要なアプリを用意したMacで最終PR前に完了します。
+2026-08-29に開発環境を確認しました。macOS 26.6.2、Google Chrome、内蔵画面と外部画面は利用できますが、Keynote、Microsoft PowerPoint、完全版Xcodeが未導入のため、3アプリ横断の手動ゲートは未実施です。自動テストと未署名Universal `.app`の生成はCIで実施しています。生成した`.app`は同日にローカル起動し、LaunchServicesでのBundle ID認識、version/build付き起動ログ、Apple eventによる正常終了ログ、終了後にプロセスが残らないことまで確認しました。さらにCoreGraphicsの実行時ウィンドウ情報から、内蔵画面`1512×982`と外部画面`3440×1440`の2枚に正確な全画面boundsのパネルが1枚ずつ存在し、メニューバー未満のlayer 23であることを確認しました。このチェックリストの残項目は必要なアプリを用意したMacで最終PR前に完了します。
 
 ## 前提
 
