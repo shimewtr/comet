@@ -2,6 +2,8 @@
   "name": "comet",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.34.5",
   "description": "Niconicoment-style real-time comment system",
   "workspaces": [
     "packages/*",
@@ -11,11 +13,13 @@
     "build": "pnpm -r build",
     "build:shared": "pnpm --filter @comet/shared build",
     "dev": "pnpm -r --parallel dev",
-    "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
+    "test": "node --test scripts/*.test.mjs && pnpm -r test",
+    "lint": "eslint packages scripts --ext .ts,.tsx,.js,.mjs,.cjs && pnpm --filter @comet/web lint",
     "clean": "pnpm -r clean"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
     "@types/node": "^22.0.0",
     "eslint": "^8.56.0",
     "prettier": "^3.1.0",
@@ -24,6 +28,6 @@
   },
   "engines": {
     "node": ">=22.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=10.0.0 <11.0.0"
   }
 }

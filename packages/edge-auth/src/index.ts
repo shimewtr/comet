@@ -30,7 +30,7 @@ interface EdgeConfig {
   signingSecretRegion: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const config: EdgeConfig = require('./config.json');
 
 const SESSION_COOKIE = 'comet_session';

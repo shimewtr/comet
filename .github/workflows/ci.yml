@@ -20,7 +20,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.34.5
 
       - uses: actions/setup-node@v4
         with:
@@ -36,10 +36,15 @@ jobs:
         run: pnpm -r build
 
       - name: Lint
-        run: pnpm -r lint
+        run: pnpm lint
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/*.sh
+          shellcheck scripts/*.sh
 
       - name: Test
-        run: pnpm -r test
+        run: pnpm test
 
       # 認証情報なしの環境非依存synthでテンプレートが生成できることを確認する
       - name: CDK synth

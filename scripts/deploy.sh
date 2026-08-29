@@ -37,38 +37,17 @@ fi
 
 if [[ -n "$CONFIG_NAME" ]]; then
   CONFIG_FILE="packages/cdk/comet.config.${CONFIG_NAME}.json"
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "error: 設定ファイルが見つかりません: ${CONFIG_FILE}" >&2
-    exit 1
-  fi
+  CONFIG_REQUIRED="required"
   export COMET_CONFIG="$CONFIG_NAME"
 else
   CONFIG_FILE="packages/cdk/comet.config.json"
+  CONFIG_REQUIRED="optional"
 fi
 
 # AWSプロファイルの解決:
 # 1. 選択されたcomet.config*.jsonの envs.<env>.profile（誤アカウントへのデプロイ防止のため最優先）
 # 2. 環境変数 AWS_PROFILE
-CONFIG_PROFILE=""
-if [[ -f "$CONFIG_FILE" ]]; then
-  CONFIG_PROFILE="$(node -e "
-    const fs = require('fs');
-    const [configFile, envName] = process.argv.slice(1);
-    try {
-      const c = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-      process.stdout.write(c.envs?.[envName]?.profile ?? '');
-    } catch (error) {
-      console.error('error: 設定ファイルを読み込めません: ' + configFile);
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  " "$CONFIG_FILE" "$ENV_NAME")"
-fi
-
-if [[ -n "$CONFIG_NAME" && -z "$CONFIG_PROFILE" ]]; then
-  echo "error: 名前付き設定には envs.${ENV_NAME}.profile が必要です: ${CONFIG_FILE}" >&2
-  exit 1
-fi
+CONFIG_PROFILE="$(node scripts/resolve-deploy-config.mjs "$CONFIG_FILE" "$ENV_NAME" "$CONFIG_REQUIRED")"
 PROFILE="${CONFIG_PROFILE:-${AWS_PROFILE:-}}"
 
 if [[ -z "$PROFILE" ]]; then
@@ -90,7 +69,8 @@ fi
 eval "$CREDENTIAL_EXPORTS"
 unset CREDENTIAL_EXPORTS
 unset AWS_PROFILE
-export CDK_DEFAULT_ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+CDK_DEFAULT_ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+export CDK_DEFAULT_ACCOUNT
 PROFILE_REGION="$(aws configure get region --profile "$PROFILE" 2>/dev/null || true)"
 export CDK_DEFAULT_REGION="${AWS_REGION:-${PROFILE_REGION:-ap-northeast-1}}"
 
