@@ -214,6 +214,21 @@ export class WebStack extends cdk.Stack {
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           responseHeadersPolicy: runtimeConfigCorsPolicy,
         },
+        ...(edgeLambdas
+          ? {
+              '/auth/desktop/token': {
+                origin,
+                viewerProtocolPolicy:
+                  cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+                cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                edgeLambdas: edgeLambdas.map((association) => ({
+                  ...association,
+                  includeBody: true,
+                })),
+              },
+            }
+          : {}),
       },
       defaultRootObject: 'index.html',
       // SPAルーティング: 存在しないパスはindex.htmlを返す

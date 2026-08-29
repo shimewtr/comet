@@ -15,24 +15,30 @@ final class AppModel: ObservableObject {
   @Published private(set) var connectionState: ConnectionState = .disconnected
   @Published private(set) var rooms: [CometRoom] = [.global]
   @Published private(set) var displays: [OverlayDisplayDescriptor] = []
+  @Published private(set) var authenticationRequired = false
+  @Published private(set) var isAuthenticated = false
 
   private let settingsStore: any SettingsStoring
   private let configurationProvider: any RuntimeConfigurationProviding
   private let messageStream: any MessageStreaming
   private let overlayPresenter: any OverlayPresenting
+  private let authenticator: any DesktopAuthenticating
   private var eventsTask: Task<Void, Never>?
+  private var authRefreshTask: Task<Void, Never>?
   private var displayChangesCancellable: AnyCancellable?
 
   init(
     settingsStore: any SettingsStoring = UserDefaultsSettingsStore(),
     configurationProvider: any RuntimeConfigurationProviding = RuntimeConfigurationLoader(),
     messageStream: any MessageStreaming = CometWebSocketClient(),
-    overlayPresenter: any OverlayPresenting = OverlayWindowManager()
+    overlayPresenter: any OverlayPresenting = OverlayWindowManager(),
+    authenticator: any DesktopAuthenticating = DesktopAuthenticationController()
   ) {
     self.settingsStore = settingsStore
     self.configurationProvider = configurationProvider
     self.messageStream = messageStream
     self.overlayPresenter = overlayPresenter
+    self.authenticator = authenticator
     settings = settingsStore.load()
     displays = overlayPresenter.availableDisplays
     applyOverlayConfiguration()
@@ -42,6 +48,7 @@ final class AppModel: ObservableObject {
 
   deinit {
     eventsTask?.cancel()
+    authRefreshTask?.cancel()
   }
 
   var connectionDescription: String {
@@ -62,6 +69,11 @@ final class AppModel: ObservableObject {
       && connectionState != .connecting
   }
 
+  var authenticationDescription: String {
+    if !authenticationRequired { return "認証なし" }
+    return isAuthenticated ? "ログイン済み" : "ログインが必要"
+  }
+
   func connect() {
     let webAppURLValue = settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let webAppURL = URL(string: webAppURLValue) else {
@@ -72,15 +84,7 @@ final class AppModel: ObservableObject {
     connectionState = .connecting
     Task {
       do {
-        let configuration = try await configurationProvider.configuration(for: webAppURL)
-        guard !configuration.authEnabled else {
-          connectionState = .failed(message: "この環境への接続にはログインが必要です（現在未対応）")
-          return
-        }
-        try await messageStream.connect(
-          configuration: configuration,
-          roomID: settings.selectedRoomID
-        )
+        try await connect(webAppURL: webAppURL)
       } catch {
         connectionState = .failed(message: error.localizedDescription)
       }
@@ -88,7 +92,24 @@ final class AppModel: ObservableObject {
   }
 
   func disconnect() {
+    authRefreshTask?.cancel()
+    authRefreshTask = nil
     Task { await messageStream.disconnect() }
+  }
+
+  func logout() {
+    guard let webAppURL = URL(string: settings.webAppURL) else { return }
+    authRefreshTask?.cancel()
+    authRefreshTask = nil
+    Task {
+      await messageStream.disconnect()
+      isAuthenticated = false
+      do {
+        try await authenticator.logout(webAppURL: webAppURL)
+      } catch {
+        connectionState = .failed(message: error.localizedDescription)
+      }
+    }
   }
 
   func selectRoom(_ roomID: String) {
@@ -145,6 +166,76 @@ final class AppModel: ObservableObject {
       for await event in events {
         guard !Task.isCancelled else { return }
         self?.handle(event)
+      }
+    }
+  }
+
+  private func connect(webAppURL: URL) async throws {
+    var configuration = try await configurationProvider.configuration(for: webAppURL)
+    authenticationRequired = configuration.authEnabled
+    if configuration.authEnabled {
+      let baseConfiguration = configuration
+      let ticket: AuthTicket
+      if let storedTicket = try await authenticator.validTicket(for: webAppURL) {
+        ticket = storedTicket
+      } else {
+        ticket = try await authenticator.authenticate(webAppURL: webAppURL)
+      }
+      configuration.websocketURL = try DesktopAuthURLBuilder.authenticatedWebSocketURL(
+        baseURL: configuration.websocketURL,
+        ticket: ticket
+      )
+      isAuthenticated = true
+      scheduleAuthenticationRefresh(
+        ticket: ticket,
+        webAppURL: webAppURL,
+        baseConfiguration: baseConfiguration
+      )
+    } else {
+      isAuthenticated = false
+      authRefreshTask?.cancel()
+      authRefreshTask = nil
+    }
+    try await messageStream.connect(
+      configuration: configuration,
+      roomID: settings.selectedRoomID
+    )
+  }
+
+  private func scheduleAuthenticationRefresh(
+    ticket: AuthTicket,
+    webAppURL: URL,
+    baseConfiguration: RuntimeConfiguration
+  ) {
+    authRefreshTask?.cancel()
+    let now = Int64(Date().timeIntervalSince1970 * 1_000)
+    let delayMilliseconds = max(0, ticket.expiresAt - now - 60_000)
+    authRefreshTask = Task { [weak self] in
+      do {
+        try await Task.sleep(for: .milliseconds(delayMilliseconds))
+        guard !Task.isCancelled, let self else { return }
+        let refreshedTicket = try await self.authenticator.authenticate(webAppURL: webAppURL)
+        var refreshedConfiguration = baseConfiguration
+        refreshedConfiguration.websocketURL = try DesktopAuthURLBuilder.authenticatedWebSocketURL(
+          baseURL: baseConfiguration.websocketURL,
+          ticket: refreshedTicket
+        )
+        await self.messageStream.disconnect()
+        try await self.messageStream.connect(
+          configuration: refreshedConfiguration,
+          roomID: self.settings.selectedRoomID
+        )
+        self.isAuthenticated = true
+        self.scheduleAuthenticationRefresh(
+          ticket: refreshedTicket,
+          webAppURL: webAppURL,
+          baseConfiguration: baseConfiguration
+        )
+      } catch is CancellationError {
+        return
+      } catch {
+        self?.isAuthenticated = false
+        self?.connectionState = .failed(message: error.localizedDescription)
       }
     }
   }
