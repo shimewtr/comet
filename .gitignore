@@ -9,6 +9,9 @@ node_modules/
 # Build outputs
 dist/
 build/
+.build/
+.swiftpm/
+DerivedData/
 *.tsbuildinfo
 
 # Environment variables
@@ -30,6 +33,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 *~
+*.xcuserstate
 
 # OS files
 .DS_Store
