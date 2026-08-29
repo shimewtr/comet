@@ -137,7 +137,7 @@ private struct StampOverlayView: View {
           .resizable()
           .scaledToFit()
       } else {
-        Text("✨")
+        Text(item.message.stamp.name)
           .font(.system(size: size * 0.65))
       }
     }
@@ -148,7 +148,9 @@ private struct StampOverlayView: View {
     .animation(.spring(response: 0.35, dampingFraction: 0.55), value: appeared)
     .task {
       appeared = true
-      guard let url = URL(string: item.message.stamp.imageUrl), !item.message.stamp.imageUrl.isEmpty
+      guard
+        !item.message.stamp.imageUrl.isEmpty,
+        let url = URL(string: item.message.stamp.imageUrl)
       else { return }
       if let data = try? await StampImageCache.shared.data(for: url) {
         image = NSImage(data: data)
