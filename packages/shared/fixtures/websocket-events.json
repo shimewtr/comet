@@ -1,0 +1,94 @@
+{
+  "comment": {
+    "type": "new_comment",
+    "payload": {
+      "comment": {
+        "id": "comment-1",
+        "content": "Hello from Comet",
+        "timestamp": 1735689600000,
+        "userId": "user-1",
+        "style": {
+          "color": "#ffffff",
+          "size": "large",
+          "animation": "bounce",
+          "speed": 5
+        }
+      }
+    },
+    "timestamp": 1735689600100,
+    "roomId": "room-1"
+  },
+  "stamp": {
+    "type": "new_stamp",
+    "payload": {
+      "stamp": {
+        "id": "stamp-message-1",
+        "stamp": {
+          "id": "stamp-1",
+          "name": "Clap",
+          "imageUrl": "https://example.com/stamps/clap.png",
+          "category": "reaction"
+        },
+        "timestamp": 1735689600200,
+        "userId": "user-2",
+        "position": {
+          "x": 0.25,
+          "y": 0.75
+        }
+      }
+    },
+    "timestamp": 1735689600300,
+    "roomId": "room-1"
+  },
+  "roomList": {
+    "type": "room_list",
+    "payload": {
+      "rooms": [
+        {
+          "id": "global",
+          "name": "グローバル",
+          "createdAt": 0,
+          "lastActiveAt": 0,
+          "expiresAt": null
+        },
+        {
+          "id": "room-1",
+          "name": "Demo",
+          "createdAt": 1735689500000,
+          "lastActiveAt": 1735689600000,
+          "expiresAt": 1735776000000
+        }
+      ]
+    },
+    "timestamp": 1735689600400
+  },
+  "roomJoined": {
+    "type": "room_joined",
+    "payload": {
+      "room": {
+        "id": "room-1",
+        "name": "Demo",
+        "createdAt": 1735689500000,
+        "lastActiveAt": 1735689600000,
+        "expiresAt": 1735776000000
+      }
+    },
+    "timestamp": 1735689600500,
+    "roomId": "room-1"
+  },
+  "error": {
+    "type": "error",
+    "payload": {
+      "code": "ROOM_NOT_FOUND",
+      "message": "Room not found",
+      "fallbackRoom": {
+        "id": "global",
+        "name": "グローバル",
+        "createdAt": 0,
+        "lastActiveAt": 0,
+        "expiresAt": null
+      }
+    },
+    "timestamp": 1735689600600
+  }
+}

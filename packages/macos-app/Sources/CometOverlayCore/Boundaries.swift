@@ -21,8 +21,12 @@ public protocol RuntimeConfigurationProviding: Sendable {
 }
 
 public protocol MessageStreaming: Sendable {
+  var events: AsyncStream<CometClientEvent> { get }
+
   func connect(configuration: RuntimeConfiguration, roomID: String) async throws
   func disconnect() async
+  func requestRooms() async throws
+  func joinRoom(_ roomID: String) async throws
 }
 
 @MainActor

@@ -9,12 +9,27 @@ final class AppModel: ObservableObject {
   }
 
   @Published private(set) var connectionState: ConnectionState = .disconnected
+  @Published private(set) var rooms: [CometRoom] = [.global]
 
   private let settingsStore: any SettingsStoring
+  private let configurationProvider: any RuntimeConfigurationProviding
+  private let messageStream: any MessageStreaming
+  private var eventsTask: Task<Void, Never>?
 
-  init(settingsStore: any SettingsStoring = UserDefaultsSettingsStore()) {
+  init(
+    settingsStore: any SettingsStoring = UserDefaultsSettingsStore(),
+    configurationProvider: any RuntimeConfigurationProviding = RuntimeConfigurationLoader(),
+    messageStream: any MessageStreaming = CometWebSocketClient()
+  ) {
     self.settingsStore = settingsStore
+    self.configurationProvider = configurationProvider
+    self.messageStream = messageStream
     settings = settingsStore.load()
+    observeEvents()
+  }
+
+  deinit {
+    eventsTask?.cancel()
   }
 
   var connectionDescription: String {
@@ -27,6 +42,93 @@ final class AppModel: ObservableObject {
       "接続済み"
     case .failed(let message):
       "エラー: \(message)"
+    }
+  }
+
+  var canConnect: Bool {
+    !settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      && connectionState != .connecting
+  }
+
+  func connect() {
+    let webAppURLValue = settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let webAppURL = URL(string: webAppURLValue) else {
+      connectionState = .failed(message: "WebアプリURLが正しくありません")
+      return
+    }
+
+    connectionState = .connecting
+    Task {
+      do {
+        let configuration = try await configurationProvider.configuration(for: webAppURL)
+        guard !configuration.authEnabled else {
+          connectionState = .failed(message: "この環境への接続にはログインが必要です（現在未対応）")
+          return
+        }
+        try await messageStream.connect(
+          configuration: configuration,
+          roomID: settings.selectedRoomID
+        )
+      } catch {
+        connectionState = .failed(message: error.localizedDescription)
+      }
+    }
+  }
+
+  func disconnect() {
+    Task { await messageStream.disconnect() }
+  }
+
+  func selectRoom(_ roomID: String) {
+    settings.selectedRoomID = roomID
+    guard connectionState == .connected else { return }
+    Task {
+      do {
+        try await messageStream.joinRoom(roomID)
+      } catch {
+        connectionState = .failed(message: error.localizedDescription)
+      }
+    }
+  }
+
+  func refreshRooms() {
+    guard connectionState == .connected else { return }
+    Task {
+      do {
+        try await messageStream.requestRooms()
+      } catch {
+        connectionState = .failed(message: error.localizedDescription)
+      }
+    }
+  }
+
+  private func observeEvents() {
+    let events = messageStream.events
+    eventsTask = Task { [weak self] in
+      for await event in events {
+        guard !Task.isCancelled else { return }
+        self?.handle(event)
+      }
+    }
+  }
+
+  private func handle(_ event: CometClientEvent) {
+    switch event {
+    case .connectionState(let state):
+      connectionState = state
+    case .message(.rooms(let updatedRooms)):
+      rooms = updatedRooms.isEmpty ? [.global] : updatedRooms
+    case .message(.roomJoined(let room)):
+      settings.selectedRoomID = room.id
+      if !rooms.contains(where: { $0.id == room.id }) {
+        rooms.append(room)
+      }
+    case .message(.serverError(let payload)):
+      if let fallbackRoom = payload.fallbackRoom {
+        settings.selectedRoomID = fallbackRoom.id
+      }
+    default:
+      break
     }
   }
 }

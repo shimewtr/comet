@@ -2,7 +2,7 @@
 
 macOSアプリはメニューバーに常駐し、Chrome拡張に限定せず画面全体へCometのコメントとスタンプを重ねて表示するクライアントです。
 
-現在はSwiftPMベースのアプリ基盤を実装しています。接続、描画、認証の進捗は[実装計画](plans/macos-overlay.md)を参照してください。
+現在はSwiftPMベースのアプリ基盤と、認証なし環境へのWebSocket接続を実装しています。描画、表示設定、複数ディスプレイ、認証の進捗は[実装計画](plans/macos-overlay.md)を参照してください。
 
 ## 必要な環境
 
@@ -33,7 +33,13 @@ swift test --package-path packages/macos-app -Xswiftc -warnings-as-errors
 swift run --package-path packages/macos-app CometOverlay
 ```
 
-起動するとメニューバーにCometアイコンが表示されます。現段階では設定の保存と基本状態表示だけを提供します。
+起動するとメニューバーにCometアイコンが表示されます。設定画面へWebアプリURLを入力して接続すると、`comet-config.json`からWebSocket URLを取得し、Room一覧を選択できます。切断時は指数バックオフで自動再接続します。
+
+認証が有効な環境へのログインは未実装です。IdPのアクセストークンやclient secretをアプリへ保存せず、macOS用の短命チケットをKeychainで扱う方式を実装予定です。
+
+## 表示設定とディスプレイ
+
+Chrome拡張と同等の速度、文字・スタンプサイズ、コメントとスタンプそれぞれの不透明度、表示領域を設定できるようにする予定です。出力先は接続中の個別ディスプレイまたはすべてのディスプレイから選択できるようにし、構成変更にも追従させます。
 
 ## 権限
 
