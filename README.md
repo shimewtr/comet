@@ -1,203 +1,82 @@
 # Comet ☄️
 
-リアルタイムコメント・スタンプシステム
+Cometは、プレゼンテーションや配信へリアルタイムにコメントとスタンプを重ねて表示するシステムです。
 
-Webアプリからコメント・スタンプを投稿すると、WebSocket経由で同じroomの接続端末にブロードキャストされ、Chrome拡張が投影中のページ（Googleスライドなど）にニコニコ動画風のオーバーレイとして描画します。
+参加者がWebアプリから投稿すると、同じRoomに接続したChrome拡張へWebSocketで配信され、Googleスライド上にニコニコ動画風のオーバーレイとして表示されます。
+
+## 主な機能
+
+- コメントとスタンプのリアルタイム配信
+- 一時的なRoomの作成と参加URL・QRコードの共有
+- カスタムスタンプのアップロード、検索、削除
+- コメント・スタンプ履歴の集計と表示
+- Chrome拡張によるGoogleスライド上のオーバーレイ
+- 任意で有効化できるOIDC認証
+- CloudFront + S3によるWeb配信とAWS CDKによるインフラ管理
 
 ```mermaid
 flowchart LR
-    Web[Webアプリ<br>Amplify Hosting] -- 投稿 --> WS[WebSocket API<br>API Gateway + Lambda]
-    WS -- 接続管理 --> DDB[(DynamoDB<br>connections)]
-    WS -- ブロードキャスト --> Ext[Chrome拡張<br>docs.google.com]
-    Web -- アップロード --> API[スタンプAPI<br>HTTP API + Lambda]
-    API --> S3[(S3 stamps)]
-    API --> DDB2[(DynamoDB stamps)]
-    S3 --> CF[CloudFront CDN]
-    CF -- スタンプ画像 --> Ext
+    User[参加者] --> Web[Webアプリ<br>CloudFront + S3]
+    Web -- コメント・スタンプ --> WS[API Gateway WebSocket]
+    WS --> Lambda[WebSocket Lambda]
+    Lambda --> DDB[(DynamoDB)]
+    Lambda -- Room内へ配信 --> Extension[Chrome拡張]
+    Extension --> Slides[Googleスライド<br>オーバーレイ]
+    Web -- カスタムスタンプ --> StampAPI[Stamp API]
+    StampAPI --> StampStore[(S3 + DynamoDB)]
 ```
 
-## パッケージ構成
+## クイックスタート
 
-pnpm workspaceのmonorepoです。
-
-| パッケージ                       | 内容                                                                                   |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `packages/shared`                | 型定義・定数・バリデーション・`CometSocket`（共通WebSocketクライアント）・`generateId` |
-| `packages/web`                   | 投稿用Webアプリ（React + Vite）                                                        |
-| `packages/chrome-extension`      | オーバーレイ描画用Chrome拡張（Manifest V3、docs.google.com上でのみ動作）               |
-| `packages/api/websocket-handler` | WebSocket用Lambda（connect / disconnect / message）                                    |
-| `packages/api/stamp-upload`      | スタンプAPI用Lambda（一覧・アップロードURL発行・削除）                                 |
-| `packages/cdk`                   | インフラ定義（AWS CDK、4スタック構成）                                                 |
-
-## 開発環境
-
-- Node.js 22 / pnpm 10
-- AWS CLI（デプロイ時。利用者自身のAWSプロファイルを使用）
+必要な環境はNode.js 22とpnpm 10です。
 
 ```bash
 pnpm install
-
-# 全パッケージのビルド（shared→依存パッケージの順で解決される）
-pnpm -r build
-
-# テスト（sharedのvitest）/ lint
-pnpm -r test
-pnpm -r lint
+pnpm --filter @comet/shared build
+pnpm --filter @comet/web dev
 ```
 
-Webアプリをローカルで動かすには `packages/web/.env.local` が必要です：
+Webアプリは通常 http://localhost:5173 で起動します。AWS上のWebSocketやスタンプAPIへ接続する場合は、`packages/web/.env.local` に接続先を設定してください。
 
+```dotenv
+VITE_WEBSOCKET_URL=wss://example.execute-api.ap-northeast-1.amazonaws.com/prod
+VITE_STAMP_API_URL=https://example.execute-api.ap-northeast-1.amazonaws.com
 ```
-VITE_WEBSOCKET_URL=wss://xxxx.execute-api.ap-northeast-1.amazonaws.com/prod
-VITE_STAMP_API_URL=https://xxxx.execute-api.ap-northeast-1.amazonaws.com
-```
 
-実際のURLは `cdk deploy` のOutputs（`WebSocketURL` / `StampUploadApiUrl`）を参照してください。
+詳しいセットアップは[ローカル開発ガイド](docs/development.md)を参照してください。
 
-## CI
+## ドキュメント
 
-GitHub Actions（`.github/workflows/ci.yml`）がPRとmainへのpushで「全パッケージビルド → lint → テスト → `cdk synth`」を実行します。デプロイは行いません。
+- [アーキテクチャ](docs/architecture.md) — システム構成、パッケージ、Roomと設定配信
+- [ローカル開発](docs/development.md) — セットアップ、起動、build・test・lint
+- [AWSへのデプロイ](docs/deployment.md) — CDK、設定ファイル、AWSプロファイル、デプロイ手順
+- [Chrome拡張](docs/chrome-extension.md) — build、Chromeへの読み込み、接続設定、認証
+- [OIDC認証](docs/authentication.md) — IdP、Secrets Manager、認証の有効化
+- [ホスティング・認証の設計背景](docs/design/hosting-and-auth.md)
 
-## インフラ
+## パッケージ
 
-CDKで以下の4スタックを管理しています（環境は `--context env=dev|prod` で切り替え）：
+| パッケージ                       | 内容                                                |
+| -------------------------------- | --------------------------------------------------- |
+| `packages/shared`                | 型、定数、バリデーション、共通WebSocketクライアント |
+| `packages/web`                   | React + Viteの投稿・履歴Webアプリ                   |
+| `packages/chrome-extension`      | Manifest V3のオーバーレイChrome拡張                 |
+| `packages/api/websocket-handler` | WebSocket接続・Room・メッセージ処理Lambda           |
+| `packages/api/stamp-upload`      | カスタムスタンプAPI Lambda                          |
+| `packages/api/history-handler`   | Room履歴・集計API Lambda                            |
+| `packages/edge-auth`             | Lambda@EdgeのOIDC認証処理                           |
+| `packages/cdk`                   | AWS CDKのインフラ定義                               |
 
-- **StorageStack**: WebSocket接続管理のDynamoDB（TTL付き、roomId GSI）
-- **WebSocketStack**: API Gateway WebSocket API + Lambda 3本
-- **StampStack**: スタンプ用S3 + CloudFront + DynamoDB（category GSI） + HTTP API + Lambda
-- **WebStack**: WebアプリのCloudFront + S3ホスティング（webビルド成果物のアップロードと`comet-config.json`の生成までデプロイで行う）
-
-ドメイン・認証などデプロイ先固有の設定は `packages/cdk/comet.config.json` に置きます。このファイルと後述の名前付き設定ファイルはgitignore対象なので、AWSアカウントや組織固有のIdP情報がOSSリポジトリに混ざることはありません。初回はテンプレートをコピーしてください。
+## よく使うコマンド
 
 ```bash
-cp packages/cdk/comet.config.example.json packages/cdk/comet.config.json
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-コピー後、自分のAWSプロファイルや必要な環境だけを設定します。設定ファイルがない場合は「認証なし・CloudFront自動ドメイン」のデフォルト構成になります。
+GitHub ActionsはPull Requestとmainへのpushでbuild、lint、test、CDK synthを実行します。AWSへのデプロイは行いません。
 
-### リソース命名規則
+## ライセンス
 
-CDK bootstrapに倣い、物理名は次の形式で統一しています（`lib/naming.ts` の `physicalName()`）：
-
-```
-comet-{env}-{リソースタイプ}-{accountId}-{region}
-例: comet-dev-connections-123456789012-ap-northeast-1
-```
-
-## デプロイ
-
-ビルドからデプロイまで1コマンドで行えます：
-
-```bash
-scripts/deploy.sh              # devに全デプロイ
-scripts/deploy.sh dev web      # webだけ更新
-scripts/deploy.sh prod         # prodに全デプロイ
-```
-
-AWSプロファイルは `packages/cdk/comet.config.json` の `envs.<env>.profile`、なければ環境変数 `AWS_PROFILE` が使われます（シェルに別プロジェクトの `AWS_PROFILE` が常設されている環境では、誤アカウントへのデプロイを防ぐためconfigでの指定を推奨）。
-
-複数のデプロイ先を切り替える場合は、名前付き設定ファイルを使えます。`packages/cdk/comet.config.<名前>.json` はgitignore対象です。
-
-```bash
-cp packages/cdk/comet.config.example.json packages/cdk/comet.config.personal.json
-scripts/deploy.sh dev all personal # personal設定で全体をデプロイ
-scripts/deploy.sh dev web personal # personal設定でwebだけデプロイ
-```
-
-第3引数の代わりに `COMET_CONFIG=personal scripts/deploy.sh dev web` と指定することもできます。名前付き設定を選んだ場合、そのファイルが存在しなければデプロイはエラー終了します。
-
-通常のアクセスキー形式だけでなく、AWS IAM Identity Center（SSO）や`source_profile`からロールを引き受ける形式のプロファイルも利用できます。SSOプロファイルの場合は、デプロイ前にAWS CLIでログインし、対象アカウントを確認してください。
-
-デプロイスクリプトは一時認証情報の安全な引き渡しに `aws configure export-credentials` を使用するため、このコマンドに対応したAWS CLI v2が必要です。
-
-```bash
-aws sso login --profile <your-sso-profile>
-aws sts get-caller-identity --profile <your-deploy-profile>
-```
-
-内部では各パッケージのビルド → `cdk deploy` を実行しており、WebStackのデプロイでwebのビルド成果物がS3にアップロードされ、CloudFrontのキャッシュ無効化まで行われます（webのビルドは `packages/web/.env.local` の `VITE_WEBSOCKET_URL` を使用）。
-
-事前に差分だけ見たい場合は手動で：
-
-```bash
-cd packages/cdk
-npx cdk diff --all --context env=dev --profile <your-profile>
-```
-
-注意点：
-
-- ConnectionsTableの名前/ARNはクロススタック参照でexportされているため、テーブルの置換を伴う変更はStorageStack単独では更新できないことがあります（devなら該当スタックのdestroy→deployが早い）
-- WebSocket APIを再作成するとURLが変わります。その場合は `packages/web/.env.local` を更新してwebを再ビルド・再デプロイしてください（拡張は「自動取得」で追従できます）
-
-### Chrome拡張
-
-```bash
-pnpm --filter @comet/chrome-extension build
-```
-
-`chrome://extensions` で `packages/chrome-extension/dist` を読み込んでください。動作対象は `https://docs.google.com/*` のみです（`manifest.json` の `matches` で制限）。
-
-接続設定はポップアップから行います。**WebアプリURLを入力して「自動取得」を押すと、Webアプリが配信する `/comet-config.json` からWebSocket URLを取得**して設定できます（`comet-config.json` はCDKデプロイ時にインフラ側の値から生成され、CloudFrontでこのファイルのみCORSが許可されています）。WebSocket URLを手入力することも可能です。
-
-## Room
-
-- `global` は常に利用できる期限なしのroomです。
-- Webアプリではroomを作成・選択できます。作成したroomは最終利用から3時間で期限切れになります。
-- room選択後のURL（`?room=<roomId>`）を共有すると、参加者は同じroomへ直接参加できます。
-- Chrome拡張ではpopupから表示対象roomを選択します。参加用QRコードにも選択中roomが反映されます。
-- カスタムスタンプの一覧・アップロード・削除はroom間で共通です。
-
-## 認証（OIDC）の有効化 — Okta / Auth0 / Cognito など
-
-デフォルトは認証なしの公開構成です（URLを知っていれば誰でも投稿できます）。任意のOIDCプロバイダによる認証をオプトインで有効化できます。設計の全体像は `docs/design/hosting-and-auth.md` を参照してください。
-
-> **現在のステータス**: ログイン（Lambda@EdgeのOIDC認証）からチケット検証まで一通り実装済みです。認可リダイレクト・未認証時の拒否はテスト済みですが、実IdPでのログイン完走はまだ検証されていないため、有効化の際はまずdev環境で動作確認してください。
-
-### 有効化の手順
-
-1. **IdP側でOIDCアプリを登録する**
-   - public clientの場合: SPA（認可コード + PKCE。client secretは不要）
-   - confidential clientの場合: Webアプリ（認可コード + PKCE）。client secretはSecrets Managerへ保存
-   - リダイレクトURI: `https://<WebのURL>/auth/callback`
-   - 取得するもの: **issuer URL** と **client_id**（どちらも秘密情報ではありません）。confidential clientではclient secretのSecrets Manager IDも取得します
-   - 独自ドメインを使う予定がある場合は先にドメインを設定しておくと、IdPへの再申請が不要になります
-   - CloudFrontの自動ドメインを使う場合は、最初に認証なしでデプロイしてWeb URLを取得し、IdPへリダイレクトURIを登録してから認証を有効化します
-2. **`packages/cdk/comet.config.json` に設定を書く**
-
-   ```json
-   {
-     "envs": {
-       "prod": {
-         "profile": "your-production-aws-profile",
-         "auth": {
-           "issuer": "https://idp.example.com/oauth2/xxxx",
-           "clientId": "your-client-id",
-           "clientSecretId": "optional/oidc/client-secret",
-           "clientSecretMethod": "client_secret_post"
-         }
-       }
-     }
-   }
-   ```
-
-   `clientSecretMethod`はIdPの設定に合わせて`client_secret_basic`（デフォルト）または`client_secret_post`を指定します。Secrets Managerの値は生のsecret文字列、または`secret` / `client_secret` / `clientSecret`キーを持つJSONを利用できます。
-
-3. **us-east-1のbootstrap（初回のみ）**: Lambda@Edgeはus-east-1にデプロイされるため、認証を有効化する場合のみ `npx cdk bootstrap aws://<accountId>/us-east-1` が必要です
-4. **デプロイ**: `scripts/deploy.sh <env>` — コマンドは認証なしのときと同じです
-
-有効化すると以下が自動で行われます：
-
-- チケット署名鍵がSecrets Managerに自動生成される（利用者が秘密情報を扱う必要はありません）
-- WebSocket `$connect` とスタンプAPIにオーソライザーが装着され、有効なチケットなしではアクセスできなくなる
-- 配信される `/comet-config.json` の `authEnabled` が `true` になり、webは同じビルドのまま自動でトークンを付けて接続する
-
-Chrome拡張は認証付き環境を検出すると「ログイン」を表示します。認証済みWebページから短命チケットを安全に受け取り、期限前にはWebセッションを使って自動更新します。
-
-### 無効化
-
-`comet.config.json` から `auth` を消して `scripts/deploy.sh <env>` を実行するだけです。
-
-## セキュリティ上のポイント
-
-- WebSocketで受信したペイロードはサーバ側で検証し、検証済みフィールドのみブロードキャストします（コメント文字数・スタイルの許可リスト・スタンプ画像URLのCloudFront限定など。`shared/src/utils/validation.ts`）
-- 拡張側でもスタンプ画像URLを許可リスト検証してから `img.src` に設定します
+[MIT License](LICENSE)

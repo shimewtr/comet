@@ -1,28 +1,35 @@
 import { APIGatewayProxyHandlerV2, APIGatewayProxyEventV2 } from 'aws-lambda';
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  QueryCommand,
+  GetCommand,
+  DeleteCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { generateId } from '@comet/shared';
+import { parseUploadRequest, stampNameFor } from './validation';
 
-const s3Client = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'ap-northeast-1',
+});
 const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const BUCKET_NAME = process.env.STAMP_BUCKET_NAME || '';
 const TABLE_NAME = process.env.STAMPS_TABLE_NAME || '';
 const CDN_DOMAIN = process.env.STAMP_CDN_DOMAIN || '';
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 // イベント全文のログはデバッグ時のみ（CloudWatch Logsのコスト削減）
 const DEBUG_LOGGING = process.env.LOG_LEVEL === 'debug';
 // アップロード未完了のままのpendingレコードをTTLで自動削除するまでの時間
 const PENDING_TTL_SECONDS = 24 * 60 * 60;
-
-interface GeneratePresignedUrlRequest {
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  stampName?: string;
-}
 
 type ResponseHeaders = Record<string, string>;
 
@@ -126,39 +133,15 @@ const handleGeneratePresignedUrl = async (
     };
   }
 
-  const request: GeneratePresignedUrlRequest = JSON.parse(event.body);
-
-  // バリデーション
-  if (!request.fileName || !request.fileType || !request.fileSize) {
+  const parsed = parseUploadRequest(event.body);
+  if (!parsed.ok) {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({ error: 'fileName, fileType, and fileSize are required' }),
+      body: JSON.stringify({ error: parsed.error }),
     };
   }
-
-  // ファイルサイズチェック
-  if (request.fileSize > MAX_FILE_SIZE) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({
-        error: `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
-      }),
-    };
-  }
-
-  // ファイルタイプチェック
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
-  if (!allowedTypes.includes(request.fileType)) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({
-        error: 'Invalid file type. Only PNG, JPG, and GIF are allowed',
-      }),
-    };
-  }
+  const request = parsed.value;
 
   // ユニークなファイル名生成
   const stampId = generateId();
@@ -178,7 +161,7 @@ const handleGeneratePresignedUrl = async (
   const imageUrl = `https://${CDN_DOMAIN}/${s3Key}`;
 
   // スタンプ名（カスタム名があればそれを使用、なければファイル名から生成）
-  const stampName = request.stampName?.trim() || request.fileName.replace(/\.[^/.]+$/, '');
+  const stampName = stampNameFor(request);
 
   // アップロード完了確認（confirm）まではpendingとして保存する。
   // クライアントがアップロードを完了しないまま放置した場合はTTLで自動削除される
@@ -308,7 +291,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return {
           statusCode: result.statusCode,
           headers,
-          body: JSON.stringify(result.error ? { error: result.error } : { success: true }),
+          body: JSON.stringify(
+            result.error ? { error: result.error } : { success: true }
+          ),
         };
       }
 

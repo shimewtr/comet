@@ -146,7 +146,7 @@ async function main() {
     });
     try {
       const rooms = await new Promise<RoomListPayload['rooms']>(
-        async (resolve, reject) => {
+        (resolve, reject) => {
           const timeout = setTimeout(
             () => reject(new Error('Room list timeout')),
             5000
@@ -158,8 +158,13 @@ async function main() {
               resolve(rooms);
             }
           );
-          await socket.connect();
-          socket.send(WebSocketMessageType.ROOM_LIST_REQUEST, {});
+          void socket
+            .connect()
+            .then(() => socket.send(WebSocketMessageType.ROOM_LIST_REQUEST, {}))
+            .catch((error) => {
+              clearTimeout(timeout);
+              reject(error);
+            });
         }
       );
       roomSelect.replaceChildren();

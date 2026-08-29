@@ -29,6 +29,8 @@ export function normalizeRoomName(name: unknown): string | null {
   if (
     normalized.length === 0 ||
     normalized.length > MAX_ROOM_NAME_LENGTH ||
+    // Room names must not contain C0 control characters or DEL.
+    // eslint-disable-next-line no-control-regex
     /[\u0000-\u001f\u007f]/.test(normalized)
   ) {
     return null;
