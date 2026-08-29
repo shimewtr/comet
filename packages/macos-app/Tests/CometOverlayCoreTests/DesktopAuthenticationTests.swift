@@ -49,6 +49,25 @@ func desktopAuthURLsAreFixedToConfiguredWebOrigin() throws {
 }
 
 @Test
+func desktopAuthRequiresHTTPSExceptForLoopbackDevelopment() throws {
+  let insecureRemote = try #require(URL(string: "http://comet.example.com"))
+  #expect(throws: DesktopAuthenticationError.invalidWebAppURL) {
+    try DesktopAuthURLBuilder.exchangeURL(webAppURL: insecureRemote)
+  }
+
+  let localhost = try #require(URL(string: "http://localhost:5173"))
+  #expect(
+    try DesktopAuthURLBuilder.exchangeURL(webAppURL: localhost).absoluteString
+      == "http://localhost:5173/auth/desktop/token"
+  )
+  let ipv6Loopback = try #require(URL(string: "http://[::1]:5173"))
+  #expect(
+    try DesktopAuthURLBuilder.exchangeURL(webAppURL: ipv6Loopback).absoluteString
+      == "http://[::1]:5173/auth/desktop/token"
+  )
+}
+
+@Test
 func desktopLogoutCallbackMustUseFixedURL() throws {
   let validURL = try #require(URL(string: "comet-overlay://auth/logout"))
   try DesktopAuthURLBuilder.validateLogoutCallback(validURL)

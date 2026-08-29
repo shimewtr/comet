@@ -56,8 +56,8 @@ public actor CometWebSocketClient: MessageStreaming {
       try await openTransport()
       startBackgroundTasks()
     } catch {
-      eventContinuation.yield(.connectionState(.failed(message: error.localizedDescription)))
-      throw error
+      guard await reconnect(after: error) else { throw error }
+      startBackgroundTasks()
     }
   }
 
@@ -126,27 +126,32 @@ public actor CometWebSocketClient: MessageStreaming {
   }
 
   private func reconnect(after error: Error) async -> Bool {
-    guard reconnectPolicy.maximumAttempts > 0 else {
+    guard reconnectPolicy.allowsAttempt(1) else {
       eventContinuation.yield(.connectionState(.failed(message: error.localizedDescription)))
       return false
     }
 
-    for attempt in 1...reconnectPolicy.maximumAttempts {
+    var attempt = 1
+    while reconnectPolicy.allowsAttempt(attempt) {
       guard !manuallyDisconnected, !Task.isCancelled else { return false }
       eventContinuation.yield(.connectionState(.connecting))
       do {
         try await reconnectSleeper(reconnectPolicy.delayMilliseconds(forAttempt: attempt))
+        guard !manuallyDisconnected, !Task.isCancelled else { return false }
         try await openTransport()
         startKeepalive()
         return true
       } catch is CancellationError {
         return false
       } catch {
-        if attempt == reconnectPolicy.maximumAttempts {
+        let nextAttempt = attempt == Int.max ? Int.max : attempt + 1
+        if !reconnectPolicy.allowsAttempt(nextAttempt) {
           eventContinuation.yield(
             .connectionState(.failed(message: error.localizedDescription))
           )
+          return false
         }
+        attempt = nextAttempt
       }
     }
     return false
