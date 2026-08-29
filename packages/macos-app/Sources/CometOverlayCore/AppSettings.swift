@@ -6,14 +6,14 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var webAppURL: String
   public var selectedRoomID: String
   public var overlaysEnabled: Bool
-  public var selectedDisplayID: UInt32?
+  public var selectedDisplayID: String?
   public var displaySettings: OverlayDisplaySettings
 
   public init(
     webAppURL: String = "",
     selectedRoomID: String = Self.defaultRoomID,
     overlaysEnabled: Bool = true,
-    selectedDisplayID: UInt32? = nil,
+    selectedDisplayID: String? = nil,
     displaySettings: OverlayDisplaySettings = OverlayDisplaySettings()
   ) {
     self.webAppURL = webAppURL
@@ -37,7 +37,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     selectedRoomID =
       try container.decodeIfPresent(String.self, forKey: .selectedRoomID) ?? Self.defaultRoomID
     overlaysEnabled = try container.decodeIfPresent(Bool.self, forKey: .overlaysEnabled) ?? true
-    selectedDisplayID = try container.decodeIfPresent(UInt32.self, forKey: .selectedDisplayID)
+    selectedDisplayID = try container.decodeIfPresent(String.self, forKey: .selectedDisplayID)
     displaySettings =
       try container.decodeIfPresent(OverlayDisplaySettings.self, forKey: .displaySettings)
       ?? OverlayDisplaySettings()
