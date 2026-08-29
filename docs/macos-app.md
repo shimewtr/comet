@@ -37,7 +37,7 @@ swift run --package-path packages/macos-app CometOverlay
 
 受信したコメントとスタンプは、接続中の各ディスプレイに作成した透明ウィンドウへ表示されます。ウィンドウはクリックを透過するため、背後のスライドやアプリをそのまま操作できます。コメントとスタンプは件数上限付きのキューで管理し、スタンプ画像はHTTPSのCloudFront URLだけを読み込みます。
 
-認証が有効な環境へのログインは未実装です。IdPのアクセストークンやclient secretをアプリへ保存せず、macOS用の短命チケットをKeychainで扱う方式を実装予定です。
+認証が有効な環境ではシステムのWeb認証画面を開き、PKCEでmacOS用の短命Cometチケットを取得します。チケットだけを端末限定のKeychainへ保存して期限前に更新し、IdPのアクセストークンやclient secretはアプリへ保存しません。詳細と脅威モデルは[OIDC認証](authentication.md#macosアプリ)を参照してください。
 
 ## 表示設定とディスプレイ
 

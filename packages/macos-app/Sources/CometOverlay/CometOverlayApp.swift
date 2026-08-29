@@ -30,11 +30,18 @@ private struct MenuContent: View {
         .font(.headline)
       Text(model.connectionDescription)
         .foregroundStyle(.secondary)
+      if model.authenticationRequired {
+        Text(model.authenticationDescription)
+          .foregroundStyle(.secondary)
+      }
       HStack {
         Button("接続") { model.connect() }
           .disabled(!model.canConnect || model.connectionState == .connected)
         Button("切断") { model.disconnect() }
           .disabled(model.connectionState == .disconnected)
+        if model.isAuthenticated {
+          Button("ログアウト") { model.logout() }
+        }
       }
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
       Button("テスト表示") { model.previewOverlay() }
@@ -84,6 +91,17 @@ private struct SettingsView: View {
         }
         Text(model.connectionDescription)
           .foregroundStyle(.secondary)
+        if model.authenticationRequired {
+          HStack {
+            Text("認証")
+            Spacer()
+            Text(model.authenticationDescription)
+              .foregroundStyle(.secondary)
+            if model.isAuthenticated {
+              Button("ログアウト") { model.logout() }
+            }
+          }
+        }
       }
 
       Section("オーバーレイ") {
