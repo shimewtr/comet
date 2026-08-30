@@ -50,8 +50,9 @@ export const DEFAULT_SETTINGS: CometSettings = {
  * 設定を読み込む（未保存の項目はデフォルト値で埋める）
  */
 export async function loadSettings(): Promise<CometSettings> {
+  const storageDefaults: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   const [stored, localAuth] = await Promise.all([
-    chrome.storage.sync.get(DEFAULT_SETTINGS),
+    chrome.storage.sync.get(storageDefaults),
     chrome.storage.local.get(['authToken', 'authTokenExpiresAt']),
   ]);
   const settings = { ...DEFAULT_SETTINGS, ...stored } as CometSettings;
