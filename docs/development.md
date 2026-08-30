@@ -2,7 +2,7 @@
 
 ## 必要な環境
 
-- Node.js 22
+- Node.js 24 LTS（正確なバージョンは`.node-version`を参照）
 - pnpm 10
 - AWS CLI v2（AWSへ接続・デプロイする場合のみ）
 - Google Chrome（Chrome拡張を確認する場合）

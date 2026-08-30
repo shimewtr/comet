@@ -13,10 +13,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import type {
   HistoryBucket,
+  PopularHistoryItem,
   Room,
   RoomEvent,
   RoomHistoryDetail,
   RoomHistorySummary,
+  Stamp,
 } from '@comet/shared';
 
 const client = new DynamoDBClient({});
@@ -26,6 +28,21 @@ const capturesTable = process.env.ROOM_CAPTURES_TABLE_NAME!;
 const captureBucket = process.env.CAPTURE_BUCKET_NAME!;
 const s3 = new S3Client({});
 const MAX_EVENTS = 10_000;
+
+interface RoomRecord extends Room {
+  commentCount?: number;
+  stampCount?: number;
+  recorderId?: string;
+  recorderExpiresAt?: number;
+}
+
+function hasErrorName(error: unknown, name: string): boolean {
+  return error instanceof Error && error.name === name;
+}
+
+function hasErrorMessage(error: unknown, message: string): boolean {
+  return error instanceof Error && error.message === message;
+}
 
 const json = (statusCode: number, body: unknown) => ({
   statusCode,
@@ -52,7 +69,7 @@ function decodeCursor(value?: string): Record<string, AttributeValue> | undefine
   }
 }
 
-function toRoom(value: Record<string, any>): Room {
+function toRoom(value: RoomRecord): Room {
   return {
     id: value.id,
     name: value.name,
@@ -62,7 +79,7 @@ function toRoom(value: Record<string, any>): Room {
   };
 }
 
-function toSummary(value: Record<string, any>): RoomHistorySummary {
+function toSummary(value: RoomRecord): RoomHistorySummary {
   const commentCount = value.commentCount ?? 0;
   const stampCount = value.stampCount ?? 0;
   return {
@@ -74,20 +91,20 @@ function toSummary(value: Record<string, any>): RoomHistorySummary {
   };
 }
 
-function toEvent(value: Record<string, any>): RoomEvent {
+function toEvent(value: RoomEvent): RoomEvent {
   return value.type === 'comment'
     ? { type: 'comment', timestamp: value.timestamp, comment: value.comment }
     : { type: 'stamp', timestamp: value.timestamp, stamp: value.stamp };
 }
 
-async function getRoom(roomId: string): Promise<Record<string, any> | null> {
+async function getRoom(roomId: string): Promise<RoomRecord | null> {
   const result = await client.send(
     new GetItemCommand({
       TableName: roomsTable,
       Key: marshall({ id: roomId }),
     })
   );
-  return result.Item ? unmarshall(result.Item) : null;
+  return result.Item ? (unmarshall(result.Item) as RoomRecord) : null;
 }
 
 async function queryAllEvents(
@@ -145,8 +162,8 @@ export function aggregateEvents(
     const values = buckets.get(start) ?? [];
     const comments = values.filter((event) => event.type === 'comment');
     const stamps = values.filter((event) => event.type === 'stamp');
-    const stampCounts = new Map<string, { stamp: any; count: number }>();
-    const itemCounts = new Map<string, any>();
+    const stampCounts = new Map<string, { stamp: Stamp; count: number }>();
+    const itemCounts = new Map<string, PopularHistoryItem>();
     for (const event of comments) {
       if (event.type !== 'comment') continue;
       const key = `comment:${event.comment.content}`;
@@ -230,7 +247,7 @@ async function buildAnalysis(events: RoomEvent[], from: number, to: number, room
       capture: nearest,
     };
   });
-  const stampCounts = new Map<string, { stamp: any; count: number }>();
+  const stampCounts = new Map<string, { stamp: Stamp; count: number }>();
   for (const event of events) if (event.type === 'stamp') {
     const key = event.stamp.stamp.id || event.stamp.stamp.name;
     const current = stampCounts.get(key);
@@ -275,8 +292,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           ExpressionAttributeValues: marshall({ ':deviceId': body.deviceId, ':expiresAt': now + 120_000, ':now': now }),
         }));
         return json(200, { acquired: true, expiresAt: now + 120_000 });
-      } catch (error: any) {
-        if (error.name === 'ConditionalCheckFailedException') return json(409, { acquired: false });
+      } catch (error: unknown) {
+        if (hasErrorName(error, 'ConditionalCheckFailedException')) return json(409, { acquired: false });
         throw error;
       }
     }
@@ -363,10 +380,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       ...analysis,
     };
     return json(200, detail);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('History API error:', error);
-    if (error?.message === 'invalid cursor') return json(400, { message: 'Invalid cursor' });
-    if (error?.message === 'too many events') return json(413, { message: 'The selected range exceeds 10000 events' });
+    if (hasErrorMessage(error, 'invalid cursor')) return json(400, { message: 'Invalid cursor' });
+    if (hasErrorMessage(error, 'too many events')) return json(413, { message: 'The selected range exceeds 10000 events' });
     return json(500, { message: 'Failed to load room history' });
   }
 };

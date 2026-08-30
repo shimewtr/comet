@@ -2,7 +2,7 @@
 
 ## 必要な環境
 
-- Node.js 22
+- Node.js 24 LTS（正確なバージョンは`.node-version`を参照）
 - pnpm 10
 - `aws configure export-credentials` に対応したAWS CLI v2
 - デプロイ先アカウントでbootstrap済みのAWS CDK

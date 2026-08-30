@@ -14,20 +14,20 @@
     "build:shared": "pnpm --filter @comet/shared build",
     "dev": "pnpm -r --parallel dev",
     "test": "node --test scripts/*.test.mjs && pnpm -r test",
-    "lint": "eslint packages scripts --ext .ts,.tsx,.js,.mjs,.cjs && pnpm --filter @comet/web lint",
+    "lint": "eslint packages scripts --ext .ts,.tsx,.js,.mjs,.cjs --max-warnings 0 && pnpm --filter @comet/web lint",
     "clean": "pnpm -r clean"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.0.0",
     "eslint": "^8.56.0",
     "prettier": "^3.1.0",
     "prettier-plugin-css-order": "^2.1.2",
     "typescript": "^5.3.0"
   },
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=24.0.0 <25.0.0",
     "pnpm": ">=10.0.0 <11.0.0"
   }
 }

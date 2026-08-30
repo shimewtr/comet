@@ -208,8 +208,8 @@ export async function touchRoom(roomId: string): Promise<Room | null> {
       lastActiveAt: value.lastActiveAt,
       expiresAt: value.expiresAt,
     };
-  } catch (error: any) {
-    if (error.name === 'ConditionalCheckFailedException') return null;
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ConditionalCheckFailedException') return null;
     throw error;
   }
 }

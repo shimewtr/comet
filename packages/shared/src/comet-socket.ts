@@ -49,7 +49,7 @@ const SEND_WAIT_POLL_INTERVAL_MS = 50;
  */
 export class CometSocket {
   private ws: WebSocket | null = null;
-  private handlers = new Map<WebSocketMessageType, Set<MessageHandler<any>>>();
+  private handlers = new Map<WebSocketMessageType, Set<MessageHandler<unknown>>>();
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -147,10 +147,11 @@ export class CometSocket {
       set = new Set();
       this.handlers.set(type, set);
     }
-    set.add(handler);
+    const unknownHandler = handler as MessageHandler<unknown>;
+    set.add(unknownHandler);
 
     return () => {
-      set.delete(handler);
+      set.delete(unknownHandler);
     };
   }
 

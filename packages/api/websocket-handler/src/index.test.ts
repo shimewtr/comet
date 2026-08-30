@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { WebSocketMessageType, GLOBAL_ROOM_ID } from '@comet/shared';
 
 const db = vi.hoisted(() => ({
@@ -32,7 +33,7 @@ const gateway = vi.hoisted(() => ({
 vi.mock('./dynamodb-client', () => db);
 vi.mock('./api-gateway-client', () => gateway);
 process.env.HANDLER_TYPE = 'message';
-let handler: any;
+let handler: APIGatewayProxyWebsocketHandlerV2;
 
 beforeAll(async () => {
   handler = (await import('./index')).handler;
