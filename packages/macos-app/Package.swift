@@ -20,7 +20,8 @@ let package = Package(
     ),
     .executableTarget(
       name: "CometOverlay",
-      dependencies: ["CometOverlayCore", "CometOverlayUI"]
+      dependencies: ["CometOverlayCore", "CometOverlayUI"],
+      resources: [.copy("Resources/ToolbarIcon.png")]
     ),
     .testTarget(
       name: "CometOverlayCoreTests",

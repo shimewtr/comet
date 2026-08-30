@@ -8,8 +8,7 @@ func presentationWindowPolicySupportsFullscreenWithoutBlockingInput() {
   let policy = OverlayWindowPolicy.presentation
 
   #expect(policy.level.rawValue > NSWindow.Level.normal.rawValue)
-  #expect(policy.level.rawValue == NSWindow.Level.mainMenu.rawValue - 1)
-  #expect(policy.level.rawValue < NSWindow.Level.mainMenu.rawValue)
+  #expect(policy.level == .screenSaver)
   #expect(policy.collectionBehavior.contains(.canJoinAllSpaces))
   #expect(policy.collectionBehavior.contains(.fullScreenAuxiliary))
   #expect(policy.collectionBehavior.contains(.transient))

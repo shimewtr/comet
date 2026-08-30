@@ -5,17 +5,17 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>ja</string>
   <key>CFBundleDisplayName</key>
-  <string>Comet Overlay</string>
+  <string>Comet</string>
   <key>CFBundleExecutable</key>
   <string>CometOverlay</string>
   <key>CFBundleIconFile</key>
-  <string>CometOverlay</string>
+  <string>Comet</string>
   <key>CFBundleIdentifier</key>
   <string>com.shimewtr.comet.overlay</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>CometOverlay</string>
+  <string>Comet</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

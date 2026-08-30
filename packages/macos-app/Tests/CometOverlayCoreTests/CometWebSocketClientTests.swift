@@ -198,7 +198,7 @@ func reconnectsAfterUnexpectedTransportClosure() async throws {
   try await client.connect(configuration: configuration, roomID: "global")
   await transport.enqueue(.failure(MockTransportError.connectionClosed))
   let connections = await transport.waitForConnectionCount(2)
-  let sentMessageCount = await transport.sentMessages.count
+  let sentMessageCount = await transport.waitForSentMessageCount(4).count
 
   #expect(connections.count == 2)
   #expect(sentMessageCount == 4)
@@ -226,7 +226,7 @@ func keepsReconnectingBeyondFiveFailuresUntilTheNetworkRecovers() async throws {
   await transport.failNextConnections(6)
   await transport.enqueue(.failure(MockTransportError.connectionClosed))
   let connections = await transport.waitForConnectionCount(8)
-  let sentMessageCount = await transport.sentMessages.count
+  let sentMessageCount = await transport.waitForSentMessageCount(4).count
 
   #expect(connections.count == 8)
   #expect(sentMessageCount == 4)

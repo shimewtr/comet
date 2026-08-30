@@ -75,7 +75,7 @@ Chrome拡張は認証付き環境を検出するとログイン操作を表示�
 
 ## macOSアプリ
 
-macOSアプリは認証付き環境へ接続すると、`ASWebAuthenticationSession`でWebアプリの`/auth/desktop`を開きます。ブラウザ側のOIDCセッションでログイン後、次のPKCEフローで短命Cometチケットを受け取ります。
+macOSアプリは認証付き環境へ接続すると、macOSのデフォルトブラウザでWebアプリの`/auth/desktop`を開きます。ブラウザ側のOIDCセッションでログイン後、固定URL Schemeでアプリへ戻り、次のPKCEフローで短命Cometチケットを受け取ります。
 
 1. アプリが暗号学的乱数からstateとPKCE verifier/challengeを生成する
 2. Edge認証がログイン済みセッションを確認する

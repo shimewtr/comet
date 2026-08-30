@@ -95,7 +95,8 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
   }
 
   private func makeOverlay(for screen: NSScreen) -> ScreenOverlay {
-    let model = OverlaySceneModel()
+    // 最小コメント行高を基準に、背の高い画面でも下端までレーンを割り当てる。
+    let model = OverlaySceneModel(laneCount: max(1, Int(screen.frame.height / 48)))
     let window = OverlayPanel(
       contentRect: screen.frame,
       styleMask: [.borderless, .nonactivatingPanel],

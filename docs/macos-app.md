@@ -37,7 +37,7 @@ swift run --package-path packages/macos-app CometOverlay
 
 ```bash
 scripts/build-macos-app.sh
-open build/macos/CometOverlay.app
+open build/macos/Comet.app
 ```
 
 署名、Notarization、インストール、更新、アンインストール、ログ収集は[macOSアプリの配布](macos-app-release.md)を参照してください。
@@ -46,7 +46,7 @@ open build/macos/CometOverlay.app
 
 受信したコメントとスタンプは、接続中の各ディスプレイに作成した透明ウィンドウへ表示されます。位置指定のないスタンプは表示領域へ分散し、指定された正規化座標はそのまま使用します。ウィンドウはクリックを透過するため、背後のスライドやアプリをそのまま操作できます。コメントとスタンプは件数上限付きのキューで管理し、スタンプ画像はHTTPSのCloudFront URLだけを読み込みます。
 
-認証が有効な環境ではシステムのWeb認証画面を開き、PKCEでmacOS用の短命Cometチケットを取得します。チケットだけを端末限定のKeychainへ保存して期限前に更新し、IdPのアクセストークンやclient secretはアプリへ保存しません。詳細と脅威モデルは[OIDC認証](authentication.md#macosアプリ)を参照してください。
+認証が有効な環境ではmacOSのデフォルトブラウザを開き、PKCEでmacOS用の短命Cometチケットを取得します。チケットだけを端末限定のKeychainへ保存して期限前に更新し、IdPのアクセストークンやclient secretはアプリへ保存しません。詳細と脅威モデルは[OIDC認証](authentication.md#macosアプリ)を参照してください。
 
 ## 表示設定とディスプレイ
 
@@ -58,7 +58,7 @@ open build/macos/CometOverlay.app
 - スタンプの不透明度: 20〜100%
 - 表示領域: 画面全体、上半分、上1/3
 
-出力先は接続中の個別ディスプレイまたはすべてのディスプレイから選択できます。選択したディスプレイが外れている間はメインディスプレイへフォールバックし、保存した選択自体は維持します。「テスト表示」で接続前にも見え方を確認でき、「表示を緊急停止」ですべてのオーバーレイを即座に閉じられます。
+出力先は接続中の個別ディスプレイまたはすべてのディスプレイから選択できます。選択したディスプレイが外れている間はメインディスプレイへフォールバックし、保存した選択自体は維持します。「テスト表示」で接続前にも見え方を確認でき、メニューバーの「オーバーレイを表示」で表示と非表示を切り替えられます。
 
 ディスプレイはCoreGraphicsの永続UUIDで識別します。解像度変更や再接続時は画面に合わせて透明ウィンドウを再配置します。オーバーレイは他アプリのStage Manager setとフルスクリーンSpaceへ参加し、メニューバーより1段低いwindow levelを使うため、通常ウィンドウより前面に表示しながらシステムUIを不必要に覆いません。フルスクリーン・Spaces・Stage Manager・画面抜き差しの実機確認は[受け入れテスト](macos-app-acceptance.md)を参照してください。
 
@@ -68,4 +68,4 @@ open build/macos/CometOverlay.app
 
 ## 診断情報
 
-設定画面の「このアプリについて」でversionとbuild番号を確認できます。アプリはApple Unified Loggingへライフサイクルと接続失敗の種類を記録しますが、WebアプリURL、投稿内容、認証コード、チケットは記録しません。収集手順とクラッシュレポートの場所は[配布ガイド](macos-app-release.md#ログとクラッシュ情報)に記載しています。
+設定画面の「詳細」でversionとbuild番号を確認できます。アプリはApple Unified Loggingへライフサイクルと接続失敗の種類を記録しますが、WebアプリURL、投稿内容、認証コード、チケットは記録しません。収集手順とクラッシュレポートの場所は[配布ガイド](macos-app-release.md#ログとクラッシュ情報)に記載しています。

@@ -1,5 +1,7 @@
 # Comet ☄️
 
+![Comet — Real-time comments and stamps for presentations](packages/web/public/comet-hero.png)
+
 Cometは、プレゼンテーションや配信へリアルタイムにコメントとスタンプを重ねて表示するシステムです。
 
 参加者がWebアプリから投稿すると、同じRoomに接続したChrome拡張またはmacOSアプリへWebSocketで配信され、スライドやデスクトップ上にニコニコ動画風のオーバーレイとして表示されます。
@@ -47,6 +49,34 @@ VITE_STAMP_API_URL=https://example.execute-api.ap-northeast-1.amazonaws.com
 ```
 
 詳しいセットアップは[ローカル開発ガイド](docs/development.md)を参照してください。
+
+## macOSアプリ
+
+macOS 14以降では、メニューバー常駐アプリ「Comet」を使ってコメントとスタンプをディスプレイ全体へ表示できます。Chromeに限定されないため、KeynoteやPowerPointのフルスクリーンスライド、配信画面などにもクリック透過のオーバーレイを重ねられます。出力するディスプレイ、コメント速度、サイズ、不透明度、表示領域を設定できます。
+
+開発版を直接起動するにはApple Swift 6以降を用意し、次を実行します。
+
+```bash
+swift run --package-path packages/macos-app CometOverlay
+```
+
+ApplicationsやSpotlightから起動できる未署名アプリを作る場合は、Universal Binaryの`Comet.app`を生成します。
+
+```bash
+scripts/build-macos-app.sh
+open build/macos/Comet.app
+```
+
+起動後は次の手順で接続します。
+
+1. メニューバーのCometアイコンから「詳細設定」を開き、WebアプリURLを入力する
+2. メニューバーへ戻り「接続する」を押す
+3. Roomと出力先ディスプレイを選択する
+4. 「オーバーレイを表示」をオンにする
+
+ツールバーアイコン右下のドットは、緑が接続済み、オレンジが接続中、赤が接続エラー、グレーが未接続を表します。認証が有効なWeb環境では、接続時にシステムブラウザでOIDC認証を行います。
+
+設定、テスト表示、マルチディスプレイ、認証の詳細は[macOSアプリガイド](docs/macos-app.md)、署名・Notarization・インストール方法は[配布ガイド](docs/macos-app-release.md)を参照してください。
 
 ## ドキュメント
 

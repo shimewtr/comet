@@ -26,6 +26,13 @@ public struct OverlayCanvasView: View {
             settings: model.displaySettings
           )
         }
+        ForEach(model.stampBursts) { item in
+          StampBurstView(
+            item: item,
+            canvasSize: geometry.size,
+            settings: model.displaySettings
+          )
+        }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .clipped()
@@ -41,6 +48,7 @@ private struct CommentOverlayView: View {
   let settings: OverlayDisplaySettings
 
   @State private var hasStarted = false
+  @State private var isVisible = false
 
   var body: some View {
     let fontSize = baseFontSize * CGFloat(settings.sizeScale)
@@ -60,18 +68,27 @@ private struct CommentOverlayView: View {
             y: scrollingY(fontSize: fontSize)
           )
       case .fixedTop:
-        text
-          .position(x: canvasSize.width / 2, y: max(fontSize, canvasSize.height * 0.08))
+        text.position(
+          x: canvasSize.width / 2,
+          y: max(verticalBounds.lowerBound + fontSize / 2, canvasSize.height * 0.08)
+        )
       case .fixedBottom:
         text
-          .position(x: canvasSize.width / 2, y: canvasSize.height - max(fontSize, 80))
+          .position(x: canvasSize.width / 2, y: verticalBounds.upperBound - fontSize / 2)
       }
     }
     .modifier(CommentEffect(animation: item.comment.style.animation))
+    .opacity(item.placement == .scrolling && !isVisible ? 0 : 1)
     .task {
       guard item.placement == .scrolling else { return }
       try? await Task.sleep(for: .seconds(item.delay))
       guard !Task.isCancelled else { return }
+      var transaction = Transaction()
+      transaction.disablesAnimations = true
+      withTransaction(transaction) {
+        isVisible = true
+      }
+      await Task.yield()
       withAnimation(.linear(duration: item.duration)) {
         hasStarted = true
       }
@@ -97,10 +114,16 @@ private struct CommentOverlayView: View {
   }
 
   private func scrollingY(fontSize: CGFloat) -> CGFloat {
-    let visibleHeight = canvasSize.height * CGFloat(settings.displayArea.heightFraction)
+    let visibleHeight = verticalBounds.upperBound - verticalBounds.lowerBound
     let laneHeight = max(48, fontSize * 1.35)
     let laneCount = max(1, Int(visibleHeight / laneHeight))
-    return (CGFloat(item.lane % laneCount) + 0.5) * laneHeight
+    return verticalBounds.lowerBound + (CGFloat(item.lane % laneCount) + 0.5) * laneHeight
+  }
+
+  private var verticalBounds: ClosedRange<CGFloat> {
+    let safeInset = canvasSize.height * 0.05
+    let displayAreaBottom = canvasSize.height * CGFloat(settings.displayArea.heightFraction)
+    return safeInset...max(safeInset, min(displayAreaBottom, canvasSize.height - safeInset))
   }
 }
 
@@ -127,46 +150,225 @@ private struct StampOverlayView: View {
   let canvasSize: CGSize
   let settings: OverlayDisplaySettings
 
-  @State private var image: NSImage?
   @State private var appeared = false
+  @State private var fadingOut = false
+  @State private var image: NSImage?
+  @State private var imageReady = false
+
+  var body: some View {
+    StampFaceView(
+      stamp: item.message.stamp,
+      size: size,
+      image: image,
+      isReady: imageReady
+    )
+    .frame(width: size, height: size)
+    .position(x: position.x, y: position.y)
+    .shadow(color: .white.opacity(0.8), radius: 10)
+    .scaleEffect(appeared ? 1 : 0.82)
+    .animation(.spring(response: 0.22, dampingFraction: 0.72), value: appeared)
+    .opacity(appeared && !fadingOut ? settings.stampOpacity : 0)
+    .animation(.easeOut(duration: 0.18), value: appeared)
+    .animation(.easeOut(duration: 0.48), value: fadingOut)
+    .task {
+      image = await loadStampImage(for: item.message.stamp)
+      imageReady = true
+      await Task.yield()
+      appeared = true
+      try? await Task.sleep(for: .milliseconds(650))
+      guard !Task.isCancelled else { return }
+      fadingOut = true
+    }
+  }
+
+  private var size: CGFloat { 52 * CGFloat(settings.sizeScale) }
+
+  private var position: CGPoint {
+    let safeInset = canvasSize.height * 0.05
+    let displayAreaBottom = canvasSize.height * CGFloat(settings.displayArea.heightFraction)
+    let bottom = max(safeInset, min(displayAreaBottom, canvasSize.height - safeInset))
+    let topCenter = min(bottom, safeInset + size / 2)
+    let bottomCenter = max(topCenter, bottom - size / 2)
+    let normalizedY = CGFloat(min(max(item.position.y, 0), 1))
+    return CGPoint(
+      x: CGFloat(min(max(item.position.x, 0.05), 0.95)) * canvasSize.width,
+      y: topCenter + normalizedY * (bottomCenter - topCenter)
+    )
+  }
+}
+
+private struct StampBurstView: View {
+  let item: RenderedStampBurst
+  let canvasSize: CGSize
+  let settings: OverlayDisplaySettings
+
+  @State private var popped = false
+  @State private var burst = false
+  @State private var image: NSImage?
+  @State private var imageReady = false
+
+  private var tier: CGFloat { CGFloat(min(item.comboCount, 20) / 5) }
+  private var size: CGFloat { (220 + (tier - 1) * 70) * CGFloat(settings.sizeScale) }
+  private var center: CGPoint {
+    CGPoint(
+      x: canvasSize.width * CGFloat(item.position.x),
+      y: canvasSize.height * CGFloat(item.position.y)
+    )
+  }
+
+  var body: some View {
+    ZStack {
+      StampFaceView(
+        stamp: item.stamp,
+        size: size,
+        image: image,
+        isReady: imageReady
+      )
+      .frame(width: size, height: size)
+      .scaleEffect(burst ? 1.7 : (popped ? 1 : 0))
+      .opacity(burst ? 0 : settings.stampOpacity)
+      .shadow(color: .white.opacity(0.9), radius: 14)
+      .animation(
+        burst
+          ? .easeIn(duration: 0.25)
+          : .timingCurve(0.34, 1.56, 0.64, 1, duration: 0.2),
+        value: burst ? 2 : (popped ? 1 : 0)
+      )
+
+      if burst {
+        ForEach(0..<24, id: \.self) { index in
+          StampBurstParticle(
+            stamp: item.stamp,
+            image: image,
+            index: index,
+            distanceScale: 1 + (tier - 1) * 0.2,
+            sizeScale: CGFloat(settings.sizeScale),
+            opacity: settings.stampOpacity
+          )
+        }
+      }
+    }
+    .position(center)
+    .task {
+      image = await loadStampImage(for: item.stamp)
+      imageReady = true
+      await Task.yield()
+      popped = true
+      try? await Task.sleep(for: .milliseconds(550))
+      guard !Task.isCancelled else { return }
+      burst = true
+    }
+  }
+}
+
+private struct StampBurstParticle: View {
+  let stamp: Stamp
+  let image: NSImage?
+  let index: Int
+  let distanceScale: CGFloat
+  let sizeScale: CGFloat
+  let opacity: Double
+
+  @State private var scattered = false
+  @State private var fadedOut = false
+  @State private var angle: CGFloat
+  @State private var distance: CGFloat
+
+  init(
+    stamp: Stamp,
+    image: NSImage?,
+    index: Int,
+    distanceScale: CGFloat,
+    sizeScale: CGFloat,
+    opacity: Double
+  ) {
+    self.stamp = stamp
+    self.image = image
+    self.index = index
+    self.distanceScale = distanceScale
+    self.sizeScale = sizeScale
+    self.opacity = opacity
+    _angle = State(
+      initialValue: CGFloat(index) / 24 * .pi * 2
+    )
+    // Chrome拡張と同じ220〜520px。スタンプ自体のサイズだけmacOS向けに抑える。
+    _distance = State(initialValue: CGFloat.random(in: 220...520) * distanceScale)
+  }
+
+  var body: some View {
+    StampFaceView(
+      stamp: stamp,
+      size: 36 * sizeScale,
+      image: image,
+      isReady: true
+    )
+    .frame(width: 36 * sizeScale, height: 36 * sizeScale)
+    .scaleEffect(scattered ? 0.4 : 1)
+    .offset(
+      x: scattered ? cos(angle) * distance : 0,
+      y: scattered ? sin(angle) * distance : 0
+    )
+    .animation(.linear(duration: 0.9), value: scattered)
+    .opacity(fadedOut ? 0 : opacity)
+    .animation(.easeIn(duration: 0.9), value: fadedOut)
+    .task {
+      await Task.yield()
+      scattered = true
+      await Task.yield()
+      fadedOut = true
+    }
+  }
+}
+
+private struct StampFaceView: View {
+  let stamp: Stamp
+  let size: CGFloat
+  let image: NSImage?
+  let isReady: Bool
 
   var body: some View {
     Group {
       if let image {
-        Image(nsImage: image)
-          .resizable()
-          .scaledToFit()
+        AnimatedStampImage(image: image)
+      } else if !isReady {
+        Color.clear
       } else {
-        Text(item.message.stamp.name)
-          .font(.system(size: size * 0.65))
-      }
-    }
-    .frame(width: size, height: size)
-    .position(x: position.x, y: position.y)
-    .opacity(appeared ? settings.stampOpacity : 0)
-    .scaleEffect(appeared ? 1 : 0.25)
-    .animation(.spring(response: 0.35, dampingFraction: 0.55), value: appeared)
-    .task {
-      appeared = true
-      guard
-        !item.message.stamp.imageUrl.isEmpty,
-        let url = URL(string: item.message.stamp.imageUrl)
-      else { return }
-      if let data = try? await StampImageCache.shared.data(for: url) {
-        image = NSImage(data: data)
+        Text(stamp.name.split(separator: " ").first.map(String.init) ?? stamp.name)
+          .font(.system(size: size))
+          .lineLimit(1)
       }
     }
   }
+}
 
-  private var size: CGFloat { 120 * CGFloat(settings.sizeScale) }
+private struct AnimatedStampImage: NSViewRepresentable {
+  let image: NSImage
 
-  private var position: CGPoint {
-    return CGPoint(
-      x: CGFloat(min(max(item.position.x, 0.05), 0.95)) * canvasSize.width,
-      y: CGFloat(min(max(item.position.y, 0.05), 0.95)) * canvasSize.height
-        * CGFloat(settings.displayArea.heightFraction)
-    )
+  func makeNSView(context: Context) -> NSImageView {
+    let imageView = NSImageView()
+    imageView.imageAlignment = .alignCenter
+    imageView.imageScaling = .scaleProportionallyUpOrDown
+    imageView.animates = true
+    return imageView
   }
+
+  func updateNSView(_ imageView: NSImageView, context: Context) {
+    // NSImageViewはGIFのフレームを再生できる。SwiftUIのImageは先頭フレームで静止する。
+    if imageView.image !== image {
+      imageView.image = image
+    }
+    imageView.animates = true
+  }
+}
+
+private func loadStampImage(for stamp: Stamp) async -> NSImage? {
+  guard
+    stamp.category == .custom,
+    !stamp.imageUrl.isEmpty,
+    let url = URL(string: stamp.imageUrl),
+    let data = try? await StampImageCache.shared.data(for: url)
+  else { return nil }
+  return NSImage(data: data)
 }
 
 extension Color {

@@ -9,6 +9,7 @@ import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
 import { HistoryPage } from './components/HistoryPage';
 import { ExtensionAuthPage } from './components/ExtensionAuthPage';
+import cometIconUrl from './assets/comet-icon.png';
 
 const REPOSITORY_URL = 'https://github.com/shimewtr/comet';
 
@@ -78,7 +79,7 @@ function LiveApp() {
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">
-          <img className="comet-icon" src="comet-icon.png" alt="Comet Icon" />
+          <img className="comet-icon" src={cometIconUrl} alt="Comet Icon" />
           Comet
         </h1>
       </header>
@@ -128,7 +129,7 @@ function App() {
           <span className="app-title">
             <img
               className="comet-icon"
-              src="/comet-icon.png"
+              src={cometIconUrl}
               alt="Comet Icon"
             />
             Comet
@@ -144,7 +145,7 @@ function App() {
     <div className="app">
       <header className="app-header compact-header">
         <a className="app-title" href="/">
-          <img className="comet-icon" src="/comet-icon.png" alt="Comet Icon" />
+          <img className="comet-icon" src={cometIconUrl} alt="Comet Icon" />
           Comet
         </a>
       </header>

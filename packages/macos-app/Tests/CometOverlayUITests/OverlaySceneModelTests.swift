@@ -37,6 +37,42 @@ func sceneModelAssignsStableNormalizedStampPositions() {
   #expect(model.stamps[1].position == providedPosition)
 }
 
+@MainActor
+@Test
+func sceneModelOffsetsCommentLanesAcrossTheAvailableDisplayArea() {
+  let model = OverlaySceneModel(laneCount: 20, laneOffset: 15)
+
+  model.show(comment: comment(id: "1"), now: 1)
+  model.show(comment: comment(id: "2"), now: 1)
+
+  #expect(model.comments.map(\.lane) == [15, 16])
+}
+
+@MainActor
+@Test
+func defaultCommentSpeedUsesFasterBaseline() {
+  let model = OverlaySceneModel(laneCount: 1, laneOffset: 0)
+
+  model.show(comment: comment(id: "speed"), now: 1)
+
+  let expectedDuration = 12.0 / 1.5
+  #expect(abs((model.comments.first?.duration ?? 0) - expectedDuration) < 0.001)
+}
+
+@MainActor
+@Test
+func sceneModelCreatesAComboBurstForFiveMatchingStamps() {
+  let model = OverlaySceneModel()
+
+  for index in 0..<5 {
+    model.show(stamp: stamp(id: "party"), now: Double(index) * 0.25)
+  }
+
+  #expect(model.stampBursts.count == 1)
+  #expect(model.stampBursts.first?.comboCount == 5)
+  #expect(model.stampBursts.first?.stamp.id == "party")
+}
+
 private func comment(id: String) -> CometComment {
   CometComment(
     id: id,

@@ -8,9 +8,10 @@ REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly REPOSITORY_ROOT
 readonly PACKAGE_DIR="${REPOSITORY_ROOT}/packages/macos-app"
 readonly INFO_PLIST="${PACKAGE_DIR}/Resources/Info.plist"
-readonly ICON_SOURCE="${REPOSITORY_ROOT}/packages/web/public/comet-icon.png"
+readonly ICON_SOURCE="${PACKAGE_DIR}/Resources/AppIcon.png"
+readonly TOOLBAR_ICON_SOURCE="${PACKAGE_DIR}/Sources/CometOverlay/Resources/ToolbarIcon.png"
 readonly OUTPUT_ROOT="${1:-${REPOSITORY_ROOT}/build/macos}"
-readonly APP_BUNDLE="${OUTPUT_ROOT}/CometOverlay.app"
+readonly APP_BUNDLE="${OUTPUT_ROOT}/Comet.app"
 readonly CONTENTS_DIR="${APP_BUNDLE}/Contents"
 readonly MACOS_DIR="${CONTENTS_DIR}/MacOS"
 readonly RESOURCES_DIR="${CONTENTS_DIR}/Resources"
@@ -22,7 +23,7 @@ if [[ "${OUTPUT_ROOT}" == "/" || -z "${OUTPUT_ROOT}" ]]; then
   exit 1
 fi
 
-for required_file in "${INFO_PLIST}" "${ICON_SOURCE}"; do
+for required_file in "${INFO_PLIST}" "${ICON_SOURCE}" "${TOOLBAR_ICON_SOURCE}"; do
   if [[ ! -f "${required_file}" ]]; then
     echo "Required file not found: ${required_file}" >&2
     exit 1
@@ -55,6 +56,7 @@ lipo -create "${ARM64_EXECUTABLE}" "${X86_64_EXECUTABLE}" \
   -output "${MACOS_DIR}/CometOverlay"
 chmod 0755 "${MACOS_DIR}/CometOverlay"
 install -m 0644 "${INFO_PLIST}" "${CONTENTS_DIR}/Info.plist"
+install -m 0644 "${TOOLBAR_ICON_SOURCE}" "${RESOURCES_DIR}/ToolbarIcon.png"
 
 ICON_TEMP_DIR="$(mktemp -d)"
 readonly ICON_TEMP_DIR
@@ -83,7 +85,7 @@ create_icon 256 icon_256x256.png
 create_icon 512 icon_256x256@2x.png
 create_icon 512 icon_512x512.png
 create_icon 1024 icon_512x512@2x.png
-iconutil --convert icns --output "${RESOURCES_DIR}/CometOverlay.icns" "${ICONSET_DIR}"
+iconutil --convert icns --output "${RESOURCES_DIR}/Comet.icns" "${ICONSET_DIR}"
 
 plutil -lint "${CONTENTS_DIR}/Info.plist" >/dev/null
 lipo "${MACOS_DIR}/CometOverlay" -verify_arch arm64 x86_64

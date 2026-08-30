@@ -101,10 +101,11 @@ jobs:
 
       - name: Validate macOS app bundle
         run: |
-          plutil -lint build/macos/CometOverlay.app/Contents/Info.plist
-          test -x build/macos/CometOverlay.app/Contents/MacOS/CometOverlay
-          test -f build/macos/CometOverlay.app/Contents/Resources/CometOverlay.icns
-          lipo build/macos/CometOverlay.app/Contents/MacOS/CometOverlay -verify_arch arm64 x86_64
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/macos/CometOverlay.app/Contents/Info.plist)" = com.shimewtr.comet.overlay
-          test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' build/macos/CometOverlay.app/Contents/Info.plist)" = true
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' build/macos/CometOverlay.app/Contents/Info.plist)" = comet-overlay
+          plutil -lint build/macos/Comet.app/Contents/Info.plist
+          test -x build/macos/Comet.app/Contents/MacOS/CometOverlay
+          test -f build/macos/Comet.app/Contents/Resources/Comet.icns
+          test -f build/macos/Comet.app/Contents/Resources/ToolbarIcon.png
+          lipo build/macos/Comet.app/Contents/MacOS/CometOverlay -verify_arch arm64 x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/macos/Comet.app/Contents/Info.plist)" = com.shimewtr.comet.overlay
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' build/macos/Comet.app/Contents/Info.plist)" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' build/macos/Comet.app/Contents/Info.plist)" = comet-overlay

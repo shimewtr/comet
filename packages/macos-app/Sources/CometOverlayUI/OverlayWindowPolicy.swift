@@ -2,8 +2,9 @@ import AppKit
 
 public struct OverlayWindowPolicy: Sendable {
   public static let presentation = OverlayWindowPolicy(
-    // floating levelはWindow Serverが大型panelを縮小するため、メニューバー直下を使う。
-    level: NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1),
+    // Keynoteなどのプレゼンテーション専用フルスクリーンウィンドウより前面に置く。
+    // 入力は透過するため、スライド操作やシステムUIの操作は妨げない。
+    level: .screenSaver,
     collectionBehavior: [
       .canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary, .transient,
       .ignoresCycle,

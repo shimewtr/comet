@@ -70,6 +70,12 @@ final class AppModel: ObservableObject {
       && connectionState != .connecting
   }
 
+  var canLogout: Bool {
+    let value = settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let url = URL(string: value) else { return false }
+    return (try? DesktopAuthURLBuilder.origin(for: url)) != nil
+  }
+
   var authenticationDescription: String {
     if !authenticationRequired { return "認証なし" }
     return isAuthenticated ? "ログイン済み" : "ログインが必要"
@@ -144,29 +150,90 @@ final class AppModel: ObservableObject {
     }
   }
 
-  func stopOverlayImmediately() {
+  func hideAllImmediately() {
     settings.overlaysEnabled = false
+  }
+
+  func resetSettings() {
+    disconnect()
+    authenticationRequired = false
+    isAuthenticated = false
+    rooms = [.global]
+    settings = AppSettings()
   }
 
   func previewOverlay() {
     let timestamp = Int64(Date().timeIntervalSince1970 * 1_000)
-    overlayPresenter.show(
-      comment: CometComment(
-        id: UUID().uuidString,
-        content: "Comet テストコメント",
-        timestamp: timestamp,
-        style: CommentStyle(color: "#ffffff", size: .medium, animation: .bounce, speed: 5)
-      ),
-      placement: .scrolling
-    )
-    overlayPresenter.show(
-      stamp: StampMessage(
-        id: UUID().uuidString,
-        stamp: Stamp(id: "preview", name: "🎉", imageUrl: "", category: .reaction),
-        timestamp: timestamp,
-        position: StampPosition(x: 0.75, y: 0.35)
+    let messages = [
+      "Comet テストコメント", "いいね！", "すごい！", "👏👏👏", "ここ好き",
+      "ナイス発表です", "わかりやすい", "なるほど", "最高！", "質問があります 🙋",
+      "盛り上がってきた", "ありがとうございます！",
+    ]
+    let colors = ["#ffffff", "#ffeb3b", "#81d4fa", "#ff8a80", "#b9f6ca", "#e1bee7"]
+    let sizes: [CommentSize] = [.small, .medium, .large]
+    let animations: [CommentAnimation] = [.none, .blink, .bounce, .shake]
+
+    for index in 0..<16 {
+      overlayPresenter.show(
+        comment: CometComment(
+          id: UUID().uuidString,
+          content: messages.randomElement() ?? "Comet",
+          timestamp: timestamp + Int64(index),
+          style: CommentStyle(
+            color: colors.randomElement() ?? "#ffffff",
+            size: sizes.randomElement() ?? .medium,
+            animation: animations.randomElement() ?? CommentAnimation.none,
+            speed: Double.random(in: 3...8)
+          )
+        ),
+        placement: .scrolling
       )
-    )
+    }
+
+    let emojis = ["🎉", "👏", "👍", "❤️", "🚀", "✨", "🔥", "🙌", "😂", "💯"]
+    let comboEmoji = emojis.randomElement() ?? "🎉"
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+
+      // 通常演出を単独で確認してから、同じスタンプの5連打で破裂演出を確認する。
+      for index in 0..<3 {
+        let emoji = emojis.randomElement() ?? "🎉"
+        overlayPresenter.show(
+          stamp: StampMessage(
+            id: UUID().uuidString,
+            stamp: Stamp(
+              id: "preview-normal-\(index)",
+              name: emoji,
+              imageUrl: "",
+              category: .reaction
+            ),
+            timestamp: timestamp + Int64(index),
+            position: nil
+          )
+        )
+        try? await Task.sleep(for: .milliseconds(180))
+      }
+
+      try? await Task.sleep(for: .milliseconds(900))
+      guard !Task.isCancelled else { return }
+
+      for index in 0..<5 {
+        overlayPresenter.show(
+          stamp: StampMessage(
+            id: UUID().uuidString,
+            stamp: Stamp(
+              id: "preview-combo",
+              name: comboEmoji,
+              imageUrl: "",
+              category: .reaction
+            ),
+            timestamp: timestamp + Int64(index + 3),
+            position: nil
+          )
+        )
+        try? await Task.sleep(for: .milliseconds(120))
+      }
+    }
   }
 
   private func observeEvents() {

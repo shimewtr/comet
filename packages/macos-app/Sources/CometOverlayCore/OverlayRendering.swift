@@ -118,6 +118,31 @@ public struct LaneReservation: Equatable, Sendable {
   }
 }
 
+public struct StampComboTracker: Sendable {
+  public static let window: TimeInterval = 2
+  public static let burstInterval = 5
+
+  private struct State: Sendable {
+    var count: Int
+    var lastSeenAt: TimeInterval
+  }
+
+  private var states: [String: State] = [:]
+
+  public init() {}
+
+  public mutating func register(stampKey: String, at time: TimeInterval) -> Int? {
+    let previous = states[stampKey]
+    let count = previous.map { time - $0.lastSeenAt <= Self.window ? $0.count + 1 : 1 } ?? 1
+    states[stampKey] = State(count: count, lastSeenAt: time)
+    return count >= Self.burstInterval && count % Self.burstInterval == 0 ? count : nil
+  }
+
+  public mutating func reset() {
+    states.removeAll(keepingCapacity: true)
+  }
+}
+
 public struct CommentLaneAllocator: Sendable {
   public let laneCount: Int
   private var availableAt: [TimeInterval]

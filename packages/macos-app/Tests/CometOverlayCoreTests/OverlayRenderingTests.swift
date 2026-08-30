@@ -71,3 +71,15 @@ func displaySelectionFallsBackWithoutForgettingSavedDisplay() {
     ) == ["built-in"]
   )
 }
+
+@Test
+func stampComboBurstsEveryFiveMatchingStampsWithinTwoSeconds() {
+  var tracker = StampComboTracker()
+
+  #expect((1...4).allSatisfy { tracker.register(stampKey: "party", at: Double($0) * 0.25) == nil })
+  #expect(tracker.register(stampKey: "party", at: 1.25) == 5)
+  #expect((6...9).allSatisfy { tracker.register(stampKey: "party", at: Double($0) * 0.25) == nil })
+  #expect(tracker.register(stampKey: "party", at: 2.5) == 10)
+  #expect(tracker.register(stampKey: "other", at: 2.5) == nil)
+  #expect(tracker.register(stampKey: "party", at: 5) == nil)
+}

@@ -29,7 +29,12 @@ public actor URLSessionWebSocketTransport: WebSocketTransport {
 
   public func send(_ data: Data) async throws {
     guard let task else { throw WebSocketTransportError.notConnected }
-    try await task.send(.data(data))
+    // ブラウザ版と同じUTF-8テキストフレームで送る。API Gatewayでは
+    // バイナリフレームがbase64化され、Lambda側でJSONとして解釈できない。
+    guard let value = String(data: data, encoding: .utf8) else {
+      throw WebSocketTransportError.unsupportedMessage
+    }
+    try await task.send(.string(value))
   }
 
   public func receive() async throws -> Data {
