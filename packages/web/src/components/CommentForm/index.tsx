@@ -97,7 +97,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
     }
 
     if (isDanmakuMode) {
-      // 弾幕モード: 20個のランダムなスタイルでコメントを送信
+      // 盛り上げモード: 20個のランダムなスタイルでコメントを送信
       for (let i = 0; i < 20; i++) {
         const randomSpeed = getRandomSpeed();
         const style: CommentStyle = {
@@ -125,7 +125,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
     startCooldown(isDanmakuMode ? DANMAKU_COOLDOWN_MS : COMMENT_COOLDOWN_MS);
     setContent('');
 
-    // 弾幕モードは1回送信したら自動でOFFに戻す（連続で弾幕を撃つのは意図的な操作にする）
+    // 盛り上げモードは1回送信したら自動でOFFに戻す（連続送信は意図的な操作にする）
     if (isDanmakuMode) {
       setIsDanmakuMode(false);
     }
@@ -217,7 +217,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
           </div>
 
           <div className="form-group danmaku-toggle">
-            <label>弾幕モード</label>
+            <label>盛り上げモード</label>
             <label className="toggle-label">
               <input
                 type="checkbox"

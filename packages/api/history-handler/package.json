@@ -10,16 +10,16 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.450.0",
-    "@aws-sdk/client-s3": "^3.450.0",
-    "@aws-sdk/s3-request-presigner": "^3.450.0",
-    "@aws-sdk/util-dynamodb": "^3.450.0",
+    "@aws-sdk/client-dynamodb": "^3.1119.0",
+    "@aws-sdk/client-s3": "^3.1119.0",
+    "@aws-sdk/s3-request-presigner": "^3.1119.0",
+    "@aws-sdk/util-dynamodb": "^3.996.9",
     "@comet/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.130",
+    "@types/aws-lambda": "^8.10.162",
     "@types/node": "^24.0.0",
-    "esbuild": "^0.19.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.3.0",
     "vitest": "^4.1.11"
   }

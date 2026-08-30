@@ -75,7 +75,7 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
 
   private func refreshScreens() {
     let currentScreens = Dictionary(
-      uniqueKeysWithValues: NSScreen.screens.map { (displayID(for: $0), $0) }
+      uniqueKeysWithValues: NSScreen.screens.map { (ScreenIdentity.directDisplayID(for: $0), $0) }
     )
     let removedDisplayIDs = overlays.keys.filter { currentScreens[$0] == nil }
 
@@ -114,7 +114,7 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
       window: window,
       model: model,
       descriptor: OverlayDisplayDescriptor(
-        id: stableDisplayID(for: screen),
+        id: ScreenIdentity.stableDisplayID(for: screen),
         name: screen.localizedName
       )
     )
@@ -138,7 +138,7 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
     guard configuration.isEnabled else { return false }
     guard let overlay = overlays[displayID] else { return false }
     let availableDisplayIDs = Set(overlays.values.map(\.descriptor.id))
-    let mainDisplayID = NSScreen.main.map(stableDisplayID(for:))
+    let mainDisplayID = NSScreen.main.map(ScreenIdentity.stableDisplayID(for:))
     let visibleDisplayIDs = DisplaySelectionResolver.visibleDisplayIDs(
       selectedDisplayID: configuration.selectedDisplayID,
       availableDisplayIDs: availableDisplayIDs,
@@ -147,17 +147,4 @@ public final class OverlayWindowManager: NSObject, OverlayPresenting {
     return visibleDisplayIDs.contains(overlay.descriptor.id)
   }
 
-  private func displayID(for screen: NSScreen) -> CGDirectDisplayID {
-    (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
-      ?? 0
-  }
-
-  private func stableDisplayID(for screen: NSScreen) -> String {
-    let displayID = displayID(for: screen)
-    guard let displayUUID = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue()
-    else {
-      return "display-\(displayID)"
-    }
-    return CFUUIDCreateString(nil, displayUUID) as String
-  }
 }

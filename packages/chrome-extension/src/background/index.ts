@@ -94,6 +94,9 @@ chrome.runtime.onMessageExternal.addListener(
     void (async () => {
       try {
         const stored = await chrome.storage.sync.get('webAppUrl');
+        if (typeof stored.webAppUrl !== 'string') {
+          throw new Error('Web app URL is not configured');
+        }
         const expectedOrigin = new URL(stored.webAppUrl).origin;
         const senderOrigin = sender.url ? new URL(sender.url).origin : '';
         if (!expectedOrigin || senderOrigin !== expectedOrigin) {

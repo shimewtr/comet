@@ -10,6 +10,7 @@ func defaultSettingsUseGlobalRoomAndEnableOverlay() {
   #expect(settings.webAppURL.isEmpty)
   #expect(settings.selectedRoomID == "global")
   #expect(settings.overlaysEnabled)
+  #expect(!settings.participationQREnabled)
   #expect(settings.selectedDisplayID == nil)
   #expect(settings.displaySettings == OverlayDisplaySettings())
 }
@@ -25,6 +26,7 @@ func settingsRoundTripThroughUserDefaults() throws {
     webAppURL: "https://comet.example.com",
     selectedRoomID: "room-1",
     overlaysEnabled: false,
+    participationQREnabled: true,
     selectedDisplayID: "display-42",
     displaySettings: OverlayDisplaySettings(
       speedScale: 1.5,
@@ -64,6 +66,7 @@ func settingsDecodeDataSavedBeforeDisplayControlsWereAdded() throws {
   #expect(settings.webAppURL == "https://comet.example.com")
   #expect(settings.selectedRoomID == "room-1")
   #expect(!settings.overlaysEnabled)
+  #expect(!settings.participationQREnabled)
   #expect(settings.selectedDisplayID == nil)
   #expect(settings.displaySettings == OverlayDisplaySettings())
 }

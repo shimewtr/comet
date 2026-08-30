@@ -10,6 +10,7 @@ final class AppModel: ObservableObject {
     didSet {
       settingsStore.save(settings)
       applyOverlayConfiguration()
+      applyParticipationQRConfiguration()
     }
   }
 
@@ -23,6 +24,7 @@ final class AppModel: ObservableObject {
   private let configurationProvider: any RuntimeConfigurationProviding
   private let messageStream: any MessageStreaming
   private let overlayPresenter: any OverlayPresenting
+  private let participationQRPresenter = ParticipationQRWindowManager()
   private let authenticator: any DesktopAuthenticating
   private var eventsTask: Task<Void, Never>?
   private var authRefreshTask: Task<Void, Never>?
@@ -43,6 +45,7 @@ final class AppModel: ObservableObject {
     settings = settingsStore.load()
     displays = overlayPresenter.availableDisplays
     applyOverlayConfiguration()
+    applyParticipationQRConfiguration()
     observeEvents()
     observeDisplayChanges()
   }
@@ -336,6 +339,15 @@ final class AppModel: ObservableObject {
         selectedDisplayID: settings.selectedDisplayID,
         displaySettings: settings.displaySettings
       )
+    )
+  }
+
+  private func applyParticipationQRConfiguration() {
+    participationQRPresenter.apply(
+      isEnabled: settings.participationQREnabled,
+      webAppURL: settings.webAppURL,
+      roomID: settings.selectedRoomID,
+      selectedDisplayID: settings.selectedDisplayID
     )
   }
 

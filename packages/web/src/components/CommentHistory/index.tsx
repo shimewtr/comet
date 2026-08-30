@@ -12,7 +12,7 @@ export function CommentHistory({ comments }: CommentHistoryProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // 直前と同じ内容のコメントはまとめて1件だけ表示する
-  // （弾幕モードの同一コメント連投で履歴が埋まらないように）
+  // （盛り上げモードの同一コメント連投で履歴が埋まらないように）
   const displayComments = comments.filter(
     (comment, index) =>
       index === 0 || comment.content !== comments[index - 1].content

@@ -3,11 +3,14 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: Asia/Tokyo
-    open-pull-requests-limit: 5
+    cooldown:
+      semver-patch-days: 7
+      semver-minor-days: 21
+      semver-major-days: 60
+    open-pull-requests-limit: 3
     groups:
       aws-sdk:
         patterns:
@@ -21,10 +24,13 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: Asia/Tokyo
+    cooldown:
+      semver-patch-days: 7
+      semver-minor-days: 21
+      semver-major-days: 60
     groups:
       github-actions:
         patterns:
