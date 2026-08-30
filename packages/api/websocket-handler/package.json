@@ -19,9 +19,9 @@
     "jose": "^6.2.10"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.130",
+    "@types/aws-lambda": "^8.10.162",
     "@types/node": "^24.0.0",
-    "esbuild": "^0.19.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.3.0",
     "vitest": "^4.1.11"
   }
