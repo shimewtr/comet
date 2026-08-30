@@ -33,7 +33,7 @@ flowchart LR
 
 ## クイックスタート
 
-必要な環境はNode.js 22とpnpm 10です。
+必要な環境はNode.js 24 LTSとpnpm 10です。Node.jsの正確なバージョンは`.node-version`を参照してください。
 
 ```bash
 pnpm install

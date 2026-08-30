@@ -42,7 +42,9 @@ export class StorageStack extends cdk.Stack {
         props.envName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: props.envName === 'prod', // 本番環境のみバックアップ
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: props.envName === 'prod', // 本番環境のみバックアップ
+      },
       timeToLiveAttribute: 'ttl', // TTLで自動削除
     });
 
@@ -103,7 +105,9 @@ export class StorageStack extends cdk.Stack {
         props.envName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: props.envName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: props.envName === 'prod',
+      },
       timeToLiveAttribute: 'ttl',
     });
 
@@ -116,7 +120,9 @@ export class StorageStack extends cdk.Stack {
         props.envName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: props.envName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: props.envName === 'prod',
+      },
       timeToLiveAttribute: 'ttl',
     });
 

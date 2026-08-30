@@ -11,6 +11,15 @@ import { removeConnection } from './dynamodb-client';
  */
 const clientCache = new Map<string, ApiGatewayManagementApiClient>();
 
+function isGoneConnectionError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const value = error as {
+    statusCode?: number;
+    $metadata?: { httpStatusCode?: number };
+  };
+  return value.statusCode === 410 || value.$metadata?.httpStatusCode === 410;
+}
+
 /**
  * API Gateway Management APIクライアント
  */
@@ -45,9 +54,9 @@ export async function sendMessageToConnection(
 
     await client.send(command);
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 接続が既に切断されている場合
-    if (error.statusCode === 410 || error.$metadata?.httpStatusCode === 410) {
+    if (isGoneConnectionError(error)) {
       console.log(`Connection ${connectionId} is gone, removing from database`);
       // DynamoDBから削除
       try {
@@ -68,7 +77,7 @@ export async function sendMessageToConnection(
 export async function broadcastMessage(
   client: ApiGatewayManagementApiClient,
   connectionIds: string[],
-  data: any
+  data: unknown
 ): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;

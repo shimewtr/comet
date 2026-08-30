@@ -43,7 +43,7 @@ export function normalizeRoomName(name: unknown): string | null {
  */
 export function isValidCommentColor(color: string): boolean {
   const validColors = Object.values(COMMENT_COLORS);
-  return validColors.includes(color as any);
+  return validColors.some((validColor) => validColor === color);
 }
 
 /**
