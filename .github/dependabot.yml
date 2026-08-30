@@ -28,9 +28,7 @@ updates:
       time: "09:00"
       timezone: Asia/Tokyo
     cooldown:
-      semver-patch-days: 7
-      semver-minor-days: 21
-      semver-major-days: 60
+      default-days: 7
     groups:
       github-actions:
         patterns:
