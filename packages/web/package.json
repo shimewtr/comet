@@ -12,13 +12,13 @@
   "dependencies": {
     "@comet/shared": "workspace:*",
     "emoji-picker-react": "^4.15.0",
-    "react": "^19.1.1",
+    "react": "^19.2.8",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@types/node": "^24.0.0",
-    "@types/react": "^19.1.16",
+    "@types/react": "^19.2.18",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
     "eslint": "^9.36.0",
