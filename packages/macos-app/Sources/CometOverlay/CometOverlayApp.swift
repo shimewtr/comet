@@ -122,6 +122,8 @@ private struct MenuContent: View {
       .disabled(!connectionActionEnabled)
 
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
+      Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
+        .disabled(model.settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
       GroupBox {
         VStack(alignment: .leading, spacing: 10) {
@@ -239,6 +241,10 @@ private struct SettingsView: View {
       }
 
       Section("表示") {
+        Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
+        Text("WebアプリURLのQRコードを、選択した出力先の右下へ最前面表示します。")
+          .font(.caption)
+          .foregroundStyle(.secondary)
         SettingsSlider(
           title: "コメント速度",
           value: $model.settings.displaySettings.speedScale,
