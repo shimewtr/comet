@@ -83,6 +83,7 @@ open build/macos/Comet.app
 
 - [アーキテクチャ](docs/architecture.md) — システム構成、パッケージ、Roomと設定配信
 - [ローカル開発](docs/development.md) — セットアップ、起動、build・test・lint
+- [依存関係の更新](docs/dependency-updates.md) — Dependabot、更新間隔、CI、自動マージ方針
 - [AWSへのデプロイ](docs/deployment.md) — CDK、設定ファイル、AWSプロファイル、デプロイ手順
 - [Chrome拡張](docs/chrome-extension.md) — build、Chromeへの読み込み、接続設定、認証
 - [macOSアプリ](docs/macos-app.md) — メニューバーアプリのbuild、起動、設定、認証
