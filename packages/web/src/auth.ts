@@ -4,9 +4,10 @@
  * 無効な構成ではすべてno-opになる。
  */
 
-interface RuntimeConfig {
+export interface RuntimeConfig {
   websocketUrl?: string;
   historyApiUrl?: string;
+  stampApiUrl?: string;
   authEnabled?: boolean;
 }
 

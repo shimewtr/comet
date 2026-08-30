@@ -9,6 +9,9 @@ node_modules/
 # Build outputs
 dist/
 build/
+.build/
+.swiftpm/
+DerivedData/
 *.tsbuildinfo
 
 # Environment variables
@@ -30,6 +33,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 *~
+*.xcuserstate
 
 # OS files
 .DS_Store
@@ -54,6 +58,16 @@ temp/
 
 # Archives
 *.zip
+*.app/
+*.xcarchive/
+*.dSYM/
+
+# Apple code signing / notarization credentials
+*.p12
+*.cer
+*.provisionprofile
+*.mobileprovision
+AuthKey_*.p8
 
 # デプロイ先固有の設定（ドメイン・認証など）
 packages/cdk/comet.config.json

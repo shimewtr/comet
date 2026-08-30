@@ -34,6 +34,11 @@
     }
   ],
   "action": {
+    "default_icon": {
+      "16": "icons/toolbar-16.png",
+      "32": "icons/toolbar-32.png",
+      "48": "icons/toolbar-48.png"
+    },
     "default_popup": "popup.html"
   },
   "web_accessible_resources": [

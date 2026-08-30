@@ -20,6 +20,8 @@ export interface WebStackProps extends cdk.StackProps {
   webSocketUrl: string;
   /** 履歴画面が参照するHTTP API URL */
   historyApiUrl: string;
+  /** カスタムスタンプの一覧・アップロードに使うHTTP API URL */
+  stampApiUrl: string;
   /** 認証（チケット検証）が有効かどうか。クライアントはこのフラグで自動追従する */
   authEnabled: boolean;
   /** カスタムドメイン設定（未指定ならCloudFrontの自動ドメイン） */
@@ -214,6 +216,21 @@ export class WebStack extends cdk.Stack {
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           responseHeadersPolicy: runtimeConfigCorsPolicy,
         },
+        ...(edgeLambdas
+          ? {
+              '/auth/desktop/token': {
+                origin,
+                viewerProtocolPolicy:
+                  cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+                cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                edgeLambdas: edgeLambdas.map((association) => ({
+                  ...association,
+                  includeBody: true,
+                })),
+              },
+            }
+          : {}),
       },
       defaultRootObject: 'index.html',
       // SPAルーティング: 存在しないパスはindex.htmlを返す
@@ -255,6 +272,7 @@ export class WebStack extends cdk.Stack {
         s3deploy.Source.jsonData('comet-config.json', {
           websocketUrl: props.webSocketUrl,
           historyApiUrl: props.historyApiUrl,
+          stampApiUrl: props.stampApiUrl,
           authEnabled: props.authEnabled,
         }),
       ],

@@ -23,6 +23,9 @@ const DISPLAY_AREA_RANGES: Record<
   'top-third': { min: 0.05, max: 0.33 },
 };
 
+/** speedScale 1.0での基準速度。従来比で50%速くする。 */
+const BASE_COMMENT_SPEED_MULTIPLIER = 1.5;
+
 /**
  * コメント表示を管理するクラス
  */
@@ -139,7 +142,10 @@ export class CommentRenderer extends OverlayRenderer {
 
     // アニメーション設定
     // speedは速度を表す（大きいほど速い）ので、durationは速度に反比例
-    const speed = (comment.style.speed || 5) * this.displaySettings.speedScale;
+    const speed =
+      (comment.style.speed || 5) *
+      this.displaySettings.speedScale *
+      BASE_COMMENT_SPEED_MULTIPLIER;
     const baseDistance = containerWidth + elementWidth;
     // 速度をpx/sとして扱い、durationを計算（ミリ秒）
     const duration = (baseDistance / (speed * 100)) * 1000;
