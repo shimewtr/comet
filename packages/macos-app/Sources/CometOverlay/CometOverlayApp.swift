@@ -346,30 +346,38 @@ private struct PresentationTimerControls: View {
           .foregroundStyle(statusColor)
       }
 
-      HStack(spacing: 8) {
-        Button("スタート") {
+      HStack(spacing: 10) {
+        timerTransportButton(
+          systemImage: "play.fill",
+          accessibilityLabel: "スタート",
+          isDisabled: model.presentationTimerSnapshot.status == .running
+        ) {
           model.startPresentationTimer()
         }
-        .disabled(model.presentationTimerSnapshot.status == .running)
 
-        Button("一時停止") {
+        timerTransportButton(
+          systemImage: "pause.fill",
+          accessibilityLabel: "一時停止",
+          isDisabled: model.presentationTimerSnapshot.status != .running
+        ) {
           model.pausePresentationTimer()
         }
-        .disabled(model.presentationTimerSnapshot.status != .running)
 
-        Button("停止") {
+        timerTransportButton(
+          systemImage: "stop.fill",
+          accessibilityLabel: "停止"
+        ) {
           model.stopPresentationTimer()
         }
+        Spacer()
       }
-      .buttonStyle(.bordered)
 
       HStack(spacing: 6) {
-        timerAdjustmentButton("−1分", seconds: -60)
-        timerAdjustmentButton("−10秒", seconds: -10)
-        timerAdjustmentButton("＋10秒", seconds: 10)
-        timerAdjustmentButton("＋1分", seconds: 60)
+        timerAdjustmentButton(systemImage: "minus", value: "1分", seconds: -60)
+        timerAdjustmentButton(systemImage: "minus", value: "10秒", seconds: -10)
+        timerAdjustmentButton(systemImage: "plus", value: "10秒", seconds: 10)
+        timerAdjustmentButton(systemImage: "plus", value: "1分", seconds: 60)
       }
-      .controlSize(.small)
     }
   }
 
@@ -395,11 +403,45 @@ private struct PresentationTimerControls: View {
     }
   }
 
-  private func timerAdjustmentButton(_ title: String, seconds: Int) -> some View {
-    Button(title) {
-      model.adjustPresentationTimer(by: seconds)
+  private func timerTransportButton(
+    systemImage: String,
+    accessibilityLabel: String,
+    isDisabled: Bool = false,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      Image(systemName: systemImage)
+        .font(.system(size: 14, weight: .semibold))
+        .frame(width: 24, height: 20)
     }
-    .frame(maxWidth: .infinity)
+    .buttonStyle(.bordered)
+    .accessibilityLabel(accessibilityLabel)
+    .help(accessibilityLabel)
+    .disabled(isDisabled)
+  }
+
+  private func timerAdjustmentButton(
+    systemImage: String,
+    value: String,
+    seconds: Int
+  ) -> some View {
+    let actionName = seconds < 0 ? "減らす" : "増やす"
+    return Button {
+      model.adjustPresentationTimer(by: seconds)
+    } label: {
+      HStack(spacing: 3) {
+        Image(systemName: systemImage)
+          .font(.system(size: 10, weight: .bold))
+        Text(value)
+          .font(.caption2)
+          .monospacedDigit()
+      }
+      .frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.bordered)
+    .controlSize(.small)
+    .accessibilityLabel("\(value)\(actionName)")
+    .help("\(value)\(actionName)")
   }
 }
 

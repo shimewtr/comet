@@ -98,7 +98,7 @@ public final class PresentationTimerWindowManager: NSObject {
   private func makeTimer(on screen: NSScreen) -> ScreenTimer {
     let size = NSSize(width: 270, height: 142)
     let origin = NSPoint(
-      x: screen.frame.maxX - size.width - 20, y: screen.frame.maxY - size.height - 20)
+      x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height - 20)
     let model = PresentationTimerViewModel(snapshot: snapshot)
     let window = NSPanel(
       contentRect: NSRect(origin: origin, size: size),
@@ -108,7 +108,7 @@ public final class PresentationTimerWindowManager: NSObject {
       screen: screen
     )
     window.backgroundColor = .clear
-    OverlayWindowPolicy.presentation.apply(to: window)
+    OverlayWindowPolicy.movablePresentation.apply(to: window)
     window.contentView = NSHostingView(rootView: PresentationTimerView(model: model))
     window.setFrameOrigin(origin)
     return ScreenTimer(window: window, model: model)
@@ -124,6 +124,9 @@ private struct PresentationTimerView: View {
       let pulse = pulseScale(at: context.date)
       VStack(spacing: 2) {
         HStack(spacing: 6) {
+          Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+            .font(.system(size: 10, weight: .semibold))
+            .accessibilityHidden(true)
           Circle()
             .fill(statusColor)
             .frame(width: 8, height: 8)
@@ -154,7 +157,9 @@ private struct PresentationTimerView: View {
       .scaleEffect(pulse)
       .padding(10)
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel("残り時間 (model.snapshot.formattedRemainingTime)、(statusLabel)")
+      .accessibilityLabel(
+        "残り時間 " + model.snapshot.formattedRemainingTime + "、" + statusLabel
+      )
     }
   }
 

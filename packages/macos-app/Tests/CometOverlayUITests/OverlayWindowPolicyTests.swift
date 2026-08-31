@@ -16,9 +16,32 @@ func presentationWindowPolicySupportsFullscreenWithoutBlockingInput() {
   #expect(!policy.collectionBehavior.contains(.stationary))
   #expect(policy.collectionBehavior.contains(.ignoresCycle))
   #expect(policy.ignoresMouseEvents)
+  #expect(!policy.acceptsMouseMovedEvents)
+  #expect(!policy.isMovable)
+  #expect(!policy.isMovableByWindowBackground)
   #expect(!policy.isOpaque)
   #expect(!policy.hasShadow)
   #expect(!policy.hidesOnDeactivate)
+}
+
+@MainActor
+@Test
+func movablePresentationPolicyOnlyCapturesInputInsideItsPanel() {
+  let window = NSPanel(
+    contentRect: NSRect(x: 0, y: 0, width: 270, height: 142),
+    styleMask: [.borderless, .nonactivatingPanel],
+    backing: .buffered,
+    defer: false
+  )
+
+  OverlayWindowPolicy.movablePresentation.apply(to: window)
+
+  #expect(!window.ignoresMouseEvents)
+  #expect(window.acceptsMouseMovedEvents)
+  #expect(window.isMovable)
+  #expect(window.isMovableByWindowBackground)
+  #expect(window.level == .screenSaver)
+  #expect(window.collectionBehavior.contains(.fullScreenAuxiliary))
 }
 
 @MainActor

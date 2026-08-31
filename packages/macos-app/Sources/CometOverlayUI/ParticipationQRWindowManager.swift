@@ -102,7 +102,7 @@ public final class ParticipationQRWindowManager: NSObject {
   }
 
   private func makeWindow(image: NSImage, on screen: NSScreen) -> NSPanel {
-    let size = NSSize(width: 172, height: 184)
+    let size = NSSize(width: 172, height: 210)
     let origin = NSPoint(x: screen.frame.maxX - size.width - 16, y: screen.frame.minY + 16)
     let window = NSPanel(
       contentRect: NSRect(origin: origin, size: size),
@@ -111,7 +111,7 @@ public final class ParticipationQRWindowManager: NSObject {
       defer: false,
       screen: screen
     )
-    OverlayWindowPolicy.presentation.apply(to: window)
+    OverlayWindowPolicy.movablePresentation.apply(to: window)
     window.contentView = NSHostingView(rootView: ParticipationQRView(image: image))
     window.setFrameOrigin(origin)
     return window
@@ -124,6 +124,12 @@ private struct ParticipationQRView: View {
 
   var body: some View {
     VStack(spacing: 4) {
+      HStack(spacing: 4) {
+        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+        Text("ドラッグで移動")
+      }
+      .font(.system(size: 9, weight: .medium))
+      .foregroundStyle(Color(nsColor: .gray))
       Image(nsImage: image)
         .interpolation(.none)
         .resizable()
