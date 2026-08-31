@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
       settingsStore.save(settings)
       applyOverlayConfiguration()
       applyParticipationQRConfiguration()
+      applyPresentationTimerConfiguration()
     }
   }
 
@@ -19,15 +20,19 @@ final class AppModel: ObservableObject {
   @Published private(set) var displays: [OverlayDisplayDescriptor] = []
   @Published private(set) var authenticationRequired = false
   @Published private(set) var isAuthenticated = false
+  @Published private(set) var presentationTimerSnapshot = PresentationTimer().snapshot()
 
   private let settingsStore: any SettingsStoring
   private let configurationProvider: any RuntimeConfigurationProviding
   private let messageStream: any MessageStreaming
   private let overlayPresenter: any OverlayPresenting
   private let participationQRPresenter = ParticipationQRWindowManager()
+  private let presentationTimerPresenter = PresentationTimerWindowManager()
   private let authenticator: any DesktopAuthenticating
+  private var presentationTimer = PresentationTimer()
   private var eventsTask: Task<Void, Never>?
   private var authRefreshTask: Task<Void, Never>?
+  private var presentationTimerTask: Task<Void, Never>?
   private var displayChangesCancellable: AnyCancellable?
 
   init(
@@ -43,16 +48,23 @@ final class AppModel: ObservableObject {
     self.overlayPresenter = overlayPresenter
     self.authenticator = authenticator
     settings = settingsStore.load()
+    presentationTimer = PresentationTimer(
+      durationSeconds: settings.presentationTimerDurationSeconds
+    )
+    presentationTimerSnapshot = presentationTimer.snapshot()
     displays = overlayPresenter.availableDisplays
     applyOverlayConfiguration()
     applyParticipationQRConfiguration()
+    applyPresentationTimerConfiguration()
     observeEvents()
     observeDisplayChanges()
+    observePresentationTimer()
   }
 
   deinit {
     eventsTask?.cancel()
     authRefreshTask?.cancel()
+    presentationTimerTask?.cancel()
   }
 
   var connectionDescription: String {
@@ -162,7 +174,36 @@ final class AppModel: ObservableObject {
     authenticationRequired = false
     isAuthenticated = false
     rooms = [.global]
+    presentationTimer = PresentationTimer()
+    updatePresentationTimerSnapshot()
     settings = AppSettings()
+  }
+
+  func startPresentationTimer() {
+    if !settings.presentationTimerEnabled {
+      settings.presentationTimerEnabled = true
+    }
+    presentationTimer.start()
+    updatePresentationTimerSnapshot()
+  }
+
+  func pausePresentationTimer() {
+    presentationTimer.pause()
+    updatePresentationTimerSnapshot()
+  }
+
+  func stopPresentationTimer() {
+    presentationTimer.stop()
+    updatePresentationTimerSnapshot()
+  }
+
+  func adjustPresentationTimer(by seconds: Int) {
+    presentationTimer.adjust(by: seconds)
+    updatePresentationTimerSnapshot()
+    if presentationTimer.status == .stopped {
+      settings.presentationTimerDurationSeconds =
+        presentationTimer.configuredDurationSeconds
+    }
   }
 
   func previewOverlay() {
@@ -332,6 +373,17 @@ final class AppModel: ObservableObject {
     }
   }
 
+  private func observePresentationTimer() {
+    presentationTimerTask = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(200))
+        guard !Task.isCancelled, let self else { return }
+        self.presentationTimer.update()
+        self.updatePresentationTimerSnapshot()
+      }
+    }
+  }
+
   private func applyOverlayConfiguration() {
     overlayPresenter.apply(
       configuration: OverlayPresentationConfiguration(
@@ -349,6 +401,21 @@ final class AppModel: ObservableObject {
       roomID: settings.selectedRoomID,
       selectedDisplayID: settings.selectedDisplayID
     )
+  }
+
+  private func applyPresentationTimerConfiguration() {
+    presentationTimerPresenter.apply(
+      isEnabled: settings.presentationTimerEnabled,
+      selectedDisplayID: settings.selectedDisplayID,
+      snapshot: presentationTimerSnapshot
+    )
+  }
+
+  private func updatePresentationTimerSnapshot() {
+    let snapshot = presentationTimer.snapshot()
+    guard snapshot != presentationTimerSnapshot else { return }
+    presentationTimerSnapshot = snapshot
+    applyPresentationTimerConfiguration()
   }
 
   private func handle(_ event: CometClientEvent) {

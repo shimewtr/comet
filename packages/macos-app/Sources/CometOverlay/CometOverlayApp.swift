@@ -125,6 +125,11 @@ private struct MenuContent: View {
       Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
         .disabled(model.settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
+      GroupBox("タイマー") {
+        PresentationTimerControls(model: model, showsVisibilityToggle: true)
+          .padding(.top, 4)
+      }
+
       GroupBox {
         VStack(alignment: .leading, spacing: 10) {
           Picker(
@@ -162,7 +167,7 @@ private struct MenuContent: View {
       }
     }
     .padding()
-    .frame(width: 300)
+    .frame(width: 330)
   }
 
   private var connectionColor: Color {
@@ -286,6 +291,13 @@ private struct SettingsView: View {
         }
       }
 
+      Section("タイマー") {
+        PresentationTimerControls(model: model, showsVisibilityToggle: true)
+        Text("選択した出力先の右上へ最前面表示します。5分未満では1分ごとに3秒間強調し、0になると強調表示を続けます。")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
       Section("詳細") {
         LabeledContent("Comet", value: AppMetadata.versionDescription)
         Text("診断ログにURL、投稿内容、認証チケットは記録しません。")
@@ -298,7 +310,7 @@ private struct SettingsView: View {
     }
     .formStyle(.grouped)
     .padding()
-    .frame(width: 560, height: 680)
+    .frame(width: 560, height: 820)
     .confirmationDialog(
       "すべての設定を初期値に戻しますか？",
       isPresented: $showsResetConfirmation,
@@ -311,6 +323,83 @@ private struct SettingsView: View {
     } message: {
       Text("WebアプリURL、表示調整、Room、出力先がリセットされ、接続が切れます。")
     }
+  }
+}
+
+private struct PresentationTimerControls: View {
+  @ObservedObject var model: AppModel
+  let showsVisibilityToggle: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      if showsVisibilityToggle {
+        Toggle("タイマーを表示", isOn: $model.settings.presentationTimerEnabled)
+      }
+
+      HStack(alignment: .firstTextBaseline) {
+        Text(model.presentationTimerSnapshot.formattedRemainingTime)
+          .font(.system(size: 30, weight: .bold, design: .rounded))
+          .monospacedDigit()
+        Spacer()
+        Text(statusLabel)
+          .font(.caption)
+          .foregroundStyle(statusColor)
+      }
+
+      HStack(spacing: 8) {
+        Button("スタート") {
+          model.startPresentationTimer()
+        }
+        .disabled(model.presentationTimerSnapshot.status == .running)
+
+        Button("一時停止") {
+          model.pausePresentationTimer()
+        }
+        .disabled(model.presentationTimerSnapshot.status != .running)
+
+        Button("停止") {
+          model.stopPresentationTimer()
+        }
+      }
+      .buttonStyle(.bordered)
+
+      HStack(spacing: 6) {
+        timerAdjustmentButton("−1分", seconds: -60)
+        timerAdjustmentButton("−10秒", seconds: -10)
+        timerAdjustmentButton("＋10秒", seconds: 10)
+        timerAdjustmentButton("＋1分", seconds: 60)
+      }
+      .controlSize(.small)
+    }
+  }
+
+  private var statusLabel: String {
+    switch model.presentationTimerSnapshot.status {
+    case .stopped:
+      "停止中"
+    case .running:
+      model.presentationTimerSnapshot.remainingSeconds == 0 ? "終了" : "進行中"
+    case .paused:
+      "一時停止"
+    }
+  }
+
+  private var statusColor: Color {
+    switch model.presentationTimerSnapshot.attention {
+    case .normal:
+      .secondary
+    case .minuteWarning:
+      .orange
+    case .expired:
+      .red
+    }
+  }
+
+  private func timerAdjustmentButton(_ title: String, seconds: Int) -> some View {
+    Button(title) {
+      model.adjustPresentationTimer(by: seconds)
+    }
+    .frame(maxWidth: .infinity)
   }
 }
 
