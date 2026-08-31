@@ -52,6 +52,18 @@ final class AppModel: ObservableObject {
       durationSeconds: settings.presentationTimerDurationSeconds
     )
     presentationTimerSnapshot = presentationTimer.snapshot()
+    presentationTimerPresenter.onStart = { [weak self] in
+      self?.startPresentationTimer()
+    }
+    presentationTimerPresenter.onPause = { [weak self] in
+      self?.pausePresentationTimer()
+    }
+    presentationTimerPresenter.onStop = { [weak self] in
+      self?.stopPresentationTimer()
+    }
+    presentationTimerPresenter.onAdjust = { [weak self] seconds in
+      self?.adjustPresentationTimer(by: seconds)
+    }
     displays = overlayPresenter.availableDisplays
     applyOverlayConfiguration()
     applyParticipationQRConfiguration()
