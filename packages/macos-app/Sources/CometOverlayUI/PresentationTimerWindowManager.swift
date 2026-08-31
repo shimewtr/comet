@@ -49,6 +49,7 @@ enum PresentationTimerWindowMetrics {
 private final class PresentationTimerViewModel: ObservableObject {
   @Published var snapshot: PresentationTimerSnapshot
   @Published var isHovered = false
+  var expansionTask: Task<Void, Never>?
   var collapseTask: Task<Void, Never>?
 
   init(snapshot: PresentationTimerSnapshot) {
@@ -56,6 +57,7 @@ private final class PresentationTimerViewModel: ObservableObject {
   }
 
   deinit {
+    expansionTask?.cancel()
     collapseTask?.cancel()
   }
 }
@@ -193,11 +195,21 @@ public final class PresentationTimerWindowManager: NSObject {
 
     if isHovered {
       guard !model.isHovered else { return }
-      // Resize immediately so AppKit does not relayout the hosting view on every frame of its
-      // standard window animation. SwiftUI then animates only the lightweight card contents.
+      model.expansionTask?.cancel()
+      // Finish the AppKit layout pass first. Starting the SwiftUI transition in the same frame as
+      // the window resize makes the first animation frame noticeably hitch.
       resizeWindow(window, for: model, isHovered: true)
-      withAnimation(.easeOut(duration: 0.16)) {
-        model.isHovered = true
+      model.expansionTask = Task { @MainActor [weak model] in
+        do {
+          try await Task.sleep(for: .milliseconds(16))
+          guard !Task.isCancelled, let model else { return }
+          withAnimation(.easeOut(duration: 0.2)) {
+            model.isHovered = true
+          }
+          model.expansionTask = nil
+        } catch {
+          return
+        }
       }
       return
     }
@@ -213,6 +225,8 @@ public final class PresentationTimerWindowManager: NSObject {
           try await Task.sleep(for: .milliseconds(150))
         }
         guard !Task.isCancelled else { return }
+        model.expansionTask?.cancel()
+        model.expansionTask = nil
         withAnimation(.easeInOut(duration: 0.22)) {
           model.isHovered = false
         }
@@ -293,15 +307,22 @@ private struct PresentationTimerView: View {
 
   @ViewBuilder
   private var panelContent: some View {
-    if model.isHovered {
-      expandedContent
-        .transition(contentTransition)
-    } else if model.snapshot.attention == .expired {
-      prominentContent
-        .transition(contentTransition)
-    } else {
+    ZStack {
       compactContent
-        .transition(contentTransition)
+        .opacity(!model.isHovered && model.snapshot.attention != .expired ? 1 : 0)
+        .scaleEffect(model.isHovered ? 0.98 : 1, anchor: .top)
+        .accessibilityHidden(model.isHovered || model.snapshot.attention == .expired)
+
+      prominentContent
+        .opacity(!model.isHovered && model.snapshot.attention == .expired ? 1 : 0)
+        .scaleEffect(model.isHovered ? 0.98 : 1, anchor: .top)
+        .accessibilityHidden(model.isHovered || model.snapshot.attention != .expired)
+
+      expandedContent
+        .opacity(model.isHovered ? 1 : 0)
+        .scaleEffect(model.isHovered ? 1 : 0.98, anchor: .top)
+        .allowsHitTesting(model.isHovered)
+        .accessibilityHidden(!model.isHovered)
     }
   }
 
@@ -441,10 +462,6 @@ private struct PresentationTimerView: View {
     case .expired:
       .red
     }
-  }
-
-  private var contentTransition: AnyTransition {
-    .opacity.combined(with: .scale(scale: 0.97, anchor: .top))
   }
 
   private var cornerRadius: CGFloat {
