@@ -3,9 +3,13 @@ import CometOverlayCore
 import SwiftUI
 
 enum PresentationTimerWindowMetrics {
-  static let compactSize = NSSize(width: 190, height: 86)
-  static let prominentSize = NSSize(width: 270, height: 142)
-  static let expandedSize = NSSize(width: 350, height: 224)
+  // Keep enough transparent space around the card for the warning glow. Without this inset,
+  // AppKit clips the blur at the window boundary and leaves a visible straight edge.
+  static let effectInset: CGFloat = 24
+  static let maximumGlowRadius: CGFloat = 19
+  static let compactSize = NSSize(width: 222, height: 118)
+  static let prominentSize = NSSize(width: 302, height: 174)
+  static let expandedSize = NSSize(width: 382, height: 256)
 
   static func size(for snapshot: PresentationTimerSnapshot, isHovered: Bool) -> NSSize {
     if isHovered { return expandedSize }
@@ -105,7 +109,7 @@ public final class PresentationTimerWindowManager: NSObject {
     } else {
       for timer in timers.values {
         timer.model.snapshot = snapshot
-        resizeWindow(timer.window, for: timer.model, animated: true)
+        resizeWindow(timer.window, for: timer.model)
       }
     }
   }
@@ -180,8 +184,13 @@ public final class PresentationTimerWindowManager: NSObject {
     model.collapseTask = nil
 
     if isHovered {
-      model.isHovered = true
-      resizeWindow(window, for: model, animated: true)
+      guard !model.isHovered else { return }
+      // Resize immediately so AppKit does not relayout the hosting view on every frame of its
+      // standard window animation. SwiftUI then animates only the lightweight card contents.
+      resizeWindow(window, for: model, isHovered: true)
+      withAnimation(.easeOut(duration: 0.16)) {
+        model.isHovered = true
+      }
       return
     }
 
@@ -196,9 +205,13 @@ public final class PresentationTimerWindowManager: NSObject {
           try await Task.sleep(for: .milliseconds(150))
         }
         guard !Task.isCancelled else { return }
-        model.isHovered = false
+        withAnimation(.easeInOut(duration: 0.16)) {
+          model.isHovered = false
+        }
+        try await Task.sleep(for: .milliseconds(180))
+        guard !Task.isCancelled, !model.isHovered else { return }
         model.collapseTask = nil
-        self.resizeWindow(window, for: model, animated: true)
+        self.resizeWindow(window, for: model)
       } catch is CancellationError {
         return
       } catch {
@@ -210,11 +223,11 @@ public final class PresentationTimerWindowManager: NSObject {
   private func resizeWindow(
     _ window: NSWindow,
     for model: PresentationTimerViewModel,
-    animated: Bool
+    isHovered: Bool? = nil
   ) {
     let size = PresentationTimerWindowMetrics.size(
       for: model.snapshot,
-      isHovered: model.isHovered
+      isHovered: isHovered ?? model.isHovered
     )
     guard window.frame.size != size else { return }
 
@@ -224,7 +237,7 @@ public final class PresentationTimerWindowManager: NSObject {
       to: size,
       within: screenFrame
     )
-    window.setFrame(frame, display: true, animate: animated)
+    window.setFrame(frame, display: true)
   }
 }
 
@@ -249,10 +262,13 @@ private struct PresentationTimerView: View {
               lineWidth: 2
             )
         }
-        .shadow(color: shadowColor, radius: 12, y: 4)
+        .shadow(
+          color: glowColor.opacity(glowOpacity(at: context.date)),
+          radius: glowRadius(at: context.date)
+        )
         .scaleEffect(pulseScale(at: context.date))
-        .padding(8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(PresentationTimerWindowMetrics.effectInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .onHover(perform: onHover)
     }
@@ -262,10 +278,13 @@ private struct PresentationTimerView: View {
   private var panelContent: some View {
     if model.isHovered {
       expandedContent
+        .transition(contentTransition)
     } else if model.snapshot.attention == .expired {
       prominentContent
+        .transition(contentTransition)
     } else {
       compactContent
+        .transition(contentTransition)
     }
   }
 
@@ -396,15 +415,19 @@ private struct PresentationTimerView: View {
     }
   }
 
-  private var shadowColor: Color {
+  private var glowColor: Color {
     switch model.snapshot.attention {
     case .normal:
-      .black.opacity(0.35)
+      .black
     case .minuteWarning:
-      .orange.opacity(0.85)
+      .orange
     case .expired:
-      .red.opacity(0.9)
+      .red
     }
+  }
+
+  private var contentTransition: AnyTransition {
+    .opacity.combined(with: .scale(scale: 0.97, anchor: .top))
   }
 
   private var cornerRadius: CGFloat {
@@ -459,7 +482,23 @@ private struct PresentationTimerView: View {
 
   private func pulseScale(at date: Date) -> CGFloat {
     guard model.snapshot.attention != .normal else { return 1 }
-    let wave = (sin(date.timeIntervalSinceReferenceDate * .pi * 2) + 1) / 2
-    return 1 + CGFloat(wave * 0.045)
+    return 1 + CGFloat(pulseProgress(at: date) * 0.012)
+  }
+
+  private func glowOpacity(at date: Date) -> Double {
+    guard model.snapshot.attention != .normal else { return 0.28 }
+    return 0.42 + pulseProgress(at: date) * 0.38
+  }
+
+  private func glowRadius(at date: Date) -> CGFloat {
+    guard model.snapshot.attention != .normal else { return 10 }
+    let minimumRadius: CGFloat = 13
+    return minimumRadius
+      + CGFloat(pulseProgress(at: date))
+      * (PresentationTimerWindowMetrics.maximumGlowRadius - minimumRadius)
+  }
+
+  private func pulseProgress(at date: Date) -> Double {
+    (sin(date.timeIntervalSinceReferenceDate * .pi * 2) + 1) / 2
   }
 }

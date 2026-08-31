@@ -48,3 +48,11 @@ func expandedTimerFrameKeepsTheCompactHoverAreaInsideIt() {
 
   #expect(expanded.contains(compact))
 }
+
+@Test
+func timerWindowLeavesRoomForTheWarningGlow() {
+  #expect(
+    PresentationTimerWindowMetrics.effectInset
+      > PresentationTimerWindowMetrics.maximumGlowRadius
+  )
+}
