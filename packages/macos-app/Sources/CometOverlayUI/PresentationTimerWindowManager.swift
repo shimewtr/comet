@@ -17,6 +17,14 @@ enum PresentationTimerWindowMetrics {
     return compactSize
   }
 
+  static func cardSize(for snapshot: PresentationTimerSnapshot, isHovered: Bool) -> NSSize {
+    let windowSize = size(for: snapshot, isHovered: isHovered)
+    return NSSize(
+      width: windowSize.width - effectInset * 2,
+      height: windowSize.height - effectInset * 2
+    )
+  }
+
   static func resizedFrame(
     from frame: NSRect,
     to size: NSSize,
@@ -205,10 +213,10 @@ public final class PresentationTimerWindowManager: NSObject {
           try await Task.sleep(for: .milliseconds(150))
         }
         guard !Task.isCancelled else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
+        withAnimation(.easeInOut(duration: 0.22)) {
           model.isHovered = false
         }
-        try await Task.sleep(for: .milliseconds(180))
+        try await Task.sleep(for: .milliseconds(240))
         guard !Task.isCancelled, !model.isHovered else { return }
         model.collapseTask = nil
         self.resizeWindow(window, for: model)
@@ -253,6 +261,8 @@ private struct PresentationTimerView: View {
     TimelineView(.animation(minimumInterval: 0.1, paused: model.snapshot.attention == .normal)) {
       context in
       panelContent
+        .frame(width: cardSize.width, height: cardSize.height)
+        .clipped()
         .foregroundStyle(.white)
         .background(backgroundColor, in: RoundedRectangle(cornerRadius: cornerRadius))
         .overlay {
@@ -272,6 +282,13 @@ private struct PresentationTimerView: View {
         .contentShape(Rectangle())
         .onHover(perform: onHover)
     }
+  }
+
+  private var cardSize: NSSize {
+    PresentationTimerWindowMetrics.cardSize(
+      for: model.snapshot,
+      isHovered: model.isHovered
+    )
   }
 
   @ViewBuilder

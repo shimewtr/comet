@@ -56,3 +56,33 @@ func timerWindowLeavesRoomForTheWarningGlow() {
       > PresentationTimerWindowMetrics.maximumGlowRadius
   )
 }
+
+@Test
+func timerCardSizePreservesTheGlowInsetForEveryState() {
+  let normal = PresentationTimerSnapshot(
+    status: .running,
+    remainingSeconds: 600,
+    attention: .normal
+  )
+  let expired = PresentationTimerSnapshot(
+    status: .running,
+    remainingSeconds: 0,
+    attention: .expired
+  )
+
+  for (snapshot, isHovered) in [(normal, false), (expired, false), (normal, true)] {
+    let windowSize = PresentationTimerWindowMetrics.size(
+      for: snapshot,
+      isHovered: isHovered
+    )
+    let cardSize = PresentationTimerWindowMetrics.cardSize(
+      for: snapshot,
+      isHovered: isHovered
+    )
+
+    #expect(windowSize.width - cardSize.width == PresentationTimerWindowMetrics.effectInset * 2)
+    #expect(
+      windowSize.height - cardSize.height == PresentationTimerWindowMetrics.effectInset * 2
+    )
+  }
+}
