@@ -12,15 +12,39 @@ enum PresentationTimerWindowMetrics {
     if snapshot.attention == .expired { return prominentSize }
     return compactSize
   }
+
+  static func resizedFrame(
+    from frame: NSRect,
+    to size: NSSize,
+    within screenFrame: NSRect
+  ) -> NSRect {
+    let topCenter = NSPoint(x: frame.midX, y: frame.maxY)
+    var origin = NSPoint(x: topCenter.x - size.width / 2, y: topCenter.y - size.height)
+    let margin: CGFloat = 8
+    origin.x = min(
+      max(origin.x, screenFrame.minX + margin),
+      screenFrame.maxX - size.width - margin
+    )
+    origin.y = min(
+      max(origin.y, screenFrame.minY + margin),
+      screenFrame.maxY - size.height - margin
+    )
+    return NSRect(origin: origin, size: size)
+  }
 }
 
 @MainActor
 private final class PresentationTimerViewModel: ObservableObject {
   @Published var snapshot: PresentationTimerSnapshot
   @Published var isHovered = false
+  var collapseTask: Task<Void, Never>?
 
   init(snapshot: PresentationTimerSnapshot) {
     self.snapshot = snapshot
+  }
+
+  deinit {
+    collapseTask?.cancel()
   }
 }
 
@@ -135,8 +159,7 @@ public final class PresentationTimerWindowManager: NSObject {
         model: model,
         onHover: { [weak self, weak window, weak model] isHovered in
           guard let self, let window, let model else { return }
-          model.isHovered = isHovered
-          self.resizeWindow(window, for: model, animated: true)
+          self.handleHoverChange(isHovered, window: window, model: model)
         },
         onStart: { [weak self] in self?.onStart?() },
         onPause: { [weak self] in self?.onPause?() },
@@ -146,6 +169,42 @@ public final class PresentationTimerWindowManager: NSObject {
     )
     window.setFrameOrigin(origin)
     return ScreenTimer(window: window, model: model)
+  }
+
+  private func handleHoverChange(
+    _ isHovered: Bool,
+    window: NSWindow,
+    model: PresentationTimerViewModel
+  ) {
+    model.collapseTask?.cancel()
+    model.collapseTask = nil
+
+    if isHovered {
+      model.isHovered = true
+      resizeWindow(window, for: model, animated: true)
+      return
+    }
+
+    // Resizing a borderless panel can briefly emit hover=false even though the pointer is still
+    // inside the expanded frame. Keep it expanded for a short grace period, then wait until the
+    // pointer has actually left the panel before collapsing.
+    model.collapseTask = Task { @MainActor [weak self, weak window, weak model] in
+      do {
+        try await Task.sleep(for: .milliseconds(700))
+        guard let self, let window, let model else { return }
+        while window.frame.contains(NSEvent.mouseLocation) {
+          try await Task.sleep(for: .milliseconds(150))
+        }
+        guard !Task.isCancelled else { return }
+        model.isHovered = false
+        model.collapseTask = nil
+        self.resizeWindow(window, for: model, animated: true)
+      } catch is CancellationError {
+        return
+      } catch {
+        return
+      }
+    }
   }
 
   private func resizeWindow(
@@ -159,20 +218,13 @@ public final class PresentationTimerWindowManager: NSObject {
     )
     guard window.frame.size != size else { return }
 
-    let topCenter = NSPoint(x: window.frame.midX, y: window.frame.maxY)
-    var origin = NSPoint(x: topCenter.x - size.width / 2, y: topCenter.y - size.height)
-    if let screenFrame = window.screen?.frame ?? NSScreen.main?.frame {
-      let margin: CGFloat = 8
-      origin.x = min(
-        max(origin.x, screenFrame.minX + margin),
-        screenFrame.maxX - size.width - margin
-      )
-      origin.y = min(
-        max(origin.y, screenFrame.minY + margin),
-        screenFrame.maxY - size.height - margin
-      )
-    }
-    window.setFrame(NSRect(origin: origin, size: size), display: true, animate: animated)
+    let screenFrame = window.screen?.frame ?? NSScreen.main?.frame ?? window.frame
+    let frame = PresentationTimerWindowMetrics.resizedFrame(
+      from: window.frame,
+      to: size,
+      within: screenFrame
+    )
+    window.setFrame(frame, display: true, animate: animated)
   }
 }
 
@@ -310,7 +362,13 @@ private struct PresentationTimerView: View {
     case .stopped:
       "停止中"
     case .running:
-      model.snapshot.remainingSeconds == 0 ? "終了" : "進行中"
+      if model.snapshot.overtimeSeconds > 0 {
+        "超過"
+      } else if model.snapshot.remainingSeconds == 0 {
+        "終了"
+      } else {
+        "進行中"
+      }
     case .paused:
       "一時停止"
     }
@@ -354,7 +412,8 @@ private struct PresentationTimerView: View {
   }
 
   private var accessibilityDescription: String {
-    "残り時間 " + model.snapshot.formattedRemainingTime + "、" + statusLabel
+    let timeDescription = model.snapshot.overtimeSeconds > 0 ? "超過時間 " : "残り時間 "
+    return timeDescription + model.snapshot.formattedRemainingTime + "、" + statusLabel
   }
 
   private func transportButton(

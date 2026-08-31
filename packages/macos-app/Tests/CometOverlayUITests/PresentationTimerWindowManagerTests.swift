@@ -1,3 +1,4 @@
+import AppKit
 import CometOverlayCore
 import Testing
 
@@ -27,4 +28,23 @@ func presentationTimerWindowExpandsOnlyForHoverOrExpiration() {
   #expect(
     PresentationTimerWindowMetrics.size(for: expired, isHovered: true) == hoverSize
   )
+}
+
+@Test
+func expandedTimerFrameKeepsTheCompactHoverAreaInsideIt() {
+  let screen = CGRect(x: 0, y: 0, width: 1_512, height: 982)
+  let compact = CGRect(
+    x: screen.midX - PresentationTimerWindowMetrics.compactSize.width / 2,
+    y: screen.maxY - PresentationTimerWindowMetrics.compactSize.height - 20,
+    width: PresentationTimerWindowMetrics.compactSize.width,
+    height: PresentationTimerWindowMetrics.compactSize.height
+  )
+
+  let expanded = PresentationTimerWindowMetrics.resizedFrame(
+    from: compact,
+    to: PresentationTimerWindowMetrics.expandedSize,
+    within: screen
+  )
+
+  #expect(expanded.contains(compact))
 }

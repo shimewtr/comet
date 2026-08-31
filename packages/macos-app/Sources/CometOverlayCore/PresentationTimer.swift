@@ -15,26 +15,31 @@ public enum PresentationTimerAttention: Equatable, Sendable {
 public struct PresentationTimerSnapshot: Equatable, Sendable {
   public let status: PresentationTimerStatus
   public let remainingSeconds: Int
+  public let overtimeSeconds: Int
   public let attention: PresentationTimerAttention
 
   public init(
     status: PresentationTimerStatus,
     remainingSeconds: Int,
+    overtimeSeconds: Int = 0,
     attention: PresentationTimerAttention
   ) {
     self.status = status
     self.remainingSeconds = remainingSeconds
+    self.overtimeSeconds = overtimeSeconds
     self.attention = attention
   }
 
   public var formattedRemainingTime: String {
-    let hours = remainingSeconds / 3_600
-    let minutes = (remainingSeconds % 3_600) / 60
-    let seconds = remainingSeconds % 60
+    let value = overtimeSeconds > 0 ? overtimeSeconds : remainingSeconds
+    let prefix = overtimeSeconds > 0 ? "+" : ""
+    let hours = value / 3_600
+    let minutes = (value % 3_600) / 60
+    let seconds = value % 60
     if hours > 0 {
-      return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+      return prefix + String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
-    return String(format: "%02d:%02d", minutes, seconds)
+    return prefix + String(format: "%02d:%02d", minutes, seconds)
   }
 }
 
@@ -48,6 +53,7 @@ public struct PresentationTimer: Equatable, Sendable {
 
   public private(set) var configuredDurationSeconds: Int
   public private(set) var remainingSeconds: Int
+  public private(set) var overtimeSeconds = 0
   public private(set) var status: PresentationTimerStatus = .stopped
 
   private var deadline: Date?
@@ -61,11 +67,15 @@ public struct PresentationTimer: Equatable, Sendable {
 
   public mutating func start(at now: Date = Date()) {
     guard status != .running else { return }
-    if remainingSeconds == 0 {
+    if remainingSeconds == 0, overtimeSeconds == 0 {
       remainingSeconds = configuredDurationSeconds
     }
     status = .running
-    deadline = now.addingTimeInterval(TimeInterval(remainingSeconds))
+    if overtimeSeconds > 0 {
+      deadline = now.addingTimeInterval(-TimeInterval(overtimeSeconds))
+    } else {
+      deadline = now.addingTimeInterval(TimeInterval(remainingSeconds))
+    }
     warningUntil = nil
   }
 
@@ -74,41 +84,51 @@ public struct PresentationTimer: Equatable, Sendable {
     update(at: now)
     status = .paused
     deadline = nil
+    warningUntil = nil
   }
 
   /// Stops the timer and restores the duration that was set while stopped.
   public mutating func stop() {
     status = .stopped
     remainingSeconds = configuredDurationSeconds
+    overtimeSeconds = 0
     deadline = nil
     warningUntil = nil
   }
 
   public mutating func adjust(by seconds: Int, at now: Date = Date()) {
     update(at: now)
-    let previousRemainingSeconds = remainingSeconds
-    remainingSeconds = Self.clamped(remainingSeconds + seconds)
 
-    if status == .stopped {
+    switch status {
+    case .stopped:
+      remainingSeconds = Self.clamped(remainingSeconds + seconds)
+      overtimeSeconds = 0
       configuredDurationSeconds = remainingSeconds
-    } else if status == .running {
-      deadline = now.addingTimeInterval(TimeInterval(remainingSeconds))
+      warningUntil = nil
+    case .running:
+      deadline = deadline?.addingTimeInterval(TimeInterval(seconds))
+      update(at: now)
+    case .paused:
+      setSignedTime(Self.clampedSigned(signedTime + seconds))
+      warningUntil = nil
     }
 
     if remainingSeconds >= Self.warningThresholdSeconds {
       warningUntil = nil
     }
-    updateWarning(
-      previousRemainingSeconds: previousRemainingSeconds,
-      currentRemainingSeconds: remainingSeconds,
-      at: now
-    )
   }
 
   public mutating func update(at now: Date = Date()) {
     guard status == .running, let deadline else { return }
     let previousRemainingSeconds = remainingSeconds
-    remainingSeconds = Self.clamped(Int(ceil(deadline.timeIntervalSince(now))))
+    let interval = deadline.timeIntervalSince(now)
+    if interval > 0 {
+      remainingSeconds = Self.clamped(Int(ceil(interval)))
+      overtimeSeconds = 0
+    } else {
+      remainingSeconds = 0
+      overtimeSeconds = Self.clamped(Int(floor(-interval)))
+    }
     updateWarning(
       previousRemainingSeconds: previousRemainingSeconds,
       currentRemainingSeconds: remainingSeconds,
@@ -118,7 +138,7 @@ public struct PresentationTimer: Equatable, Sendable {
 
   public func snapshot(at now: Date = Date()) -> PresentationTimerSnapshot {
     let attention: PresentationTimerAttention
-    if remainingSeconds == 0 {
+    if remainingSeconds == 0, status == .running {
       attention = .expired
     } else if let warningUntil, now < warningUntil {
       attention = .minuteWarning
@@ -128,6 +148,7 @@ public struct PresentationTimer: Equatable, Sendable {
     return PresentationTimerSnapshot(
       status: status,
       remainingSeconds: remainingSeconds,
+      overtimeSeconds: overtimeSeconds,
       attention: attention
     )
   }
@@ -137,7 +158,8 @@ public struct PresentationTimer: Equatable, Sendable {
     currentRemainingSeconds: Int,
     at now: Date
   ) {
-    guard currentRemainingSeconds > 0,
+    guard status == .running,
+      currentRemainingSeconds > 0,
       currentRemainingSeconds < Self.warningThresholdSeconds,
       currentRemainingSeconds / 60 < previousRemainingSeconds / 60
     else { return }
@@ -146,5 +168,23 @@ public struct PresentationTimer: Equatable, Sendable {
 
   private static func clamped(_ seconds: Int) -> Int {
     min(max(0, seconds), maximumDurationSeconds)
+  }
+
+  private var signedTime: Int {
+    remainingSeconds - overtimeSeconds
+  }
+
+  private mutating func setSignedTime(_ seconds: Int) {
+    if seconds >= 0 {
+      remainingSeconds = seconds
+      overtimeSeconds = 0
+    } else {
+      remainingSeconds = 0
+      overtimeSeconds = -seconds
+    }
+  }
+
+  private static func clampedSigned(_ seconds: Int) -> Int {
+    min(max(-maximumDurationSeconds, seconds), maximumDurationSeconds)
   }
 }
