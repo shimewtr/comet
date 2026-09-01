@@ -1,5 +1,9 @@
 /// <reference lib="dom" />
 import { WebSocketMessage, WebSocketMessageType } from './types/index.js';
+import {
+  IncomingWebSocketMessage,
+  parseIncomingWebSocketMessage,
+} from './utils/websocket.js';
 
 /**
  * 接続状態
@@ -33,7 +37,7 @@ export interface CometSocketOptions {
   participantId?: string;
 }
 
-type MessageHandler<T> = (payload: T, message: WebSocketMessage) => void;
+type MessageHandler<T> = (payload: T, message: IncomingWebSocketMessage) => void;
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
@@ -112,12 +116,12 @@ export class CometSocket {
         };
 
         ws.onmessage = (event) => {
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            this.dispatch(message);
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+          const message = parseIncomingWebSocketMessage(event.data);
+          if (!message) {
+            console.error('Received an invalid WebSocket message');
+            return;
           }
+          this.dispatch(message);
         };
 
         ws.onerror = (event) => {
@@ -264,7 +268,7 @@ export class CometSocket {
     }
   }
 
-  private dispatch(message: WebSocketMessage): void {
+  private dispatch(message: IncomingWebSocketMessage): void {
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach((handler) => handler(message.payload, message));

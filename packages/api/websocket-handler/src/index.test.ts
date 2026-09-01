@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyWebsocketEventV2,
+  APIGatewayProxyWebsocketHandlerV2,
+} from 'aws-lambda';
 import { WebSocketMessageType, GLOBAL_ROOM_ID } from '@comet/shared';
 
 const db = vi.hoisted(() => ({
@@ -47,7 +50,10 @@ beforeAll(async () => {
   handler = (await import('./index')).handler;
 });
 
-function event(type: WebSocketMessageType, payload: unknown) {
+function event(
+  type: WebSocketMessageType,
+  payload: unknown
+): APIGatewayProxyWebsocketEventV2 {
   return {
     requestContext: {
       connectionId: 'connection-1',
@@ -55,7 +61,7 @@ function event(type: WebSocketMessageType, payload: unknown) {
       stage: 'prod',
     },
     body: JSON.stringify({ type, payload, timestamp: Date.now() }),
-  } as never;
+  } as APIGatewayProxyWebsocketEventV2;
 }
 
 describe('websocket room isolation', () => {
@@ -100,6 +106,28 @@ describe('websocket room isolation', () => {
         ...event(WebSocketMessageType.PING, {}),
         body: JSON.stringify({ type: 'future_client_message', payload: {} }),
       },
+      {} as never,
+      vi.fn()
+    );
+
+    expect(result).toEqual({ statusCode: 400 });
+    expect(db.getConnectionRoom).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-object comment payload before accessing a room', async () => {
+    const result = await handler(
+      event(WebSocketMessageType.NEW_COMMENT, 'not-a-comment'),
+      {} as never,
+      vi.fn()
+    );
+
+    expect(result).toEqual({ statusCode: 400 });
+    expect(db.getConnectionRoom).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed stamp payload before accessing a room', async () => {
+    const result = await handler(
+      event(WebSocketMessageType.NEW_STAMP, { stamp: { name: 1 } }),
       {} as never,
       vi.fn()
     );

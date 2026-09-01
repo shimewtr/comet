@@ -4,6 +4,8 @@ import { WebSocketMessageType } from '../types/websocket.js';
 export interface IncomingWebSocketMessage {
   type: WebSocketMessageType;
   payload: unknown;
+  timestamp?: number;
+  roomId?: string;
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -24,7 +26,12 @@ export function parseIncomingWebSocketMessage(
     if (!Object.values(WebSocketMessageType).includes(value.type as WebSocketMessageType)) {
       return null;
     }
-    return { type: value.type as WebSocketMessageType, payload: value.payload };
+    return {
+      type: value.type as WebSocketMessageType,
+      payload: value.payload,
+      ...(typeof value.timestamp === 'number' ? { timestamp: value.timestamp } : {}),
+      ...(typeof value.roomId === 'string' ? { roomId: value.roomId } : {}),
+    };
   } catch {
     return null;
   }

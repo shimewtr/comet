@@ -4,6 +4,7 @@ import {
   CommentAnimation,
 } from '../types/index.js';
 import { COMMENT_COLORS, COMMENT_SIZE_OPTIONS } from '../constants/index.js';
+import { isRecord } from './websocket.js';
 
 /**
  * コメント内容の最大文字数
@@ -115,25 +116,34 @@ const MAX_COMMENT_SPEED = 10;
 /**
  * 外部入力のコメントスタイルを検証し、不正な値はデフォルトに置き換える
  */
-export function sanitizeCommentStyle(
-  style?: Partial<CommentStyle>
-): CommentStyle {
-  const applied = applyDefaultCommentStyle(style);
+export function sanitizeCommentStyle(style?: unknown): CommentStyle {
+  const input = isRecord(style) ? style : {};
+  const color = typeof input.color === 'string' ? input.color : COMMENT_COLORS.WHITE;
+  const size = isCommentSize(input.size) ? input.size : 'medium';
+  const speed = typeof input.speed === 'number' ? input.speed : 5;
+  const animation = isCommentAnimation(input.animation) ? input.animation : 'none';
 
   return {
-    color: isValidCommentColor(applied.color)
-      ? applied.color
+    color: isValidCommentColor(color)
+      ? color
       : COMMENT_COLORS.WHITE,
-    size: COMMENT_SIZE_OPTIONS.includes(applied.size) ? applied.size : 'medium',
+    size,
     speed:
-      typeof applied.speed === 'number' &&
-      Number.isFinite(applied.speed) &&
-      applied.speed >= MIN_COMMENT_SPEED &&
-      applied.speed <= MAX_COMMENT_SPEED
-        ? applied.speed
+      Number.isFinite(speed) &&
+      speed >= MIN_COMMENT_SPEED &&
+      speed <= MAX_COMMENT_SPEED
+        ? speed
         : 5,
-    animation: VALID_ANIMATIONS.includes(applied.animation ?? 'none')
-      ? applied.animation
+    animation: VALID_ANIMATIONS.includes(animation)
+      ? animation
       : 'none',
   };
+}
+
+function isCommentSize(value: unknown): value is CommentStyle['size'] {
+  return typeof value === 'string' && COMMENT_SIZE_OPTIONS.some((size) => size === value);
+}
+
+function isCommentAnimation(value: unknown): value is CommentAnimation {
+  return typeof value === 'string' && VALID_ANIMATIONS.some((animation) => animation === value);
 }
