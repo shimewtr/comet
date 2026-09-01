@@ -7,11 +7,10 @@ import {
   MIN_POLL_DURATION_SECONDS,
   MIN_POLL_OPTIONS,
   generateId,
+  isRecord,
   Poll,
-  PollControlPayload,
   PollOption,
   PollResult,
-  StartPollPayload,
 } from '@comet/shared';
 import {
   createPoll,
@@ -161,16 +160,17 @@ export function createPollHandlers(context: MessageContext) {
 
   return {
     currentPoll,
-    async start(payload: StartPollPayload | undefined) {
+    async start(payload: unknown) {
       const roomId = await context.currentRoomForActivity();
       if (!roomId) return;
-      const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
+      const input = isRecord(payload) ? payload : {};
+      const title = typeof input.title === 'string' ? input.title.trim() : '';
       const controllerId =
-        typeof payload?.controllerId === 'string'
-          ? payload.controllerId.trim()
+        typeof input.controllerId === 'string'
+          ? input.controllerId.trim()
           : '';
-      const durationSeconds = payload?.durationSeconds;
-      const options = normalizedPollOptions(payload?.options);
+      const durationSeconds = input.durationSeconds;
+      const options = normalizedPollOptions(input.options);
       if (
         !controllerId ||
         controllerId.length > 128 ||
@@ -195,22 +195,26 @@ export function createPollHandlers(context: MessageContext) {
       }
       await context.sendPollState(roomId, publicPoll(record));
     },
-    async end(payload: PollControlPayload | undefined) {
+    async end(payload: unknown) {
       const roomId = await getConnectionRoom(context.connectionId);
+      const input = isRecord(payload) ? payload : {};
+      const pollId = typeof input.pollId === 'string' ? input.pollId : undefined;
+      const controllerId =
+        typeof input.controllerId === 'string' ? input.controllerId : undefined;
       const record = await getPoll(roomId);
-      if (!record || record.id !== payload?.pollId) {
+      if (!record || record.id !== pollId) {
         await context.sendError('POLL_NOT_FOUND', 'Poll was not found');
         return;
       }
-      if (record.controllerId !== payload?.controllerId) {
+      if (record.controllerId !== controllerId) {
         await context.sendError('POLL_FORBIDDEN', 'Only the poll controller can end it');
         return;
       }
       await context.sendPollState(roomId, await finalizePoll(record));
     },
-    async remove(payload: PollControlPayload | undefined, expectedStatus: 'active' | 'ended') {
+    async remove(payload: unknown, expectedStatus: 'active' | 'ended') {
       const roomId = await getConnectionRoom(context.connectionId);
-      if (!payload) {
+      if (!isRecord(payload) || typeof payload.pollId !== 'string' || typeof payload.controllerId !== 'string') {
         await context.sendError('POLL_FORBIDDEN', 'Poll cannot be changed by this controller');
         return;
       }

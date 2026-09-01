@@ -7,8 +7,8 @@ import {
   ErrorPayload,
   GLOBAL_ROOM,
   GLOBAL_ROOM_ID,
+  parseIncomingWebSocketMessage,
   PollStatePayload,
-  WebSocketMessage,
   WebSocketMessageType,
 } from '@comet/shared';
 import {
@@ -72,7 +72,8 @@ async function handleMessage(event: APIGatewayProxyWebsocketEventV2) {
   }
   if (!event.body) return { statusCode: 400 };
   try {
-    const message: WebSocketMessage = JSON.parse(event.body);
+    const message = parseIncomingWebSocketMessage(event.body);
+    if (!message) return { statusCode: 400 };
     const apiGatewayClient = createApiGatewayClient(
       `https://${event.requestContext.domainName}/${event.requestContext.stage}`
     );
@@ -155,25 +156,25 @@ async function handleMessage(event: APIGatewayProxyWebsocketEventV2) {
         break;
       }
       case WebSocketMessageType.POLL_START:
-        await polls.start(message.payload as never);
+        await polls.start(message.payload);
         break;
       case WebSocketMessageType.POLL_END:
-        await polls.end(message.payload as never);
+        await polls.end(message.payload);
         break;
       case WebSocketMessageType.POLL_CANCEL:
-        await polls.remove(message.payload as never, 'active');
+        await polls.remove(message.payload, 'active');
         break;
       case WebSocketMessageType.POLL_CLOSE:
-        await polls.remove(message.payload as never, 'ended');
+        await polls.remove(message.payload, 'ended');
         break;
       case WebSocketMessageType.ROOM_LIST_REQUEST:
         await rooms.list();
         break;
       case WebSocketMessageType.CREATE_ROOM:
-        await rooms.create(message.payload as never);
+        await rooms.create(message.payload);
         break;
       case WebSocketMessageType.JOIN_ROOM:
-        await rooms.join(message.payload as never);
+        await rooms.join(message.payload);
         break;
       case WebSocketMessageType.PING:
         await sendToRequester(WebSocketMessageType.PONG, {});
