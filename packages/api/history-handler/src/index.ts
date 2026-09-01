@@ -1,7 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import {
   DynamoDBClient,
-  GetItemCommand,
   QueryCommand,
   PutItemCommand,
   UpdateItemCommand,
@@ -14,12 +13,20 @@ import { randomUUID } from 'crypto';
 import type {
   HistoryBucket,
   PopularHistoryItem,
-  Room,
   RoomEvent,
   RoomHistoryDetail,
-  RoomHistorySummary,
   Stamp,
 } from '@comet/shared';
+import { toEvent, toSummary } from './formatters.js';
+import { getRoom } from './room-repository.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  json,
+  parseBoundedNumber,
+  parseJsonBody,
+  parseRange,
+} from './http.js';
 
 const client = new DynamoDBClient({});
 const roomsTable = process.env.ROOMS_TABLE_NAME!;
@@ -29,13 +36,6 @@ const captureBucket = process.env.CAPTURE_BUCKET_NAME!;
 const s3 = new S3Client({});
 const MAX_EVENTS = 10_000;
 
-interface RoomRecord extends Room {
-  commentCount?: number;
-  stampCount?: number;
-  recorderId?: string;
-  recorderExpiresAt?: number;
-}
-
 function hasErrorName(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
 }
@@ -44,68 +44,6 @@ function hasErrorMessage(error: unknown, message: string): boolean {
   return error instanceof Error && error.message === message;
 }
 
-const json = (statusCode: number, body: unknown) => ({
-  statusCode,
-  headers: {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-    'access-control-allow-origin': '*',
-  },
-  body: JSON.stringify(body),
-});
-
-function encodeCursor(key?: Record<string, AttributeValue>): string | undefined {
-  return key
-    ? Buffer.from(JSON.stringify(key)).toString('base64url')
-    : undefined;
-}
-
-function decodeCursor(value?: string): Record<string, AttributeValue> | undefined {
-  if (!value) return undefined;
-  try {
-    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
-  } catch {
-    throw new Error('invalid cursor');
-  }
-}
-
-function toRoom(value: RoomRecord): Room {
-  return {
-    id: value.id,
-    name: value.name,
-    createdAt: value.createdAt,
-    lastActiveAt: value.lastActiveAt,
-    expiresAt: value.expiresAt,
-  };
-}
-
-function toSummary(value: RoomRecord): RoomHistorySummary {
-  const commentCount = value.commentCount ?? 0;
-  const stampCount = value.stampCount ?? 0;
-  return {
-    room: toRoom(value),
-    status: value.expiresAt > Date.now() ? 'active' : 'archived',
-    commentCount,
-    stampCount,
-    totalCount: commentCount + stampCount,
-  };
-}
-
-function toEvent(value: RoomEvent): RoomEvent {
-  return value.type === 'comment'
-    ? { type: 'comment', timestamp: value.timestamp, comment: value.comment }
-    : { type: 'stamp', timestamp: value.timestamp, stamp: value.stamp };
-}
-
-async function getRoom(roomId: string): Promise<RoomRecord | null> {
-  const result = await client.send(
-    new GetItemCommand({
-      TableName: roomsTable,
-      Key: marshall({ id: roomId }),
-    })
-  );
-  return result.Item ? (unmarshall(result.Item) as RoomRecord) : null;
-}
 
 async function queryAllEvents(
   roomId: string,
@@ -280,7 +218,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const roomId = event.pathParameters?.roomId;
     const path = event.rawPath;
     if (method === 'POST' && roomId && path.endsWith('/recorder')) {
-      const body = JSON.parse(event.body ?? '{}');
+      const body = parseJsonBody(event.body);
       if (typeof body.deviceId !== 'string' || !body.deviceId) return json(400, { message: 'deviceId is required' });
       const now = Date.now();
       try {
@@ -298,7 +236,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       }
     }
     if (method === 'POST' && roomId && path.endsWith('/captures')) {
-      const body = JSON.parse(event.body ?? '{}');
+      const body = parseJsonBody(event.body);
       if (typeof body.deviceId !== 'string' || typeof body.dataUrl !== 'string') return json(400, { message: 'deviceId and dataUrl are required' });
       const match = body.dataUrl.match(/^data:image\/(jpeg|png);base64,(.+)$/);
       if (!match) return json(400, { message: 'JPEG or PNG image is required' });
@@ -316,7 +254,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
     if (method !== 'GET') return json(405, { message: 'Method not allowed' });
     if (!roomId) {
-      const limit = Math.min(Math.max(Number(event.queryStringParameters?.limit) || 20, 1), 100);
+      const limit = parseBoundedNumber(
+        event.queryStringParameters?.limit,
+        20,
+        1,
+        100
+      );
       const result = await client.send(
         new QueryCommand({
           TableName: roomsTable,
@@ -338,9 +281,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (!roomValue) return json(404, { message: 'Room history not found' });
 
     if (path.endsWith('/events')) {
-      const from = Number(event.queryStringParameters?.from) || roomValue.createdAt;
-      const to = Number(event.queryStringParameters?.to) || Date.now();
-      const limit = Math.min(Math.max(Number(event.queryStringParameters?.limit) || 100, 1), 500);
+      const { from, to } = parseRange(
+        event.queryStringParameters ?? {},
+        roomValue.createdAt,
+        Date.now()
+      );
+      const limit = parseBoundedNumber(
+        event.queryStringParameters?.limit,
+        100,
+        1,
+        500
+      );
       if (from > to) return json(400, { message: 'from must be before to' });
       const result = await client.send(
         new QueryCommand({
@@ -364,9 +315,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       });
     }
 
-    const from = Number(event.queryStringParameters?.from) || roomValue.createdAt;
     const defaultTo = roomValue.expiresAt > Date.now() ? Date.now() : roomValue.lastActiveAt;
-    const to = Number(event.queryStringParameters?.to) || defaultTo;
+    const { from, to } = parseRange(
+      event.queryStringParameters ?? {},
+      roomValue.createdAt,
+      defaultTo
+    );
     if (from > to) return json(400, { message: 'from must be before to' });
     const events = await queryAllEvents(roomId, from, to);
     const bucketSizeMs = bucketSizeFor(to - from);
