@@ -1,0 +1,51 @@
+name: Release macOS app
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Git tag to publish (for example v0.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish-unsigned-app:
+    name: Build and publish unsigned app
+    runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Verify release tag
+        run: git rev-parse --verify "refs/tags/${RELEASE_TAG}"
+
+      - name: Test macOS app
+        run: swift test --package-path packages/macos-app -Xswiftc -warnings-as-errors
+
+      - name: Build unsigned Universal app bundle
+        run: scripts/build-macos-app.sh
+
+      - name: Package app and checksum
+        run: |
+          mkdir -p release
+          ditto -c -k --sequesterRsrc --keepParent build/macos/Comet.app "release/Comet-${RELEASE_TAG}-unsigned.zip"
+          shasum -a 256 "release/Comet-${RELEASE_TAG}-unsigned.zip" > "release/Comet-${RELEASE_TAG}-unsigned.zip.sha256"
+
+      - name: Publish GitHub Release
+        run: |
+          gh release create "${RELEASE_TAG}" \
+            "release/Comet-${RELEASE_TAG}-unsigned.zip" \
+            "release/Comet-${RELEASE_TAG}-unsigned.zip.sha256" \
+            --title "Comet ${RELEASE_TAG}" \
+            --generate-notes
