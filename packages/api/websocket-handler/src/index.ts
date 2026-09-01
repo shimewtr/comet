@@ -140,9 +140,9 @@ async function handleMessage(event: APIGatewayProxyWebsocketEventV2) {
 
     switch (message.type) {
       case WebSocketMessageType.NEW_COMMENT:
-        return { statusCode: await posts.comment(message.payload as never) };
+        return { statusCode: await posts.comment(message.payload) };
       case WebSocketMessageType.NEW_STAMP:
-        return { statusCode: await posts.stamp(message.payload as never) };
+        return { statusCode: await posts.stamp(message.payload) };
       case WebSocketMessageType.HISTORY_REQUEST:
         await rooms.history();
         break;

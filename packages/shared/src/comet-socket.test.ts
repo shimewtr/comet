@@ -109,6 +109,22 @@ describe('CometSocket', () => {
     expect(received).toHaveLength(1);
   });
 
+  it('不正なサーバーメッセージを購読ハンドラーへ渡さない', async () => {
+    const socket = new CometSocket('wss://example.com');
+    const handler = vi.fn();
+    socket.on(WebSocketMessageType.PONG, handler);
+
+    const promise = socket.connect();
+    latestWs().open();
+    await promise;
+
+    latestWs().onmessage?.({ data: '{not-json' });
+    latestWs().message({ type: 'unknown_message', payload: {} });
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith('Received an invalid WebSocket message');
+  });
+
   it('未接続時のsendはfalseを返す', () => {
     const socket = new CometSocket('wss://example.com');
     expect(socket.send(WebSocketMessageType.NEW_COMMENT, {})).toBe(false);

@@ -20,6 +20,19 @@ describe('parseIncomingWebSocketMessage', () => {
     ).toMatchObject({ type: WebSocketMessageType.PING });
   });
 
+  it('keeps valid optional server metadata', () => {
+    expect(
+      parseIncomingWebSocketMessage(
+        JSON.stringify({
+          type: WebSocketMessageType.NEW_COMMENT,
+          payload: {},
+          timestamp: 1,
+          roomId: 'room-1',
+        })
+      )
+    ).toMatchObject({ timestamp: 1, roomId: 'room-1' });
+  });
+
   it.each(['not-json', '[]', '{"type":"not_a_message"}', '{}'])(
     'rejects an invalid envelope: %s',
     (body) => expect(parseIncomingWebSocketMessage(body)).toBeNull()

@@ -2,6 +2,7 @@ import {
   Comment,
   generateId,
   isAllowedStampImageUrl,
+  isRecord,
   NewCommentPayload,
   NewStampPayload,
   sanitizeCommentStyle,
@@ -29,8 +30,10 @@ export function createPostHandlers(
   recordStampVote: (roomId: string, stampEmojiId: string) => Promise<void>
 ) {
   return {
-    async comment(payload: NewCommentPayload | undefined): Promise<number> {
-      const rawComment = payload?.comment;
+    async comment(payload: unknown): Promise<number> {
+      const rawComment = isRecord(payload) && isRecord(payload.comment)
+        ? payload.comment
+        : null;
       if (!rawComment || typeof rawComment.content !== 'string') return 400;
       const validation = validatePostCommentRequest({ content: rawComment.content });
       if (!validation.valid) return 400;
@@ -52,21 +55,28 @@ export function createPostHandlers(
       console.log(`Broadcast to ${result.sent} connections, ${result.failed} failed`);
       return 200;
     },
-    async stamp(payload: NewStampPayload | undefined): Promise<number> {
-      const rawStampMessage = payload?.stamp;
-      const rawStamp = rawStampMessage?.stamp;
+    async stamp(payload: unknown): Promise<number> {
+      const rawStampMessage = isRecord(payload) && isRecord(payload.stamp)
+        ? payload.stamp
+        : null;
+      const rawStamp = rawStampMessage && isRecord(rawStampMessage.stamp)
+        ? rawStampMessage.stamp
+        : null;
+      const category = rawStamp && STAMP_CATEGORIES.find((value) => value === rawStamp.category);
       if (
-        !rawStamp || typeof rawStamp.name !== 'string' ||
+        !rawStampMessage || !rawStamp || typeof rawStamp.name !== 'string' ||
         rawStamp.name.length === 0 || rawStamp.name.length > MAX_STAMP_NAME_LENGTH ||
-        !STAMP_CATEGORIES.includes(rawStamp.category)
+        !category
       ) return 400;
       const roomId = await context.currentRoomForActivity();
       if (!roomId) return 200;
-      if (rawStamp.category === 'custom' && !isAllowedStampImageUrl(rawStamp.imageUrl)) return 400;
+      const imageUrl = typeof rawStamp.imageUrl === 'string' ? rawStamp.imageUrl : '';
+      if (category === 'custom' && !isAllowedStampImageUrl(imageUrl)) return 400;
       const rawPosition = rawStampMessage.position;
       const position =
-        typeof rawPosition?.x === 'number' && Number.isFinite(rawPosition.x) &&
-        typeof rawPosition?.y === 'number' && Number.isFinite(rawPosition.y)
+        isRecord(rawPosition) &&
+        typeof rawPosition.x === 'number' && Number.isFinite(rawPosition.x) &&
+        typeof rawPosition.y === 'number' && Number.isFinite(rawPosition.y)
           ? { x: rawPosition.x, y: rawPosition.y }
           : undefined;
       const stampMessage: StampMessage = {
@@ -74,8 +84,8 @@ export function createPostHandlers(
         stamp: {
           id: typeof rawStamp.id === 'string' ? rawStamp.id : '',
           name: rawStamp.name,
-          imageUrl: rawStamp.category === 'custom' ? rawStamp.imageUrl : '',
-          category: rawStamp.category,
+          imageUrl: category === 'custom' ? imageUrl : '',
+          category,
         },
         timestamp: Date.now(), position,
       };
