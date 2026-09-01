@@ -11,6 +11,10 @@ func defaultSettingsUseGlobalRoomAndEnableOverlay() {
   #expect(settings.selectedRoomID == "global")
   #expect(settings.overlaysEnabled)
   #expect(!settings.participationQREnabled)
+  #expect(!settings.presentationTimerEnabled)
+  #expect(settings.presentationTimerDurationSeconds == 600)
+  #expect(UUID(uuidString: settings.pollControllerID) != nil)
+  #expect(settings.controlledPollID == nil)
   #expect(settings.selectedDisplayID == nil)
   #expect(settings.displaySettings == OverlayDisplaySettings())
 }
@@ -27,6 +31,8 @@ func settingsRoundTripThroughUserDefaults() throws {
     selectedRoomID: "room-1",
     overlaysEnabled: false,
     participationQREnabled: true,
+    presentationTimerEnabled: true,
+    presentationTimerDurationSeconds: 1_500,
     selectedDisplayID: "display-42",
     displaySettings: OverlayDisplaySettings(
       speedScale: 1.5,
@@ -51,7 +57,11 @@ func invalidStoredSettingsFallBackToDefaults() throws {
 
   let store = UserDefaultsSettingsStore(defaults: defaults, key: "settings")
 
-  #expect(store.load() == AppSettings())
+  let settings = store.load()
+  #expect(settings.webAppURL.isEmpty)
+  #expect(settings.selectedRoomID == "global")
+  #expect(settings.overlaysEnabled)
+  #expect(UUID(uuidString: settings.pollControllerID) != nil)
 }
 
 @Test
@@ -67,8 +77,23 @@ func settingsDecodeDataSavedBeforeDisplayControlsWereAdded() throws {
   #expect(settings.selectedRoomID == "room-1")
   #expect(!settings.overlaysEnabled)
   #expect(!settings.participationQREnabled)
+  #expect(!settings.presentationTimerEnabled)
+  #expect(settings.presentationTimerDurationSeconds == 600)
   #expect(settings.selectedDisplayID == nil)
   #expect(settings.displaySettings == OverlayDisplaySettings())
+}
+
+@Test
+func timerDurationIsClampedWhenSettingsAreCreatedOrDecoded() throws {
+  #expect(AppSettings(presentationTimerDurationSeconds: -1).presentationTimerDurationSeconds == 0)
+  #expect(
+    AppSettings(presentationTimerDurationSeconds: Int.max).presentationTimerDurationSeconds
+      == PresentationTimer.maximumDurationSeconds
+  )
+
+  let data = Data(#"{"presentationTimerDurationSeconds":999999999}"#.utf8)
+  let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+  #expect(decoded.presentationTimerDurationSeconds == PresentationTimer.maximumDurationSeconds)
 }
 
 @Test

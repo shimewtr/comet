@@ -17,6 +17,8 @@ import {
   RoomEvent,
   StampMessage,
   generateId,
+  PollOption,
+  PollResult,
 } from '@comet/shared';
 
 const client = new DynamoDBClient({});
@@ -24,6 +26,8 @@ const tableName = process.env.CONNECTIONS_TABLE_NAME!;
 const commentsTableName = process.env.COMMENTS_TABLE_NAME!;
 const roomsTableName = process.env.ROOMS_TABLE_NAME!;
 const roomEventsTableName = process.env.ROOM_EVENTS_TABLE_NAME!;
+const pollsTableName = process.env.POLLS_TABLE_NAME!;
+const pollVotesTableName = process.env.POLL_VOTES_TABLE_NAME!;
 
 // コメント履歴の保持時間（1時間）
 const COMMENT_HISTORY_TTL_SECONDS = 60 * 60;
@@ -35,7 +39,8 @@ const HISTORY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
  */
 export async function saveConnection(
   connectionId: string,
-  roomId: string
+  roomId: string,
+  participantKey?: string
 ): Promise<void> {
   const ttl = Math.floor(Date.now() / 1000) + 7200; // 2時間後
 
@@ -46,6 +51,7 @@ export async function saveConnection(
         connectionId,
         roomId,
         connectedAt: Date.now(),
+        ...(participantKey ? { participantKey } : {}),
         ttl,
       }),
     })
@@ -72,15 +78,40 @@ export async function removeConnection(connectionId: string): Promise<void> {
 async function getConnectionMemberships(
   connectionId: string
 ): Promise<string[]> {
+  return (await getConnectionRecords(connectionId)).map(
+    (record) => record.roomId
+  );
+}
+
+interface ConnectionRecord {
+  roomId: string;
+  participantKey?: string;
+}
+
+async function getConnectionRecords(
+  connectionId: string
+): Promise<ConnectionRecord[]> {
   const result = await client.send(
     new QueryCommand({
       TableName: tableName,
       KeyConditionExpression: 'connectionId = :connectionId',
       ExpressionAttributeValues: marshall({ ':connectionId': connectionId }),
-      ProjectionExpression: 'roomId',
+      ProjectionExpression: 'roomId, participantKey',
     })
   );
-  return (result.Items ?? []).map((item) => unmarshall(item).roomId as string);
+  return (result.Items ?? []).map((item) => {
+    const value = unmarshall(item);
+    return {
+      roomId: value.roomId as string,
+      participantKey: value.participantKey as string | undefined,
+    };
+  });
+}
+
+export async function getConnectionParticipantKey(
+  connectionId: string
+): Promise<string | null> {
+  return (await getConnectionRecords(connectionId))[0]?.participantKey ?? null;
 }
 
 /** 接続が現在参加しているroom。所属が壊れている場合はglobalへ戻す */
@@ -96,7 +127,8 @@ export async function moveConnectionToRoom(
   connectionId: string,
   roomId: string
 ): Promise<void> {
-  const memberships = await getConnectionMemberships(connectionId);
+  const records = await getConnectionRecords(connectionId);
+  const memberships = records.map((record) => record.roomId);
   if (memberships.length === 1 && memberships[0] === roomId) return;
 
   const now = Date.now();
@@ -113,12 +145,236 @@ export async function moveConnectionToRoom(
         {
           Put: {
             TableName: tableName,
-            Item: marshall({ connectionId, roomId, connectedAt: now, ttl }),
+            Item: marshall({
+              connectionId,
+              roomId,
+              connectedAt: now,
+              ...(records[0]?.participantKey
+                ? { participantKey: records[0].participantKey }
+                : {}),
+              ttl,
+            }),
           },
         },
       ],
     })
   );
+}
+
+export interface PollRecord {
+  id: string;
+  roomId: string;
+  controllerId: string;
+  title: string;
+  options: PollOption[];
+  status: 'active' | 'ended';
+  startsAt: number;
+  endsAt: number;
+  results?: PollResult[];
+  totalVotes?: number;
+}
+
+const POLL_TTL_SECONDS = 24 * 60 * 60;
+const POLL_VOTE_TTL_SECONDS = 24 * 60 * 60;
+
+export async function createPoll(record: PollRecord): Promise<boolean> {
+  try {
+    await client.send(
+      new PutItemCommand({
+        TableName: pollsTableName,
+        Item: marshall({
+          ...record,
+          ttl: Math.floor(Date.now() / 1000) + POLL_TTL_SECONDS,
+        }),
+        ConditionExpression: 'attribute_not_exists(roomId)',
+      })
+    );
+    return true;
+  } catch (error) {
+    if (
+      (error as { name?: string }).name === 'ConditionalCheckFailedException'
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function getPoll(roomId: string): Promise<PollRecord | null> {
+  const result = await client.send(
+    new GetItemCommand({
+      TableName: pollsTableName,
+      Key: marshall({ roomId }),
+      ConsistentRead: true,
+    })
+  );
+  return result.Item ? (unmarshall(result.Item) as PollRecord) : null;
+}
+
+export async function recordPollVote(
+  roomId: string,
+  pollId: string,
+  voterKey: string,
+  optionId: string,
+  now: number
+): Promise<boolean> {
+  try {
+    await client.send(
+      new TransactWriteItemsCommand({
+        TransactItems: [
+          {
+            ConditionCheck: {
+              TableName: pollsTableName,
+              Key: marshall({ roomId }),
+              ConditionExpression:
+                'id = :pollId AND #status = :active AND endsAt >= :now',
+              ExpressionAttributeNames: { '#status': 'status' },
+              ExpressionAttributeValues: marshall({
+                ':pollId': pollId,
+                ':active': 'active',
+                ':now': now,
+              }),
+            },
+          },
+          {
+            Put: {
+              TableName: pollVotesTableName,
+              Item: marshall({
+                pollId,
+                voterKey,
+                optionId,
+                updatedAt: now,
+                ttl: Math.floor(now / 1000) + POLL_VOTE_TTL_SECONDS,
+              }),
+            },
+          },
+        ],
+      })
+    );
+    return true;
+  } catch (error) {
+    if (
+      [
+        'TransactionCanceledException',
+        'ConditionalCheckFailedException',
+      ].includes((error as { name?: string }).name ?? '')
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function getPollVotes(
+  pollId: string
+): Promise<Array<{ voterKey: string; optionId: string }>> {
+  const votes: Array<{ voterKey: string; optionId: string }> = [];
+  let lastEvaluatedKey: Record<string, AttributeValue> | undefined;
+  do {
+    const result = await client.send(
+      new QueryCommand({
+        TableName: pollVotesTableName,
+        KeyConditionExpression: 'pollId = :pollId',
+        ExpressionAttributeValues: marshall({ ':pollId': pollId }),
+        ProjectionExpression: 'voterKey, optionId',
+        ExclusiveStartKey: lastEvaluatedKey,
+        ConsistentRead: true,
+      })
+    );
+    votes.push(
+      ...(result.Items ?? []).map((item) => {
+        const value = unmarshall(item);
+        return {
+          voterKey: value.voterKey as string,
+          optionId: value.optionId as string,
+        };
+      })
+    );
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+  return votes;
+}
+
+export async function endPollVoting(
+  roomId: string,
+  pollId: string,
+  controllerId: string
+): Promise<boolean> {
+  try {
+    await client.send(
+      new UpdateItemCommand({
+        TableName: pollsTableName,
+        Key: marshall({ roomId }),
+        UpdateExpression: 'SET #status = :ended',
+        ConditionExpression:
+          'id = :pollId AND controllerId = :controllerId AND #status = :active',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: marshall({
+          ':pollId': pollId,
+          ':controllerId': controllerId,
+          ':active': 'active',
+          ':ended': 'ended',
+        }),
+      })
+    );
+    return true;
+  } catch (error) {
+    if ((error as { name?: string }).name === 'ConditionalCheckFailedException')
+      return false;
+    throw error;
+  }
+}
+
+export async function savePollResults(
+  roomId: string,
+  pollId: string,
+  results: PollResult[],
+  totalVotes: number
+): Promise<void> {
+  await client.send(
+    new UpdateItemCommand({
+      TableName: pollsTableName,
+      Key: marshall({ roomId }),
+      UpdateExpression: 'SET results = :results, totalVotes = :totalVotes',
+      ConditionExpression: 'id = :pollId AND #status = :ended',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: marshall({
+        ':pollId': pollId,
+        ':ended': 'ended',
+        ':results': results,
+        ':totalVotes': totalVotes,
+      }),
+    })
+  );
+}
+
+export async function removePoll(
+  roomId: string,
+  pollId: string,
+  controllerId: string,
+  expectedStatus: 'active' | 'ended'
+): Promise<boolean> {
+  try {
+    await client.send(
+      new DeleteItemCommand({
+        TableName: pollsTableName,
+        Key: marshall({ roomId }),
+        ConditionExpression:
+          'id = :pollId AND controllerId = :controllerId AND #status = :expectedStatus',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: marshall({
+          ':pollId': pollId,
+          ':controllerId': controllerId,
+          ':expectedStatus': expectedStatus,
+        }),
+      })
+    );
+    return true;
+  } catch (error) {
+    if ((error as { name?: string }).name === 'ConditionalCheckFailedException')
+      return false;
+    throw error;
+  }
 }
 
 /** 有効な一時roomの一覧（globalは呼び出し側で付加） */
@@ -209,7 +465,11 @@ export async function touchRoom(roomId: string): Promise<Room | null> {
       expiresAt: value.expiresAt,
     };
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'ConditionalCheckFailedException') return null;
+    if (
+      error instanceof Error &&
+      error.name === 'ConditionalCheckFailedException'
+    )
+      return null;
     throw error;
   }
 }
@@ -220,12 +480,12 @@ export async function saveRoomEvent(
   event: RoomEvent
 ): Promise<void> {
   if (roomId === GLOBAL_ROOM_ID || !roomEventsTableName) return;
-  const eventId =
-    event.type === 'comment' ? event.comment.id : event.stamp.id;
-  const counterName =
-    event.type === 'comment' ? 'commentCount' : 'stampCount';
+  const eventId = event.type === 'comment' ? event.comment.id : event.stamp.id;
+  const counterName = event.type === 'comment' ? 'commentCount' : 'stampCount';
   // room終了（3時間無操作）から90日間は、イベント本体も残るよう余裕を持たせる
-  const ttl = Math.floor((event.timestamp + HISTORY_TTL_MS + ROOM_TTL_MS) / 1000);
+  const ttl = Math.floor(
+    (event.timestamp + HISTORY_TTL_MS + ROOM_TTL_MS) / 1000
+  );
 
   await client.send(
     new TransactWriteItemsCommand({

@@ -76,6 +76,26 @@ public actor CometWebSocketClient: MessageStreaming {
     try await send(type: .joinRoom, payload: JoinRoomPayload(roomId: roomID))
   }
 
+  public func startPoll(_ payload: StartPresentationPollPayload) async throws {
+    try await send(type: .pollStart, payload: payload)
+  }
+
+  public func endPoll(_ payload: PresentationPollControlPayload) async throws {
+    try await send(type: .pollEnd, payload: payload)
+  }
+
+  public func cancelPoll(_ payload: PresentationPollControlPayload) async throws {
+    try await send(type: .pollCancel, payload: payload)
+  }
+
+  public func closePoll(_ payload: PresentationPollControlPayload) async throws {
+    try await send(type: .pollClose, payload: payload)
+  }
+
+  public func requestPollState() async throws {
+    try await send(type: .pollStateRequest, payload: EmptyPayload())
+  }
+
   private func openTransport() async throws {
     guard let configuration else { throw WebSocketTransportError.notConnected }
     let nextTransport = transportFactory()
@@ -179,6 +199,7 @@ public actor CometWebSocketClient: MessageStreaming {
     case .roomJoined(let room):
       requestedRoomID = room.id
       try await send(type: .historyRequest, payload: EmptyPayload())
+      try await send(type: .pollStateRequest, payload: EmptyPayload())
     case .serverError(let payload):
       if let fallbackRoom = payload.fallbackRoom {
         requestedRoomID = fallbackRoom.id

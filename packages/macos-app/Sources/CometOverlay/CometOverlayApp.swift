@@ -109,6 +109,14 @@ private struct MenuContent: View {
         Spacer()
       }
 
+      VStack(alignment: .leading, spacing: 4) {
+        Text("WebアプリURL")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        TextField("https://example.com", text: $model.settings.webAppURL)
+          .textFieldStyle(.roundedBorder)
+      }
+
       Button(connectionActionTitle) {
         if model.connectionState == .connected {
           model.disconnect()
@@ -124,6 +132,26 @@ private struct MenuContent: View {
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
       Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
         .disabled(model.settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      Toggle("タイマーを表示", isOn: $model.settings.presentationTimerEnabled)
+
+      GroupBox("投票") {
+        if let poll = model.poll {
+          PollStatusMenu(model: model, poll: poll)
+        } else if model.isPreparingPoll {
+          PollSetupMenu(model: model)
+        } else {
+          Button("投票を開始…") {
+            model.showPollSetup()
+          }
+          .disabled(model.connectionState != .connected)
+        }
+      }
+
+      if let pollMessage = model.pollMessage {
+        Text(pollMessage)
+          .font(.caption)
+          .foregroundStyle(.red)
+      }
 
       GroupBox {
         VStack(alignment: .leading, spacing: 10) {
@@ -138,7 +166,7 @@ private struct MenuContent: View {
               Text(room.name).tag(room.id)
             }
           }
-          .disabled(model.connectionState != .connected)
+          .disabled(model.connectionState != .connected || model.poll?.status == .active)
 
           Picker("出力先", selection: $model.settings.selectedDisplayID) {
             Text("すべてのディスプレイ").tag(String?.none)
@@ -162,7 +190,7 @@ private struct MenuContent: View {
       }
     }
     .padding()
-    .frame(width: 300)
+    .frame(width: 330)
   }
 
   private var connectionColor: Color {
@@ -215,6 +243,104 @@ private struct MenuContent: View {
   }
 }
 
+private struct PollSetupMenu: View {
+  @ObservedObject var model: AppModel
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text("投票を作成").font(.headline)
+        Spacer()
+        Button("戻る") { model.cancelPollSetup() }
+          .buttonStyle(.borderless)
+      }
+      TextField("投票タイトル（任意）", text: $model.pollDraft.title)
+        .textFieldStyle(.roundedBorder)
+      Picker("時間", selection: $model.pollDraft.durationSeconds) {
+        Text("10秒").tag(10)
+        Text("30秒").tag(30)
+        Text("1分").tag(60)
+        Text("2分").tag(120)
+        Text("5分").tag(300)
+      }
+      ForEach($model.pollDraft.options) { $option in
+        HStack(spacing: 6) {
+          Text(option.emoji)
+            .font(.title3)
+            .frame(width: 32, height: 30)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            .accessibilityLabel("絵文字: \(option.emoji)")
+          TextField("ラベル", text: $option.label)
+            .textFieldStyle(.roundedBorder)
+          Button {
+            model.removePollOption(id: option.id)
+          } label: {
+            Image(systemName: "minus.circle")
+          }
+          .buttonStyle(.borderless)
+          .disabled(model.pollDraft.options.count <= 2)
+        }
+      }
+      Button {
+        model.addPollOption()
+      } label: {
+        Label("選択肢を追加", systemImage: "plus")
+      }
+      .buttonStyle(.borderless)
+      .disabled(model.pollDraft.options.count >= 8)
+
+      Button("投票を開始") {
+        model.startPoll()
+      }
+      .buttonStyle(.borderedProminent)
+      .frame(maxWidth: .infinity)
+      .disabled(!model.canStartPoll)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
+private struct PollStatusMenu: View {
+  @ObservedObject var model: AppModel
+  let poll: PresentationPoll
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 7) {
+      HStack {
+        Label(
+          poll.status == .active ? "投票中" : "投票結果",
+          systemImage: poll.status == .active ? "chart.bar.xaxis" : "chart.bar.fill"
+        )
+        .font(.headline)
+        Spacer()
+        if poll.status == .active {
+          Text("\(poll.totalVotes)票")
+            .font(.caption)
+            .monospacedDigit()
+        }
+      }
+      if !poll.title.isEmpty {
+        Text(poll.title).font(.caption).lineLimit(1)
+      }
+      if model.canManagePoll {
+        if poll.status == .active {
+          HStack {
+            Button("今すぐ終了") { model.endPoll() }
+            Button("中止", role: .destructive) { model.cancelActivePoll() }
+          }
+        } else {
+          Button("投票結果を閉じる") { model.closePollResults() }
+        }
+      } else {
+        Text("この投票は別のMacで管理されています")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
 private struct SettingsView: View {
   @ObservedObject var model: AppModel
   @State private var showsResetConfirmation = false
@@ -222,9 +348,8 @@ private struct SettingsView: View {
   var body: some View {
     Form {
       Section("接続") {
-        TextField("WebアプリURL", text: $model.settings.webAppURL)
         LabeledContent("状態", value: model.connectionDescription)
-        Text("接続・Room・出力先の操作はメニューバーから行います。")
+        Text("WebアプリURL、接続、Room、出力先の操作はメニューバーから行います。")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -286,6 +411,13 @@ private struct SettingsView: View {
         }
       }
 
+      Section("タイマー") {
+        Toggle("タイマーを表示", isOn: $model.settings.presentationTimerEnabled)
+        Text("選択した出力先の上部へ最前面表示します。タイマーへポインタを重ねると操作ボタンが表示されます。")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
       Section("詳細") {
         LabeledContent("Comet", value: AppMetadata.versionDescription)
         Text("診断ログにURL、投稿内容、認証チケットは記録しません。")
@@ -298,7 +430,7 @@ private struct SettingsView: View {
     }
     .formStyle(.grouped)
     .padding()
-    .frame(width: 560, height: 680)
+    .frame(width: 560, height: 720)
     .confirmationDialog(
       "すべての設定を初期値に戻しますか？",
       isPresented: $showsResetConfirmation,

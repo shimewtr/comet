@@ -20,6 +20,8 @@ export interface WebSocketStackProps extends cdk.StackProps {
   commentsTable: dynamodb.Table;
   roomsTable: dynamodb.Table;
   roomEventsTable: dynamodb.Table;
+  pollsTable: dynamodb.Table;
+  pollVotesTable: dynamodb.Table;
   /** 認証チケットの署名鍵。指定すると$connectにオーソライザーを装着する */
   authSigningSecret?: secretsmanager.ISecret;
 }
@@ -48,6 +50,8 @@ export class WebSocketStack extends cdk.Stack {
     props.commentsTable.grantReadWriteData(lambdaRole);
     props.roomsTable.grantReadWriteData(lambdaRole);
     props.roomEventsTable.grantReadWriteData(lambdaRole);
+    props.pollsTable.grantReadWriteData(lambdaRole);
+    props.pollVotesTable.grantReadWriteData(lambdaRole);
 
     // 環境変数
     const environment = {
@@ -55,6 +59,8 @@ export class WebSocketStack extends cdk.Stack {
       COMMENTS_TABLE_NAME: props.commentsTable.tableName,
       ROOMS_TABLE_NAME: props.roomsTable.tableName,
       ROOM_EVENTS_TABLE_NAME: props.roomEventsTable.tableName,
+      POLLS_TABLE_NAME: props.pollsTable.tableName,
+      POLL_VOTES_TABLE_NAME: props.pollVotesTable.tableName,
       NODE_ENV: props.envName === 'prod' ? 'production' : 'development',
       ENV_NAME: props.envName,
     };

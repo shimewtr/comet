@@ -27,6 +27,11 @@ public protocol MessageStreaming: Sendable {
   func disconnect() async
   func requestRooms() async throws
   func joinRoom(_ roomID: String) async throws
+  func startPoll(_ payload: StartPresentationPollPayload) async throws
+  func endPoll(_ payload: PresentationPollControlPayload) async throws
+  func cancelPoll(_ payload: PresentationPollControlPayload) async throws
+  func closePoll(_ payload: PresentationPollControlPayload) async throws
+  func requestPollState() async throws
 }
 
 @MainActor

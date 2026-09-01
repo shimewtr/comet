@@ -14,6 +14,12 @@ public enum CometMessageType: String, Codable, CaseIterable, Sendable {
   case roomCreated = "room_created"
   case joinRoom = "join_room"
   case roomJoined = "room_joined"
+  case pollStart = "poll_start"
+  case pollEnd = "poll_end"
+  case pollCancel = "poll_cancel"
+  case pollClose = "poll_close"
+  case pollStateRequest = "poll_state_request"
+  case pollState = "poll_state"
 }
 
 public enum CommentSize: String, Codable, Sendable {
@@ -227,6 +233,7 @@ public enum CometServerEvent: Equatable, Sendable {
   case rooms([CometRoom])
   case roomCreated(CometRoom)
   case roomJoined(CometRoom)
+  case pollState(PresentationPoll?, roomID: String?)
   case serverError(ErrorPayload)
   case ping
   case pong

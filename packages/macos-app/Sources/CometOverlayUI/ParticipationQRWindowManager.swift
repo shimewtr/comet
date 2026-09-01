@@ -111,7 +111,7 @@ public final class ParticipationQRWindowManager: NSObject {
       defer: false,
       screen: screen
     )
-    OverlayWindowPolicy.presentation.apply(to: window)
+    OverlayWindowPolicy.movablePresentation.apply(to: window)
     window.contentView = NSHostingView(rootView: ParticipationQRView(image: image))
     window.setFrameOrigin(origin)
     return window

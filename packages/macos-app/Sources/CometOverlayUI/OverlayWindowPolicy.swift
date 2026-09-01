@@ -10,6 +10,21 @@ public struct OverlayWindowPolicy: Sendable {
       .ignoresCycle,
     ],
     ignoresMouseEvents: true,
+    acceptsMouseMovedEvents: false,
+    isMovable: false,
+    isMovableByWindowBackground: false,
+    isOpaque: false,
+    hasShadow: false,
+    hidesOnDeactivate: false
+  )
+
+  public static let movablePresentation = OverlayWindowPolicy(
+    level: .screenSaver,
+    collectionBehavior: presentation.collectionBehavior,
+    ignoresMouseEvents: false,
+    acceptsMouseMovedEvents: true,
+    isMovable: true,
+    isMovableByWindowBackground: true,
     isOpaque: false,
     hasShadow: false,
     hidesOnDeactivate: false
@@ -18,6 +33,9 @@ public struct OverlayWindowPolicy: Sendable {
   public let level: NSWindow.Level
   public let collectionBehavior: NSWindow.CollectionBehavior
   public let ignoresMouseEvents: Bool
+  public let acceptsMouseMovedEvents: Bool
+  public let isMovable: Bool
+  public let isMovableByWindowBackground: Bool
   public let isOpaque: Bool
   public let hasShadow: Bool
   public let hidesOnDeactivate: Bool
@@ -28,9 +46,9 @@ public struct OverlayWindowPolicy: Sendable {
     window.level = level
     window.collectionBehavior = collectionBehavior
     window.ignoresMouseEvents = ignoresMouseEvents
-    window.acceptsMouseMovedEvents = false
-    window.isMovable = false
-    window.isMovableByWindowBackground = false
+    window.acceptsMouseMovedEvents = acceptsMouseMovedEvents
+    window.isMovable = isMovable
+    window.isMovableByWindowBackground = isMovableByWindowBackground
     window.isExcludedFromWindowsMenu = true
     window.isOpaque = isOpaque
     window.hasShadow = hasShadow

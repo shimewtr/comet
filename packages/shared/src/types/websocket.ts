@@ -1,6 +1,11 @@
 import { Comment } from './comment.js';
 import { StampMessage } from './stamp.js';
 import { Room } from './room.js';
+import type {
+  PollControlPayload,
+  PollStatePayload,
+  StartPollPayload,
+} from './poll.js';
 
 /**
  * WebSocketメッセージの種類
@@ -19,6 +24,12 @@ export enum WebSocketMessageType {
   ROOM_CREATED = 'room_created',
   JOIN_ROOM = 'join_room',
   ROOM_JOINED = 'room_joined',
+  POLL_START = 'poll_start',
+  POLL_END = 'poll_end',
+  POLL_CANCEL = 'poll_cancel',
+  POLL_CLOSE = 'poll_close',
+  POLL_STATE_REQUEST = 'poll_state_request',
+  POLL_STATE = 'poll_state',
 }
 
 /**
@@ -81,10 +92,16 @@ export interface RoomJoinedPayload {
   room: Room;
 }
 
+export type { StartPollPayload, PollControlPayload, PollStatePayload };
+
 export type WebSocketErrorCode =
   | 'INVALID_ROOM_NAME'
   | 'ROOM_NOT_FOUND'
   | 'ROOM_EXPIRED'
+  | 'POLL_INVALID'
+  | 'POLL_ALREADY_ACTIVE'
+  | 'POLL_NOT_FOUND'
+  | 'POLL_FORBIDDEN'
   | 'INVALID_MESSAGE';
 
 export interface ErrorPayload {
