@@ -44,6 +44,25 @@ pnpm --filter @comet/chrome-extension dev
 
 webpackが変更を監視して `packages/chrome-extension/dist` を更新します。Chrome側では変更のたびに拡張機能を再読み込みしてください。詳しい設定は[Chrome拡張ガイド](chrome-extension.md)を参照してください。
 
+## macOSアプリ
+
+macOS 14以降とSwift 6以降では、ネイティブの全画面オーバーレイを開発できます。
+
+```bash
+swift run --package-path packages/macos-app CometOverlay
+swift test --package-path packages/macos-app
+xcrun swift-format lint --strict --recursive packages/macos-app
+```
+
+ApplicationsやSpotlightから確認するための未署名アプリは、次のコマンドで作成します。
+
+```bash
+scripts/build-macos-app.sh
+open build/macos/Comet.app
+```
+
+接続、認証、タイマー、投票、複数ディスプレイの確認項目は[macOSアプリガイド](macos-app.md)と[受け入れテスト](macos-app-acceptance.md)を参照してください。
+
 ## build・test・lint
 
 ```bash

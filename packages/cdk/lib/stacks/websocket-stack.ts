@@ -8,6 +8,7 @@ import { Construct } from 'constructs';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import { nodejsLambdaCode } from '../lambda-bundling';
 import { physicalName } from '../naming';
 
 export interface WebSocketStackProps extends cdk.StackProps {
@@ -33,6 +34,8 @@ export class WebSocketStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: WebSocketStackProps) {
     super(scope, id, props);
+
+    const handlerCode = nodejsLambdaCode('websocket-handler');
 
     // Lambda実行ロール
     const lambdaRole = new iam.Role(this, 'WebSocketLambdaRole', {
@@ -65,14 +68,15 @@ export class WebSocketStack extends cdk.Stack {
       ENV_NAME: props.envName,
     };
 
-    // Lambda関数の共通設定
+    // Lambda関数はCDKがソースからbundleする。事前にdistを生成しておく方式では、
+    // `cdk deploy` を直接実行したときに未bundleのworkspace依存を配備し得るため。
     const lambdaConfig = {
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset('../api/websocket-handler/dist'),
       role: lambdaRole,
       timeout: cdk.Duration.seconds(30),
       memorySize: props.config.lambdaMemorySize,
+      code: handlerCode,
+      handler: 'index.handler',
     };
 
     // ロググループは明示的に作成する
@@ -134,8 +138,8 @@ export class WebSocketStack extends cdk.Stack {
       );
       const authorizerFn = new lambda.Function(this, 'ConnectAuthorizer', {
         runtime: lambda.Runtime.NODEJS_22_X,
+        code: handlerCode,
         handler: 'index.wsAuthorizer',
-        code: lambda.Code.fromAsset('../api/websocket-handler/dist'),
         functionName: authorizerName,
         logGroup: createLogGroup('ConnectAuthorizerLogGroup', authorizerName),
         timeout: cdk.Duration.seconds(10),

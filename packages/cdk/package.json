@@ -19,6 +19,7 @@
     "destroy:prod": "cdk destroy --all --context env=prod --profile ${AWS_PROFILE:?AWS_PROFILE is required}"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "@types/node": "^24.0.0",
     "aws-cdk": "^2.1139.0",
     "ts-node": "^10.9.2",

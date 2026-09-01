@@ -6,6 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
+import { nodejsLambdaCode } from '../lambda-bundling';
 import { physicalName } from '../naming';
 
 export interface HistoryStackProps extends cdk.StackProps {
@@ -37,7 +38,7 @@ export class HistoryStack extends cdk.Stack {
       functionName,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../api/history-handler/dist'),
+      code: nodejsLambdaCode('history-handler'),
       timeout: cdk.Duration.seconds(30),
       memorySize: props.config.lambdaMemorySize,
       environment: {

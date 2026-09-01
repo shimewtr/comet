@@ -13,7 +13,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
-import * as path from 'path';
+import { nodejsLambdaCode } from '../lambda-bundling';
 import { physicalName } from '../naming';
 
 export interface StampStackProps extends cdk.StackProps {
@@ -119,9 +119,7 @@ export class StampStack extends cdk.Stack {
       logGroup: uploadLogGroup,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../../../api/stamp-upload/dist')
-      ),
+      code: nodejsLambdaCode('stamp-upload'),
       environment: {
         STAMP_BUCKET_NAME: this.stampBucket.bucketName,
         STAMPS_TABLE_NAME: this.stampsTable.tableName,
@@ -150,9 +148,7 @@ export class StampStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_22_X,
         handler: 'index.httpAuthorizer',
         // チケット検証コードはwebsocket-handlerのバンドルに含まれる
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, '../../../api/websocket-handler/dist')
-        ),
+        code: nodejsLambdaCode('websocket-handler'),
         functionName: authorizerName,
         timeout: cdk.Duration.seconds(10),
         memorySize: props.config.lambdaMemorySize,
