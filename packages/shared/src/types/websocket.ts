@@ -109,3 +109,50 @@ export interface ErrorPayload {
   message: string;
   fallbackRoom?: Room;
 }
+
+/**
+ * メッセージ種別とpayloadの対応表。
+ * 共通クライアントはこの型から送信・購読時のpayloadを推論する。
+ */
+export interface WebSocketPayloadMap {
+  [WebSocketMessageType.NEW_COMMENT]: NewCommentPayload;
+  [WebSocketMessageType.NEW_STAMP]: NewStampPayload;
+  [WebSocketMessageType.HISTORY_REQUEST]: HistoryRequestPayload;
+  [WebSocketMessageType.HISTORY]: HistoryPayload;
+  [WebSocketMessageType.ERROR]: ErrorPayload;
+  [WebSocketMessageType.PING]: Record<string, never>;
+  [WebSocketMessageType.PONG]: Record<string, never>;
+  [WebSocketMessageType.ROOM_LIST_REQUEST]: Record<string, never>;
+  [WebSocketMessageType.ROOM_LIST]: RoomListPayload;
+  [WebSocketMessageType.CREATE_ROOM]: CreateRoomPayload;
+  [WebSocketMessageType.ROOM_CREATED]: RoomCreatedPayload;
+  [WebSocketMessageType.JOIN_ROOM]: JoinRoomPayload;
+  [WebSocketMessageType.ROOM_JOINED]: RoomJoinedPayload;
+  [WebSocketMessageType.POLL_START]: StartPollPayload;
+  [WebSocketMessageType.POLL_END]: PollControlPayload;
+  [WebSocketMessageType.POLL_CANCEL]: PollControlPayload;
+  [WebSocketMessageType.POLL_CLOSE]: PollControlPayload;
+  [WebSocketMessageType.POLL_STATE_REQUEST]: Record<string, never>;
+  [WebSocketMessageType.POLL_STATE]: PollStatePayload;
+}
+
+export type WebSocketPayload<T extends WebSocketMessageType> =
+  WebSocketPayloadMap[T];
+
+export type TypedWebSocketMessage<T extends WebSocketMessageType> =
+  WebSocketMessage<WebSocketPayload<T>> & { type: T };
+
+/** クライアントからWebSocket Lambdaへ送ることができるメッセージ種別。 */
+export type ClientWebSocketMessageType =
+  | WebSocketMessageType.NEW_COMMENT
+  | WebSocketMessageType.NEW_STAMP
+  | WebSocketMessageType.HISTORY_REQUEST
+  | WebSocketMessageType.PING
+  | WebSocketMessageType.ROOM_LIST_REQUEST
+  | WebSocketMessageType.CREATE_ROOM
+  | WebSocketMessageType.JOIN_ROOM
+  | WebSocketMessageType.POLL_START
+  | WebSocketMessageType.POLL_END
+  | WebSocketMessageType.POLL_CANCEL
+  | WebSocketMessageType.POLL_CLOSE
+  | WebSocketMessageType.POLL_STATE_REQUEST;

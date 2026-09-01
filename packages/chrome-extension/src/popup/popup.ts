@@ -151,7 +151,7 @@ async function main() {
             () => reject(new Error('Room list timeout')),
             5000
           );
-          socket.on<RoomListPayload>(
+          socket.on(
             WebSocketMessageType.ROOM_LIST,
             ({ rooms }) => {
               clearTimeout(timeout);

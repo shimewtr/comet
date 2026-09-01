@@ -1,6 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vitest';
 import { CometSocket, CometSocketStatus } from './comet-socket.js';
-import { WebSocketMessageType } from './types/index.js';
+import { NewCommentPayload, WebSocketMessageType } from './types/index.js';
+
+const commentPayload: NewCommentPayload = {
+  comment: {
+    id: '1',
+    content: 'hello',
+    timestamp: 0,
+    style: { color: '#fff', size: 'medium' },
+  },
+};
 
 /**
  * WebSocketのモック
@@ -84,10 +101,11 @@ describe('CometSocket', () => {
 
   it('購読したハンドラーにpayloadが届き、解除後は届かない', async () => {
     const socket = new CometSocket('wss://example.com');
-    const received: unknown[] = [];
-    const unsubscribe = socket.on(WebSocketMessageType.NEW_COMMENT, (p) =>
-      received.push(p)
-    );
+    const received: string[] = [];
+    const unsubscribe = socket.on(WebSocketMessageType.NEW_COMMENT, (payload) => {
+      expectTypeOf(payload).toEqualTypeOf<NewCommentPayload>();
+      received.push(payload.comment.content);
+    });
 
     const promise = socket.connect();
     latestWs().open();
@@ -95,15 +113,18 @@ describe('CometSocket', () => {
 
     latestWs().message({
       type: WebSocketMessageType.NEW_COMMENT,
-      payload: { comment: { id: '1' } },
+      payload: commentPayload,
       timestamp: 0,
     });
-    expect(received).toEqual([{ comment: { id: '1' } }]);
+    expect(received).toEqual(['hello']);
 
     unsubscribe();
     latestWs().message({
       type: WebSocketMessageType.NEW_COMMENT,
-      payload: { comment: { id: '2' } },
+      payload: {
+        ...commentPayload,
+        comment: { ...commentPayload.comment, id: '2', content: 'goodbye' },
+      },
       timestamp: 0,
     });
     expect(received).toHaveLength(1);
@@ -127,7 +148,7 @@ describe('CometSocket', () => {
 
   it('未接続時のsendはfalseを返す', () => {
     const socket = new CometSocket('wss://example.com');
-    expect(socket.send(WebSocketMessageType.NEW_COMMENT, {})).toBe(false);
+    expect(socket.send(WebSocketMessageType.NEW_COMMENT, commentPayload)).toBe(false);
   });
 
   it('sendWhenOpenは接続完了を待ってから送信する', async () => {
@@ -135,7 +156,7 @@ describe('CometSocket', () => {
     socket.connect().catch(() => {});
 
     const sendPromise = socket.sendWhenOpen(WebSocketMessageType.NEW_COMMENT, {
-      test: true,
+      ...commentPayload,
     });
 
     // 100ms後に接続完了させる
@@ -156,7 +177,7 @@ describe('CometSocket', () => {
 
     const sendPromise = socket.sendWhenOpen(
       WebSocketMessageType.NEW_COMMENT,
-      {},
+      commentPayload,
       3000
     );
     await vi.advanceTimersByTimeAsync(3500);
