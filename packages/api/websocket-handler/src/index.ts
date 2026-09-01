@@ -17,13 +17,13 @@ import {
   sendMessageToConnection,
 } from './api-gateway-client';
 import {
-  getRoomConnections,
   getConnectionRoom,
   moveConnectionToRoom,
   removeConnection,
   saveConnection,
-  touchRoom,
-} from './dynamodb-client';
+  getRoomConnections,
+} from './repositories/connections';
+import { touchRoom } from './repositories/rooms';
 import { MessageContext } from './handlers/context';
 import { createPollHandlers } from './handlers/polls';
 import { createPostHandlers } from './handlers/posts';

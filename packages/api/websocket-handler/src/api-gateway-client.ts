@@ -2,7 +2,7 @@ import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
-import { removeConnection } from './dynamodb-client';
+import { removeConnection } from './repositories/connections';
 
 /**
  * エンドポイントごとのクライアントキャッシュ

@@ -41,7 +41,35 @@ const gateway = vi.hoisted(() => ({
   ),
 }));
 
-vi.mock('./dynamodb-client', () => db);
+vi.mock('./repositories/connections', () => ({
+  saveConnection: db.saveConnection,
+  removeConnection: db.removeConnection,
+  getRoomConnections: db.getRoomConnections,
+  getConnectionRoom: db.getConnectionRoom,
+  moveConnectionToRoom: db.moveConnectionToRoom,
+  getConnectionParticipantKey: db.getConnectionParticipantKey,
+}));
+vi.mock('./repositories/history', () => ({
+  saveComment: db.saveComment,
+  saveRoomEvent: db.saveRoomEvent,
+  saveStampEvent: db.saveStampEvent,
+  getRecentComments: db.getRecentComments,
+}));
+vi.mock('./repositories/rooms', () => ({
+  getActiveRooms: db.getActiveRooms,
+  createRoom: db.createRoom,
+  touchRoom: db.touchRoom,
+  getActiveRoom: db.getActiveRoom,
+}));
+vi.mock('./repositories/polls', () => ({
+  createPoll: db.createPoll,
+  endPollVoting: db.endPollVoting,
+  getPoll: db.getPoll,
+  getPollVotes: db.getPollVotes,
+  recordPollVote: db.recordPollVote,
+  removePoll: db.removePoll,
+  savePollResults: db.savePollResults,
+}));
 vi.mock('./api-gateway-client', () => gateway);
 process.env.HANDLER_TYPE = 'message';
 let handler: APIGatewayProxyWebsocketHandlerV2;

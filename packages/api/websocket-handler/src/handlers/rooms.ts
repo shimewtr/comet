@@ -10,14 +10,11 @@ import {
   normalizeRoomName,
 } from '@comet/shared';
 import {
-  createRoom,
-  getActiveRoom,
-  getActiveRooms,
   getConnectionRoom,
-  getRecentComments,
   moveConnectionToRoom,
-  touchRoom,
-} from '../dynamodb-client';
+} from '../repositories/connections';
+import { getRecentComments } from '../repositories/history';
+import { createRoom, getActiveRoom, getActiveRooms, touchRoom } from '../repositories/rooms';
 import { MessageContext } from './context';
 
 export function createRoomHandlers(
