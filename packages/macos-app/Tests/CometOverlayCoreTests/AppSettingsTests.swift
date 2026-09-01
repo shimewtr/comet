@@ -13,6 +13,8 @@ func defaultSettingsUseGlobalRoomAndEnableOverlay() {
   #expect(!settings.participationQREnabled)
   #expect(!settings.presentationTimerEnabled)
   #expect(settings.presentationTimerDurationSeconds == 600)
+  #expect(UUID(uuidString: settings.pollControllerID) != nil)
+  #expect(settings.controlledPollID == nil)
   #expect(settings.selectedDisplayID == nil)
   #expect(settings.displaySettings == OverlayDisplaySettings())
 }
@@ -55,7 +57,11 @@ func invalidStoredSettingsFallBackToDefaults() throws {
 
   let store = UserDefaultsSettingsStore(defaults: defaults, key: "settings")
 
-  #expect(store.load() == AppSettings())
+  let settings = store.load()
+  #expect(settings.webAppURL.isEmpty)
+  #expect(settings.selectedRoomID == "global")
+  #expect(settings.overlaysEnabled)
+  #expect(UUID(uuidString: settings.pollControllerID) != nil)
 }
 
 @Test

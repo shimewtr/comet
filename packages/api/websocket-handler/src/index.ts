@@ -2,6 +2,7 @@ import {
   APIGatewayProxyWebsocketHandlerV2,
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
+import { createHash } from 'node:crypto';
 import {
   WebSocketMessage,
   WebSocketMessageType,
@@ -23,6 +24,18 @@ import {
   RoomCreatedPayload,
   RoomJoinedPayload,
   ErrorPayload,
+  Poll,
+  PollOption,
+  PollResult,
+  PollControlPayload,
+  PollStatePayload,
+  StartPollPayload,
+  MIN_POLL_OPTIONS,
+  MAX_POLL_OPTIONS,
+  MIN_POLL_DURATION_SECONDS,
+  MAX_POLL_DURATION_SECONDS,
+  MAX_POLL_TITLE_LENGTH,
+  MAX_POLL_LABEL_LENGTH,
 } from '@comet/shared';
 import {
   saveConnection,
@@ -38,6 +51,15 @@ import {
   createRoom,
   touchRoom,
   getActiveRoom,
+  createPoll,
+  endPollVoting,
+  getConnectionParticipantKey,
+  getPoll,
+  getPollVotes,
+  PollRecord,
+  recordPollVote,
+  removePoll,
+  savePollResults,
 } from './dynamodb-client';
 import {
   createApiGatewayClient,
@@ -55,6 +77,113 @@ const STAMP_CATEGORIES: readonly StampCategory[] = [
   'reaction',
   'custom',
 ];
+const PARTICIPANT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function participantKey(value: string | undefined): string | undefined {
+  if (!value || !PARTICIPANT_ID_PATTERN.test(value)) return undefined;
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function normalizedPollOptions(value: unknown): PollOption[] | null {
+  if (
+    !Array.isArray(value) ||
+    value.length < MIN_POLL_OPTIONS ||
+    value.length > MAX_POLL_OPTIONS
+  ) {
+    return null;
+  }
+  const options: PollOption[] = [];
+  const optionIds = new Set<string>();
+  const emojiIds = new Set<string>();
+  for (const item of value) {
+    const candidate = item as Partial<PollOption>;
+    const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+    const emojiId =
+      typeof candidate.emojiId === 'string'
+        ? candidate.emojiId.trim().toLowerCase()
+        : '';
+    const emoji =
+      typeof candidate.emoji === 'string' ? candidate.emoji.trim() : '';
+    const label =
+      typeof candidate.label === 'string' ? candidate.label.trim() : '';
+    if (
+      !id ||
+      id.length > 64 ||
+      !emojiId.startsWith('emoji-') ||
+      emojiId.length > 128 ||
+      !emoji ||
+      emoji.length > 32 ||
+      !label ||
+      label.length > MAX_POLL_LABEL_LENGTH ||
+      optionIds.has(id) ||
+      emojiIds.has(emojiId)
+    ) {
+      return null;
+    }
+    optionIds.add(id);
+    emojiIds.add(emojiId);
+    options.push({ id, emojiId, emoji, label });
+  }
+  return options;
+}
+
+/**
+ * emoji-picker-react はBMPのUnicode scalarを4桁ゼロ埋めで表す。
+ * macOSの入力欄や過去の投票ではゼロ埋めなしのIDもあり得るため、
+ * 比較時だけ同じUnicode scalar列へ正規化する。
+ */
+function normalizedEmojiId(emojiId: string): string {
+  const prefix = 'emoji-';
+  const value = emojiId.trim().toLowerCase();
+  if (!value.startsWith(prefix)) return value;
+  return `${prefix}${value
+    .slice(prefix.length)
+    .split('-')
+    .map((scalar) => {
+      const codePoint = Number.parseInt(scalar, 16);
+      return Number.isFinite(codePoint) ? codePoint.toString(16) : scalar;
+    })
+    .join('-')}`;
+}
+
+function pollResults(
+  record: PollRecord,
+  votes: Array<{ optionId: string }>
+): PollResult[] {
+  const counts = new Map(record.options.map((option) => [option.id, 0]));
+  for (const vote of votes) {
+    if (counts.has(vote.optionId)) {
+      counts.set(vote.optionId, (counts.get(vote.optionId) ?? 0) + 1);
+    }
+  }
+  const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+  return record.options.map((option) => {
+    const count = counts.get(option.id) ?? 0;
+    return {
+      optionId: option.id,
+      count,
+      percentage: total === 0 ? 0 : (count / total) * 100,
+    };
+  });
+}
+
+function publicPoll(
+  record: PollRecord,
+  totalVotes = record.totalVotes ?? 0
+): Poll {
+  return {
+    id: record.id,
+    roomId: record.roomId,
+    title: record.title,
+    options: record.options,
+    status: record.status,
+    startsAt: record.startsAt,
+    endsAt: record.endsAt,
+    totalVotes,
+    ...(record.status === 'ended' ? { results: record.results ?? [] } : {}),
+  };
+}
 
 /**
  * WebSocket接続ハンドラー
@@ -67,7 +196,11 @@ async function handleConnect(
 
   try {
     // 接続時に自動的にグローバルルームに参加
-    await saveConnection(connectionId, GLOBAL_ROOM_ID);
+    await saveConnection(
+      connectionId,
+      GLOBAL_ROOM_ID,
+      participantKey(event.queryStringParameters?.participantId)
+    );
   } catch (error) {
     console.error('Error saving connection:', error);
     return { statusCode: 500 };
@@ -133,6 +266,69 @@ async function handleMessage(
         connectionId,
         Buffer.from(JSON.stringify(response))
       );
+    };
+
+    const sendError = async (code: ErrorPayload['code'], message: string) => {
+      await sendToRequester<ErrorPayload>(WebSocketMessageType.ERROR, {
+        code,
+        message,
+      });
+    };
+
+    const sendPollStateTo = async (
+      connectionIds: string[],
+      roomId: string,
+      poll: Poll | null
+    ) => {
+      const response: WebSocketMessage<PollStatePayload> = {
+        type: WebSocketMessageType.POLL_STATE,
+        payload: { poll },
+        timestamp: Date.now(),
+        roomId,
+      };
+      await broadcastMessage(apiGatewayClient, connectionIds, response);
+    };
+
+    const finalizePoll = async (record: PollRecord): Promise<Poll | null> => {
+      if (record.status === 'active') {
+        const locked = await endPollVoting(
+          record.roomId,
+          record.id,
+          record.controllerId
+        );
+        if (!locked) {
+          const current = await getPoll(record.roomId);
+          if (!current) return null;
+          record = current;
+          // Another request may still be completing the transition. Do not
+          // calculate or persist results until the active poll is locked.
+          if (record.status === 'active') {
+            const votes = await getPollVotes(record.id);
+            return publicPoll(record, votes.length);
+          }
+        } else {
+          record = { ...record, status: 'ended' };
+        }
+      }
+      const votes = await getPollVotes(record.id);
+      const results = pollResults(record, votes);
+      const totalVotes = results.reduce((sum, result) => sum + result.count, 0);
+      await savePollResults(record.roomId, record.id, results, totalVotes);
+      return publicPoll({ ...record, results, totalVotes }, totalVotes);
+    };
+
+    const currentPoll = async (roomId: string): Promise<Poll | null> => {
+      const record = await getPoll(roomId);
+      if (!record) return null;
+      if (record.status === 'active' && record.endsAt <= Date.now()) {
+        return await finalizePoll(record);
+      }
+      if (record.status === 'active') {
+        const votes = await getPollVotes(record.id);
+        return publicPoll(record, votes.length);
+      }
+      if (!record.results) return await finalizePoll(record);
+      return publicPoll(record);
     };
 
     const fallbackToGlobal = async () => {
@@ -297,6 +493,51 @@ async function handleMessage(
         );
         await savePromise;
 
+        // 通常のスタンプ表示はそのまま行い、実施中の投票対象と一致する場合だけ
+        // 匿名ブラウザの最終票を更新する。
+        const poll = await getPoll(roomId);
+        const option =
+          poll?.status === 'active'
+            ? poll.options.find(
+                (candidate) =>
+                  normalizedEmojiId(candidate.emojiId) ===
+                  normalizedEmojiId(stampMessage.stamp.id)
+              )
+            : undefined;
+        if (poll && option) {
+          if (poll.endsAt <= Date.now()) {
+            const ended = await finalizePoll(poll);
+            await sendPollStateTo(
+              await getRoomConnections(roomId),
+              roomId,
+              ended
+            );
+          } else {
+            const connectionParticipantKey =
+              await getConnectionParticipantKey(connectionId);
+            if (connectionParticipantKey) {
+              const voterKey = createHash('sha256')
+                .update(`${poll.id}:${connectionParticipantKey}`)
+                .digest('hex');
+              const recorded = await recordPollVote(
+                roomId,
+                poll.id,
+                voterKey,
+                option.id,
+                Date.now()
+              );
+              if (recorded) {
+                const votes = await getPollVotes(poll.id);
+                await sendPollStateTo(
+                  await getRoomConnections(roomId),
+                  roomId,
+                  publicPoll(poll, votes.length)
+                );
+              }
+            }
+          }
+        }
+
         console.log(
           `Broadcast stamp to ${stampResult.sent} connections, ${stampResult.failed} failed`
         );
@@ -316,6 +557,113 @@ async function handleMessage(
           { comments },
           roomId
         );
+        break;
+      }
+
+      case WebSocketMessageType.POLL_STATE_REQUEST: {
+        const roomId = await getConnectionRoom(connectionId);
+        await sendToRequester<PollStatePayload>(
+          WebSocketMessageType.POLL_STATE,
+          { poll: await currentPoll(roomId) },
+          roomId
+        );
+        break;
+      }
+
+      case WebSocketMessageType.POLL_START: {
+        const payload = message.payload as StartPollPayload;
+        const roomId = await currentRoomForActivity();
+        if (!roomId) break;
+        const title =
+          typeof payload?.title === 'string' ? payload.title.trim() : '';
+        const controllerId =
+          typeof payload?.controllerId === 'string'
+            ? payload.controllerId.trim()
+            : '';
+        const durationSeconds = payload?.durationSeconds;
+        const options = normalizedPollOptions(payload?.options);
+        if (
+          !controllerId ||
+          controllerId.length > 128 ||
+          title.length > MAX_POLL_TITLE_LENGTH ||
+          typeof durationSeconds !== 'number' ||
+          !Number.isInteger(durationSeconds) ||
+          durationSeconds < MIN_POLL_DURATION_SECONDS ||
+          durationSeconds > MAX_POLL_DURATION_SECONDS ||
+          !options
+        ) {
+          await sendError('POLL_INVALID', 'Poll settings are invalid');
+          break;
+        }
+        const startsAt = Date.now();
+        const record: PollRecord = {
+          id: generateId(),
+          roomId,
+          controllerId,
+          title,
+          options,
+          status: 'active',
+          startsAt,
+          endsAt: startsAt + durationSeconds * 1000,
+          totalVotes: 0,
+        };
+        if (!(await createPoll(record))) {
+          await sendError(
+            'POLL_ALREADY_ACTIVE',
+            'A poll is already active in this room'
+          );
+          break;
+        }
+        await sendPollStateTo(
+          await getRoomConnections(roomId),
+          roomId,
+          publicPoll(record)
+        );
+        break;
+      }
+
+      case WebSocketMessageType.POLL_END: {
+        const payload = message.payload as PollControlPayload;
+        const roomId = await getConnectionRoom(connectionId);
+        const record = await getPoll(roomId);
+        if (!record || record.id !== payload?.pollId) {
+          await sendError('POLL_NOT_FOUND', 'Poll was not found');
+          break;
+        }
+        if (record.controllerId !== payload?.controllerId) {
+          await sendError(
+            'POLL_FORBIDDEN',
+            'Only the poll controller can end it'
+          );
+          break;
+        }
+        const ended = await finalizePoll(record);
+        await sendPollStateTo(await getRoomConnections(roomId), roomId, ended);
+        break;
+      }
+
+      case WebSocketMessageType.POLL_CANCEL:
+      case WebSocketMessageType.POLL_CLOSE: {
+        const payload = message.payload as PollControlPayload;
+        const roomId = await getConnectionRoom(connectionId);
+        const expectedStatus =
+          message.type === WebSocketMessageType.POLL_CANCEL
+            ? 'active'
+            : 'ended';
+        const removed = await removePoll(
+          roomId,
+          payload?.pollId,
+          payload?.controllerId,
+          expectedStatus
+        );
+        if (!removed) {
+          await sendError(
+            'POLL_FORBIDDEN',
+            'Poll cannot be changed by this controller'
+          );
+          break;
+        }
+        await sendPollStateTo(await getRoomConnections(roomId), roomId, null);
         break;
       }
 
@@ -349,6 +697,11 @@ async function handleMessage(
           { room },
           room.id
         );
+        await sendToRequester<PollStatePayload>(
+          WebSocketMessageType.POLL_STATE,
+          { poll: await currentPoll(room.id) },
+          room.id
+        );
         break;
       }
 
@@ -359,6 +712,11 @@ async function handleMessage(
           await sendToRequester<RoomJoinedPayload>(
             WebSocketMessageType.ROOM_JOINED,
             { room: GLOBAL_ROOM },
+            GLOBAL_ROOM_ID
+          );
+          await sendToRequester<PollStatePayload>(
+            WebSocketMessageType.POLL_STATE,
+            { poll: await currentPoll(GLOBAL_ROOM_ID) },
             GLOBAL_ROOM_ID
           );
           break;
@@ -379,6 +737,11 @@ async function handleMessage(
         await sendToRequester<RoomJoinedPayload>(
           WebSocketMessageType.ROOM_JOINED,
           { room },
+          room.id
+        );
+        await sendToRequester<PollStatePayload>(
+          WebSocketMessageType.POLL_STATE,
+          { poll: await currentPoll(room.id) },
           room.id
         );
         break;

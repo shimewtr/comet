@@ -34,6 +34,10 @@ public struct CometProtocolCodec: Sendable {
     case .roomJoined:
       let envelope = try decodeEnvelope(RoomJoinedPayload.self, from: data, expected: header.type)
       return .roomJoined(envelope.payload.room)
+    case .pollState:
+      let envelope = try decodeEnvelope(
+        PresentationPollStatePayload.self, from: data, expected: header.type)
+      return .pollState(envelope.payload.poll, roomID: envelope.roomId)
     case .error:
       let envelope = try decodeEnvelope(ErrorPayload.self, from: data, expected: header.type)
       return .serverError(envelope.payload)
@@ -41,7 +45,8 @@ public struct CometProtocolCodec: Sendable {
       return .ping
     case .pong:
       return .pong
-    case .historyRequest, .roomListRequest, .createRoom, .joinRoom:
+    case .historyRequest, .roomListRequest, .createRoom, .joinRoom, .pollStart, .pollEnd,
+      .pollCancel, .pollClose, .pollStateRequest:
       return .unsupported(header.type)
     }
   }

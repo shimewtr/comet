@@ -46,6 +46,8 @@ const webSocketStack = new WebSocketStack(app, `${stackPrefix}WebSocketStack`, {
   commentsTable: storageStack.commentsTable,
   roomsTable: storageStack.roomsTable,
   roomEventsTable: storageStack.roomEventsTable,
+  pollsTable: storageStack.pollsTable,
+  pollVotesTable: storageStack.pollVotesTable,
   authSigningSecret: storageStack.authSigningSecret,
 });
 

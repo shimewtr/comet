@@ -176,8 +176,8 @@ func roomJoinRequestsHistoryAndPublishesEvent() async throws {
             lastActiveAt: 1_735_689_600_000,
             expiresAt: 1_735_776_000_000
           ))))
-  let messages = await transport.waitForSentMessageCount(3)
-  #expect(try messages.map(messageType).last == "history_request")
+  let messages = await transport.waitForSentMessageCount(4)
+  #expect(try messages.map(messageType).suffix(2) == ["history_request", "poll_state_request"])
 
   await client.disconnect()
 }

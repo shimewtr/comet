@@ -78,3 +78,40 @@ func encodesJoinRoomRequestUsingTypeScriptFieldNames() throws {
   #expect(object["timestamp"] as? Int == 123)
   #expect(payload["roomId"] as? String == "room-1")
 }
+
+@Test
+func decodesPollStateUsingSharedProtocolFieldNames() throws {
+  let data = Data(
+    #"""
+    {"type":"poll_state","payload":{"poll":{"id":"poll-1","roomId":"room-1","title":"次はどれ？","options":[{"id":"option-1","emojiId":"emoji-31-fe0f-20e3","emoji":"1️⃣","label":"案1"}],"status":"ended","startsAt":100,"endsAt":200,"totalVotes":3,"results":[{"optionId":"option-1","count":3,"percentage":100}]}},"timestamp":300,"roomId":"room-1"}
+    """#
+    .utf8
+  )
+
+  switch try CometProtocolCodec().decode(data) {
+  case .pollState(let poll, let roomID):
+    #expect(poll?.id == "poll-1")
+    #expect(poll?.results?.first?.count == 3)
+    #expect(roomID == "room-1")
+  default:
+    Issue.record("Expected a poll state event")
+  }
+}
+
+@Test
+func pollDraftRejectsDuplicateEditedEmojis() {
+  let draft = PresentationPollDraft(
+    options: [
+      PresentationPollOption(emojiId: "stale", emoji: "🎉", label: "A"),
+      PresentationPollOption(emojiId: "also-stale", emoji: "🎉", label: "B"),
+    ]
+  )
+
+  #expect(!draft.isValid)
+}
+
+@Test
+func pollDraftUsesEmojiPickerCompatibleIdentifiers() {
+  #expect(PresentationPollDraft.emojiID(for: "1️⃣") == "emoji-0031-fe0f-20e3")
+  #expect(PresentationPollDraft.emojiID(for: "🎉") == "emoji-1f389")
+}

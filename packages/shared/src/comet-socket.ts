@@ -10,11 +10,7 @@ import { WebSocketMessage, WebSocketMessageType } from './types/index.js';
  * - failed: 再接続の上限に達した
  */
 export type CometSocketStatus =
-  | 'connecting'
-  | 'open'
-  | 'reconnecting'
-  | 'closed'
-  | 'failed';
+  'connecting' | 'open' | 'reconnecting' | 'closed' | 'failed';
 
 export interface CometSocketOptions {
   /** 再接続の最大試行回数（デフォルト: 5） */
@@ -33,6 +29,8 @@ export interface CometSocketOptions {
    * 返したトークンは接続URLの ?token= に付与される。nullなら付与しない
    */
   tokenProvider?: () => string | null | Promise<string | null>;
+  /** 匿名ブラウザ単位の投票識別子。接続URL以外のメッセージには含めない */
+  participantId?: string;
 }
 
 type MessageHandler<T> = (payload: T, message: WebSocketMessage) => void;
@@ -49,7 +47,10 @@ const SEND_WAIT_POLL_INTERVAL_MS = 50;
  */
 export class CometSocket {
   private ws: WebSocket | null = null;
-  private handlers = new Map<WebSocketMessageType, Set<MessageHandler<unknown>>>();
+  private handlers = new Map<
+    WebSocketMessageType,
+    Set<MessageHandler<unknown>>
+  >();
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -77,7 +78,7 @@ export class CometSocket {
     this.manuallyClosed = false;
     this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
 
-    // 認証有効時は接続URLにチケットを付与する
+    // 認証チケットと匿名参加者IDを接続URLに付与する
     let url = this.url;
     if (this.options.tokenProvider) {
       try {
@@ -88,6 +89,11 @@ export class CometSocket {
       } catch (error) {
         console.error('Failed to get auth token:', error);
       }
+    }
+    if (this.options.participantId) {
+      url += `${url.includes('?') ? '&' : '?'}participantId=${encodeURIComponent(
+        this.options.participantId
+      )}`;
     }
 
     return new Promise((resolve, reject) => {

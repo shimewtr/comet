@@ -262,6 +262,21 @@ describe('CometSocket', () => {
     expect(latestWs().url).toBe('wss://example.com?token=ticket-123');
   });
 
+  it('認証の有無に関係なく匿名参加者IDを接続URLへ付与する', async () => {
+    const socket = new CometSocket('wss://example.com?existing=true', {
+      tokenProvider: () => 'ticket-123',
+      participantId: 'participant 123',
+    });
+    const promise = socket.connect();
+    await vi.advanceTimersByTimeAsync(0);
+    latestWs().open();
+    await promise;
+
+    expect(latestWs().url).toBe(
+      'wss://example.com?existing=true&token=ticket-123&participantId=participant%20123'
+    );
+  });
+
   it('keepaliveIntervalMsに0以下を指定するとPINGを送らない', async () => {
     const socket = new CometSocket('wss://example.com', {
       keepaliveIntervalMs: 0,

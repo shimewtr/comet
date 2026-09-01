@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
       applyOverlayConfiguration()
       applyParticipationQRConfiguration()
       applyPresentationTimerConfiguration()
+      applyPollConfiguration()
     }
   }
 
@@ -21,6 +22,10 @@ final class AppModel: ObservableObject {
   @Published private(set) var authenticationRequired = false
   @Published private(set) var isAuthenticated = false
   @Published private(set) var presentationTimerSnapshot = PresentationTimer().snapshot()
+  @Published private(set) var poll: PresentationPoll?
+  @Published var pollDraft = PresentationPollDraft()
+  @Published var isPreparingPoll = false
+  @Published private(set) var pollMessage: String?
 
   private let settingsStore: any SettingsStoring
   private let configurationProvider: any RuntimeConfigurationProviding
@@ -28,11 +33,15 @@ final class AppModel: ObservableObject {
   private let overlayPresenter: any OverlayPresenting
   private let participationQRPresenter = ParticipationQRWindowManager()
   private let presentationTimerPresenter = PresentationTimerWindowManager()
+  private let pollPresenter = PollWindowManager()
   private let authenticator: any DesktopAuthenticating
   private var presentationTimer = PresentationTimer()
   private var eventsTask: Task<Void, Never>?
   private var authRefreshTask: Task<Void, Never>?
   private var presentationTimerTask: Task<Void, Never>?
+  private var pollTask: Task<Void, Never>?
+  private var isAwaitingPollStart = false
+  private var requestedPollEndID: String?
   private var displayChangesCancellable: AnyCancellable?
 
   init(
@@ -52,6 +61,7 @@ final class AppModel: ObservableObject {
       durationSeconds: settings.presentationTimerDurationSeconds
     )
     presentationTimerSnapshot = presentationTimer.snapshot()
+    settingsStore.save(settings)
     presentationTimerPresenter.onStart = { [weak self] in
       self?.startPresentationTimer()
     }
@@ -68,15 +78,18 @@ final class AppModel: ObservableObject {
     applyOverlayConfiguration()
     applyParticipationQRConfiguration()
     applyPresentationTimerConfiguration()
+    applyPollConfiguration()
     observeEvents()
     observeDisplayChanges()
     observePresentationTimer()
+    observePoll()
   }
 
   deinit {
     eventsTask?.cancel()
     authRefreshTask?.cancel()
     presentationTimerTask?.cancel()
+    pollTask?.cancel()
   }
 
   var connectionDescription: String {
@@ -155,6 +168,10 @@ final class AppModel: ObservableObject {
   }
 
   func selectRoom(_ roomID: String) {
+    guard poll?.status != .active else {
+      pollMessage = "投票中はRoomを切り替えられません"
+      return
+    }
     settings.selectedRoomID = roomID
     guard connectionState == .connected else { return }
     Task {
@@ -188,6 +205,8 @@ final class AppModel: ObservableObject {
     rooms = [.global]
     presentationTimer = PresentationTimer()
     updatePresentationTimerSnapshot()
+    poll = nil
+    applyPollConfiguration()
     settings = AppSettings()
   }
 
@@ -215,6 +234,120 @@ final class AppModel: ObservableObject {
     if presentationTimer.status == .stopped {
       settings.presentationTimerDurationSeconds =
         presentationTimer.configuredDurationSeconds
+    }
+  }
+
+  var canStartPoll: Bool {
+    connectionState == .connected && poll == nil && pollDraft.isValid
+  }
+
+  var canManagePoll: Bool {
+    guard let poll else { return false }
+    return poll.roomId == settings.selectedRoomID && settings.controlledPollID == poll.id
+  }
+
+  func showPollSetup() {
+    guard poll == nil else { return }
+    pollMessage = nil
+    isPreparingPoll = true
+  }
+
+  func cancelPollSetup() {
+    isPreparingPoll = false
+  }
+
+  func addPollOption() {
+    guard pollDraft.options.count < 8 else { return }
+    let candidates = ["5️⃣", "6️⃣", "7️⃣", "8️⃣", "🅰️", "🅱️", "✅", "❓"]
+    let emoji =
+      candidates.first { candidate in
+        !pollDraft.options.contains(where: { $0.emoji == candidate })
+      } ?? "✨"
+    pollDraft.options.append(
+      PresentationPollOption(
+        emojiId: PresentationPollDraft.emojiID(for: emoji),
+        emoji: emoji,
+        label: "選択肢\(pollDraft.options.count + 1)"
+      )
+    )
+  }
+
+  func removePollOption(id: String) {
+    guard pollDraft.options.count > 2 else { return }
+    pollDraft.options.removeAll { $0.id == id }
+  }
+
+  func startPoll() {
+    guard canStartPoll else { return }
+    let payload = StartPresentationPollPayload(
+      controllerId: settings.pollControllerID,
+      title: pollDraft.title.trimmingCharacters(in: .whitespacesAndNewlines),
+      options: pollDraft.options.map { option in
+        PresentationPollOption(
+          id: option.id,
+          emojiId: PresentationPollDraft.emojiID(for: option.emoji),
+          emoji: option.emoji.trimmingCharacters(in: .whitespacesAndNewlines),
+          label: option.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+      },
+      durationSeconds: pollDraft.durationSeconds
+    )
+    pollMessage = nil
+    Task {
+      do {
+        isAwaitingPollStart = true
+        try await messageStream.startPoll(payload)
+        isPreparingPoll = false
+      } catch {
+        isAwaitingPollStart = false
+        pollMessage = "投票を開始できませんでした: \(error.localizedDescription)"
+      }
+    }
+  }
+
+  func endPoll() {
+    guard let poll, canManagePoll else { return }
+    sendPollControl(.end, for: poll)
+  }
+
+  func cancelActivePoll() {
+    guard let poll, canManagePoll else { return }
+    sendPollControl(.cancel, for: poll)
+  }
+
+  func closePollResults() {
+    guard let poll, canManagePoll else { return }
+    sendPollControl(.close, for: poll)
+  }
+
+  private enum PollControlAction {
+    case end
+    case cancel
+    case close
+  }
+
+  private func sendPollControl(
+    _ action: PollControlAction,
+    for poll: PresentationPoll
+  ) {
+    let payload = PresentationPollControlPayload(
+      pollId: poll.id,
+      controllerId: settings.pollControllerID
+    )
+    pollMessage = nil
+    Task {
+      do {
+        switch action {
+        case .end:
+          try await messageStream.endPoll(payload)
+        case .cancel:
+          try await messageStream.cancelPoll(payload)
+        case .close:
+          try await messageStream.closePoll(payload)
+        }
+      } catch {
+        pollMessage = "投票を更新できませんでした: \(error.localizedDescription)"
+      }
     }
   }
 
@@ -396,6 +529,23 @@ final class AppModel: ObservableObject {
     }
   }
 
+  private func observePoll() {
+    pollTask = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(200))
+        guard !Task.isCancelled, let self, let poll = self.poll else { continue }
+        guard
+          poll.status == .active,
+          self.canManagePoll,
+          self.requestedPollEndID != poll.id,
+          poll.endsAt <= Int64(Date().timeIntervalSince1970 * 1_000)
+        else { continue }
+        self.requestedPollEndID = poll.id
+        self.endPoll()
+      }
+    }
+  }
+
   private func applyOverlayConfiguration() {
     overlayPresenter.apply(
       configuration: OverlayPresentationConfiguration(
@@ -423,6 +573,10 @@ final class AppModel: ObservableObject {
     )
   }
 
+  private func applyPollConfiguration() {
+    pollPresenter.apply(selectedDisplayID: settings.selectedDisplayID, poll: poll)
+  }
+
   private func updatePresentationTimerSnapshot() {
     let snapshot = presentationTimer.snapshot()
     guard snapshot != presentationTimerSnapshot else { return }
@@ -445,10 +599,31 @@ final class AppModel: ObservableObject {
       if let fallbackRoom = payload.fallbackRoom {
         settings.selectedRoomID = fallbackRoom.id
       }
+      if payload.code.rawValue.hasPrefix("POLL_") {
+        pollMessage = payload.message
+      }
     case .message(.comment(let comment, _)):
       overlayPresenter.show(comment: comment, placement: .scrolling)
     case .message(.stamp(let stamp, _)):
       overlayPresenter.show(stamp: stamp)
+    case .message(.pollState(let updatedPoll, let roomID)):
+      guard roomID == nil || roomID == settings.selectedRoomID else { return }
+      poll = updatedPoll
+      if updatedPoll != nil {
+        // 投票作成画面を開いている間に既存の投票状態を受信した場合も、
+        // 先に結果を閉じるべきことが分かる表示へ切り替える。
+        isPreparingPoll = false
+      }
+      if let updatedPoll, updatedPoll.status == .active, isAwaitingPollStart {
+        settings.controlledPollID = updatedPoll.id
+        isAwaitingPollStart = false
+      }
+      if updatedPoll == nil {
+        settings.controlledPollID = nil
+        requestedPollEndID = nil
+        isAwaitingPollStart = false
+      }
+      applyPollConfiguration()
     default:
       break
     }

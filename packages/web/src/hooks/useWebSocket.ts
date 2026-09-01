@@ -19,6 +19,7 @@ import {
   GLOBAL_ROOM_ID,
 } from '@comet/shared';
 import { getAuthToken, loadRuntimeConfig } from '../auth';
+import { getOrCreateParticipantId } from '../participant-id';
 
 const MAX_COMMENT_HISTORY = 100;
 
@@ -46,6 +47,7 @@ export function useWebSocket() {
   const socketRef = useRef<CometSocket | null>(null);
   const joinedRoomIdRef = useRef<string | null>(null);
   const requestedRoomIdRef = useRef(roomIdFromUrl());
+  const participantIdRef = useRef(getOrCreateParticipantId());
 
   useEffect(() => {
     let active = true;
@@ -70,6 +72,7 @@ export function useWebSocket() {
 
     const socket = new CometSocket(websocketUrl, {
       tokenProvider: getAuthToken,
+      participantId: participantIdRef.current,
       onStatusChange: (status) => {
         setIsConnected(status === 'open');
         if (status === 'open') {

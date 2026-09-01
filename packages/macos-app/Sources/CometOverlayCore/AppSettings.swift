@@ -9,6 +9,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var participationQREnabled: Bool
   public var presentationTimerEnabled: Bool
   public var presentationTimerDurationSeconds: Int
+  public var pollControllerID: String
+  public var controlledPollID: String?
   public var selectedDisplayID: String?
   public var displaySettings: OverlayDisplaySettings
 
@@ -19,6 +21,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     participationQREnabled: Bool = false,
     presentationTimerEnabled: Bool = false,
     presentationTimerDurationSeconds: Int = PresentationTimer.defaultDurationSeconds,
+    pollControllerID: String = UUID().uuidString,
+    controlledPollID: String? = nil,
     selectedDisplayID: String? = nil,
     displaySettings: OverlayDisplaySettings = OverlayDisplaySettings()
   ) {
@@ -30,6 +34,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.presentationTimerDurationSeconds = Self.clampedTimerDuration(
       presentationTimerDurationSeconds
     )
+    self.pollControllerID = pollControllerID.isEmpty ? UUID().uuidString : pollControllerID
+    self.controlledPollID = controlledPollID
     self.selectedDisplayID = selectedDisplayID
     self.displaySettings = displaySettings
   }
@@ -41,6 +47,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     case participationQREnabled
     case presentationTimerEnabled
     case presentationTimerDurationSeconds
+    case pollControllerID
+    case controlledPollID
     case selectedDisplayID
     case displaySettings
   }
@@ -59,6 +67,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
       try container.decodeIfPresent(Int.self, forKey: .presentationTimerDurationSeconds)
         ?? PresentationTimer.defaultDurationSeconds
     )
+    pollControllerID =
+      try container.decodeIfPresent(String.self, forKey: .pollControllerID) ?? UUID().uuidString
+    controlledPollID = try container.decodeIfPresent(String.self, forKey: .controlledPollID)
     selectedDisplayID = try container.decodeIfPresent(String.self, forKey: .selectedDisplayID)
     displaySettings =
       try container.decodeIfPresent(OverlayDisplaySettings.self, forKey: .displaySettings)
