@@ -13,17 +13,19 @@ import {
   PollResult,
 } from '@comet/shared';
 import {
-  createPoll,
-  endPollVoting,
   getConnectionRoom,
   getConnectionParticipantKey,
+} from '../repositories/connections';
+import {
+  createPoll,
+  endPollVoting,
   getPoll,
   getPollVotes,
   PollRecord,
   recordPollVote,
   removePoll,
   savePollResults,
-} from '../dynamodb-client';
+} from '../repositories/polls';
 import { MessageContext } from './context';
 
 function normalizedPollOptions(value: unknown): PollOption[] | null {

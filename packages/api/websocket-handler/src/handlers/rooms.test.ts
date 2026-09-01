@@ -12,7 +12,17 @@ const db = vi.hoisted(() => ({
   touchRoom: vi.fn(),
 }));
 
-vi.mock('../dynamodb-client', () => db);
+vi.mock('../repositories/connections', () => ({
+  getConnectionRoom: db.getConnectionRoom,
+  moveConnectionToRoom: db.moveConnectionToRoom,
+}));
+vi.mock('../repositories/history', () => ({ getRecentComments: db.getRecentComments }));
+vi.mock('../repositories/rooms', () => ({
+  createRoom: db.createRoom,
+  getActiveRoom: db.getActiveRoom,
+  getActiveRooms: db.getActiveRooms,
+  touchRoom: db.touchRoom,
+}));
 
 let createRoomHandlers: typeof import('./rooms').createRoomHandlers;
 

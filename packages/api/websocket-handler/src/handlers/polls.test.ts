@@ -14,7 +14,20 @@ const db = vi.hoisted(() => ({
   savePollResults: vi.fn(),
 }));
 
-vi.mock('../dynamodb-client', () => db);
+vi.mock('../repositories/connections', () => ({
+  getConnectionParticipantKey: db.getConnectionParticipantKey,
+  getConnectionRoom: db.getConnectionRoom,
+}));
+vi.mock('../repositories/polls', () => ({
+  createPoll: db.createPoll,
+  endPollVoting: db.endPollVoting,
+  getPoll: db.getPoll,
+  getPollVotes: db.getPollVotes,
+  getRoomConnections: db.getRoomConnections,
+  recordPollVote: db.recordPollVote,
+  removePoll: db.removePoll,
+  savePollResults: db.savePollResults,
+}));
 
 let createPollHandlers: typeof import('./polls').createPollHandlers;
 

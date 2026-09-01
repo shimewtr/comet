@@ -13,12 +13,8 @@ import {
   WebSocketMessageType,
 } from '@comet/shared';
 import { broadcastMessage, createApiGatewayClient } from '../api-gateway-client';
-import {
-  getRoomConnections,
-  saveComment,
-  saveRoomEvent,
-  saveStampEvent,
-} from '../dynamodb-client';
+import { getRoomConnections } from '../repositories/connections';
+import { saveComment, saveRoomEvent, saveStampEvent } from '../repositories/history';
 import { MessageContext } from './context';
 
 const MAX_STAMP_NAME_LENGTH = 50;
