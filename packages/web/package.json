@@ -13,13 +13,13 @@
     "@comet/shared": "workspace:*",
     "emoji-picker-react": "^4.19.1",
     "react": "^19.2.8",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.1.9",
+    "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
     "eslint": "^10.0.1",
     "eslint-plugin-react-hooks": "^7.1.1",
