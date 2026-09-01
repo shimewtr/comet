@@ -1,6 +1,21 @@
 # macOSアプリの配布
 
-この文書はCometの未署名.app作成、Developer ID署名、Notarization、インストールと診断の手順です。証明書、秘密鍵、Notarization資格情報はリポジトリへ保存しません。
+この文書はCometのGitHub Releases配布、未署名.app作成、Developer ID署名、Notarization、インストールと診断の手順です。証明書、秘密鍵、Notarization資格情報はリポジトリへ保存しません。
+
+## GitHub Releasesでの配布
+
+`v0.2.0` のような既存のGitタグをGitHubへpushすると、`Release macOS app`ワークフローがUniversal Binaryの未署名`Comet.app`を作成し、次の2ファイルをGitHub Releaseへ添付します。
+
+- `Comet-v0.2.0-unsigned.zip`
+- `Comet-v0.2.0-unsigned.zip.sha256`
+
+タグは、[Info.plist](../packages/macos-app/Resources/Info.plist) の`CFBundleShortVersionString`と一致させてください。ワークフローはSwift testを実行してから配布物を作成しますが、Appleの証明書や秘密情報にはアクセスしません。既存タグを再実行する場合はActionsの`Release macOS app`から`Run workflow`を選び、タグ名を入力します。
+
+利用者はzipを展開して`Comet.app`を`/Applications`へ移動します。SHA-256を確認する場合は次を実行します。
+
+```bash
+shasum -a 256 Comet-v0.2.0-unsigned.zip
+```
 
 ## 未署名.appの作成
 
@@ -18,7 +33,7 @@ SwiftPMでarm64とx86_64のrelease buildを作ってUniversal Binaryへまとめ
 open build/macos/Comet.app
 ```
 
-初回起動をGatekeeperが止める場合は、FinderでアプリをControl+クリックして「開く」を選びます。配布先で警告なしに起動するにはDeveloper ID署名とNotarizationが必要です。
+未署名のReleaseをダウンロードした場合、通常のダブルクリックではGatekeeperが起動を止めます。これは単に警告ダイアログで「開く」を押すだけで済むとは限りません。Finderで`Comet.app`をControl+クリックして「開く」を選び、次の確認で「開く」を選択してください。すでに一度ブロックされた場合は、システム設定の「プライバシーとセキュリティ」から「このまま開く」を選びます。配布先でこの手作業なしに起動するにはDeveloper ID署名とNotarizationが必要です。
 
 ## バージョン更新
 
