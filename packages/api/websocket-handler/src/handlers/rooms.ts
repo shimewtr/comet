@@ -1,13 +1,12 @@
 import {
-  CreateRoomPayload,
   ErrorPayload,
   GLOBAL_ROOM,
   GLOBAL_ROOM_ID,
-  JoinRoomPayload,
   RoomCreatedPayload,
   RoomJoinedPayload,
   RoomListPayload,
   WebSocketMessageType,
+  isRecord,
   normalizeRoomName,
 } from '@comet/shared';
 import {
@@ -43,8 +42,8 @@ export function createRoomHandlers(
         rooms: [GLOBAL_ROOM, ...(await getActiveRooms())],
       });
     },
-    async create(payload: CreateRoomPayload | undefined) {
-      const name = normalizeRoomName(payload?.name);
+    async create(payload: unknown) {
+      const name = normalizeRoomName(isRecord(payload) ? payload.name : undefined);
       if (!name) {
         await context.sendToRequester<ErrorPayload>(WebSocketMessageType.ERROR, {
           code: 'INVALID_ROOM_NAME',
@@ -66,8 +65,9 @@ export function createRoomHandlers(
       );
       await context.sendToRequester(WebSocketMessageType.POLL_STATE, { poll: await currentPoll(room.id) }, room.id);
     },
-    async join(payload: JoinRoomPayload | undefined) {
-      if (payload?.roomId === GLOBAL_ROOM_ID) {
+    async join(payload: unknown) {
+      const roomId = isRecord(payload) ? payload.roomId : undefined;
+      if (roomId === GLOBAL_ROOM_ID) {
         await moveConnectionToRoom(context.connectionId, GLOBAL_ROOM_ID);
         await context.sendToRequester<RoomJoinedPayload>(
           WebSocketMessageType.ROOM_JOINED,
@@ -77,14 +77,14 @@ export function createRoomHandlers(
         await context.sendToRequester(WebSocketMessageType.POLL_STATE, { poll: await currentPoll(GLOBAL_ROOM_ID) }, GLOBAL_ROOM_ID);
         return;
       }
-      if (typeof payload?.roomId !== 'string') {
+      if (typeof roomId !== 'string') {
         await context.sendToRequester<ErrorPayload>(WebSocketMessageType.ERROR, {
           code: 'INVALID_MESSAGE',
           message: 'roomId is required',
         });
         return;
       }
-      const room = await touchRoom(payload.roomId);
+      const room = await touchRoom(roomId);
       if (!room) {
         await context.fallbackToGlobal();
         return;

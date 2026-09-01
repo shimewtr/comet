@@ -83,6 +83,31 @@ describe('websocket room isolation', () => {
     db.savePollResults.mockResolvedValue(undefined);
   });
 
+  it('rejects malformed JSON before accessing a room', async () => {
+    const result = await handler(
+      { ...event(WebSocketMessageType.PING, {}), body: '{not-json' },
+      {} as never,
+      vi.fn()
+    );
+
+    expect(result).toEqual({ statusCode: 400 });
+    expect(db.getConnectionRoom).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown message types before accessing a room', async () => {
+    const result = await handler(
+      {
+        ...event(WebSocketMessageType.PING, {}),
+        body: JSON.stringify({ type: 'future_client_message', payload: {} }),
+      },
+      {} as never,
+      vi.fn()
+    );
+
+    expect(result).toEqual({ statusCode: 400 });
+    expect(db.getConnectionRoom).not.toHaveBeenCalled();
+  });
+
   it('stores and broadcasts comments only to the connection room', async () => {
     await handler(
       event(WebSocketMessageType.NEW_COMMENT, {
