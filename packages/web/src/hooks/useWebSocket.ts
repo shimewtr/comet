@@ -1,15 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
-  NewCommentPayload,
-  HistoryPayload,
   Comment,
   Stamp,
   StampMessage,
   Room,
-  RoomListPayload,
-  RoomCreatedPayload,
-  RoomJoinedPayload,
-  ErrorPayload,
 } from '@comet/shared';
 import {
   WebSocketMessageType,
@@ -100,7 +94,7 @@ export function useWebSocket() {
     };
 
     const unsubscribers = [
-      socket.on<NewCommentPayload>(
+      socket.on(
         WebSocketMessageType.NEW_COMMENT,
         (payload, message) => {
           if (
@@ -113,7 +107,7 @@ export function useWebSocket() {
           );
         }
       ),
-      socket.on<HistoryPayload>(
+      socket.on(
         WebSocketMessageType.HISTORY,
         (payload, message) => {
           if (
@@ -124,10 +118,10 @@ export function useWebSocket() {
           setCommentHistory((prev) => mergeIntoHistory(prev, payload.comments));
         }
       ),
-      socket.on<RoomListPayload>(WebSocketMessageType.ROOM_LIST, ({ rooms }) =>
+      socket.on(WebSocketMessageType.ROOM_LIST, ({ rooms }) =>
         setRooms(rooms)
       ),
-      socket.on<RoomCreatedPayload>(
+      socket.on(
         WebSocketMessageType.ROOM_CREATED,
         ({ room }) => {
           setRooms((prev) => [
@@ -137,7 +131,7 @@ export function useWebSocket() {
           ]);
         }
       ),
-      socket.on<RoomJoinedPayload>(
+      socket.on(
         WebSocketMessageType.ROOM_JOINED,
         ({ room }) => {
           joinedRoomIdRef.current = room.id;
@@ -150,7 +144,7 @@ export function useWebSocket() {
           socket.send(WebSocketMessageType.HISTORY_REQUEST, {});
         }
       ),
-      socket.on<ErrorPayload>(WebSocketMessageType.ERROR, (payload) => {
+      socket.on(WebSocketMessageType.ERROR, (payload) => {
         setError(payload.message);
         if (payload.fallbackRoom) {
           const room = payload.fallbackRoom;

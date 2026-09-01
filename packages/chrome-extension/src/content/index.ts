@@ -1,10 +1,6 @@
 import {
   WebSocketMessageType,
-  NewCommentPayload,
-  NewStampPayload,
   CometSocket,
-  RoomJoinedPayload,
-  ErrorPayload,
   GLOBAL_ROOM_ID,
 } from '@comet/shared';
 import { CommentRenderer } from './comment-renderer';
@@ -212,7 +208,7 @@ function connectWebSocket(websocketUrl: string): void {
   });
 
   // 新規コメント受信ハンドラー
-  socket.on<NewCommentPayload>(
+  socket.on(
     WebSocketMessageType.NEW_COMMENT,
     (payload, message) => {
       // room参加完了前のglobal配信や、遅延した旧roomイベントは表示しない
@@ -223,7 +219,7 @@ function connectWebSocket(websocketUrl: string): void {
   );
 
   // 新規スタンプ受信ハンドラー
-  socket.on<NewStampPayload>(
+  socket.on(
     WebSocketMessageType.NEW_STAMP,
     (payload, message) => {
       if (joinedRoomId && message.roomId === joinedRoomId) {
@@ -232,13 +228,13 @@ function connectWebSocket(websocketUrl: string): void {
     }
   );
 
-  socket.on<RoomJoinedPayload>(WebSocketMessageType.ROOM_JOINED, ({ room }) => {
+  socket.on(WebSocketMessageType.ROOM_JOINED, ({ room }) => {
     joinedRoomId = room.id;
     updateQr(room.id);
     configureCapture();
   });
 
-  socket.on<ErrorPayload>(WebSocketMessageType.ERROR, ({ fallbackRoom }) => {
+  socket.on(WebSocketMessageType.ERROR, ({ fallbackRoom }) => {
     if (!fallbackRoom) return;
     desiredRoomId = fallbackRoom.id;
     joinedRoomId = fallbackRoom.id;
