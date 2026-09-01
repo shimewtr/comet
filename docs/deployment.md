@@ -81,6 +81,8 @@ scripts/deploy.sh dev web personal     # 名前付き設定でWebStack
 
 `web` を指定した場合も、CDKは依存スタックの状態を確認します。WebStackはS3への配置とCloudFrontキャッシュ無効化まで行います。
 
+CDKはLambdaのTypeScriptソースをasset staging時にbundleします。`packages/api/*/dist` をあらかじめ生成しておく必要はなく、`cdk synth` とデプロイは同じbundle設定を使います。WebアプリとChrome拡張の静的成果物は引き続きデプロイスクリプトが生成します。
+
 デプロイ前に差分だけ確認する場合はCDK diffを使用します。
 
 ```bash

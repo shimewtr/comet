@@ -32,7 +32,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # sharedを先頭にトポロジカル順で全パッケージをビルドする
-      # (Lambdaのdistが生成され、後続のcdk synthのアセットにもなる)
       - name: Build all packages
         run: pnpm -r build
 
@@ -47,7 +46,7 @@ jobs:
       - name: Test
         run: pnpm test
 
-      # 認証情報なしの環境非依存synthでテンプレートが生成できることを確認する
+      # 認証情報なしの環境非依存synthでテンプレートとLambda bundleが生成できることを確認する
       - name: CDK synth
         working-directory: packages/cdk
         run: pnpm exec cdk synth --context env=dev
