@@ -372,7 +372,7 @@ private func loadStampImage(for stamp: Stamp) async -> NSImage? {
 }
 
 extension Color {
-  fileprivate init(hex: String) {
+  init(hex: String) {
     let value = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
     var parsed: UInt64 = 0
     guard value.count == 6, Scanner(string: value).scanHexInt64(&parsed) else {

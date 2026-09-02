@@ -19,6 +19,8 @@ struct SettingsView: View {
       Section("表示") {
         Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
         Text("WebアプリURLのQRコードを、選択した出力先の右下へ最前面表示します。").font(.caption).foregroundStyle(.secondary)
+        Toggle("コメント一覧を表示", isOn: $model.settings.commentListEnabled)
+        Text("受信したコメントを一覧で表示します。流れるコメント表示とは別に使えます。").font(.caption).foregroundStyle(.secondary)
         SettingsSlider(
           title: "コメント速度", value: $model.settings.displaySettings.speedScale, range: 0.5...2,
           step: 0.1

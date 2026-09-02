@@ -7,6 +7,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
   public var selectedRoomID: String
   public var overlaysEnabled: Bool
   public var participationQREnabled: Bool
+  public var commentListEnabled: Bool
   public var presentationTimerEnabled: Bool
   public var presentationTimerDurationSeconds: Int
   public var pollControllerID: String
@@ -19,6 +20,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     selectedRoomID: String = Self.defaultRoomID,
     overlaysEnabled: Bool = true,
     participationQREnabled: Bool = false,
+    commentListEnabled: Bool = false,
     presentationTimerEnabled: Bool = false,
     presentationTimerDurationSeconds: Int = PresentationTimer.defaultDurationSeconds,
     pollControllerID: String = UUID().uuidString,
@@ -30,6 +32,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     self.selectedRoomID = selectedRoomID
     self.overlaysEnabled = overlaysEnabled
     self.participationQREnabled = participationQREnabled
+    self.commentListEnabled = commentListEnabled
     self.presentationTimerEnabled = presentationTimerEnabled
     self.presentationTimerDurationSeconds = Self.clampedTimerDuration(
       presentationTimerDurationSeconds
@@ -45,6 +48,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     case selectedRoomID
     case overlaysEnabled
     case participationQREnabled
+    case commentListEnabled
     case presentationTimerEnabled
     case presentationTimerDurationSeconds
     case pollControllerID
@@ -61,6 +65,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     overlaysEnabled = try container.decodeIfPresent(Bool.self, forKey: .overlaysEnabled) ?? true
     participationQREnabled =
       try container.decodeIfPresent(Bool.self, forKey: .participationQREnabled) ?? false
+    commentListEnabled =
+      try container.decodeIfPresent(Bool.self, forKey: .commentListEnabled) ?? false
     presentationTimerEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .presentationTimerEnabled) ?? false
     presentationTimerDurationSeconds = Self.clampedTimerDuration(

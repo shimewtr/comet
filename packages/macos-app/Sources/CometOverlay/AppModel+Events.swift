@@ -25,6 +25,7 @@ extension AppModel {
       if payload.code.rawValue.hasPrefix("POLL_") { pollMessage = payload.message }
     case .message(.comment(let comment, _)):
       overlayPresenter.show(comment: comment, placement: .scrolling)
+      appendCommentToList(comment)
     case .message(.stamp(let stamp, _)):
       overlayPresenter.show(stamp: stamp)
     case .message(.pollState(let updatedPoll, let roomID)):

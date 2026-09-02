@@ -11,6 +11,7 @@ func defaultSettingsUseGlobalRoomAndEnableOverlay() {
   #expect(settings.selectedRoomID == "global")
   #expect(settings.overlaysEnabled)
   #expect(!settings.participationQREnabled)
+  #expect(!settings.commentListEnabled)
   #expect(!settings.presentationTimerEnabled)
   #expect(settings.presentationTimerDurationSeconds == 600)
   #expect(UUID(uuidString: settings.pollControllerID) != nil)
@@ -31,6 +32,7 @@ func settingsRoundTripThroughUserDefaults() throws {
     selectedRoomID: "room-1",
     overlaysEnabled: false,
     participationQREnabled: true,
+    commentListEnabled: true,
     presentationTimerEnabled: true,
     presentationTimerDurationSeconds: 1_500,
     selectedDisplayID: "display-42",
@@ -77,6 +79,7 @@ func settingsDecodeDataSavedBeforeDisplayControlsWereAdded() throws {
   #expect(settings.selectedRoomID == "room-1")
   #expect(!settings.overlaysEnabled)
   #expect(!settings.participationQREnabled)
+  #expect(!settings.commentListEnabled)
   #expect(!settings.presentationTimerEnabled)
   #expect(settings.presentationTimerDurationSeconds == 600)
   #expect(settings.selectedDisplayID == nil)

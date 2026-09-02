@@ -28,6 +28,7 @@ struct MenuContent: View {
       Toggle("オーバーレイを表示", isOn: $model.settings.overlaysEnabled)
       Toggle("参加用QRコードを表示", isOn: $model.settings.participationQREnabled)
         .disabled(model.settings.webAppURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      Toggle("コメント一覧を表示", isOn: $model.settings.commentListEnabled)
       Toggle("タイマーを表示", isOn: $model.settings.presentationTimerEnabled)
       GroupBox("投票") {
         if let poll = model.poll {
