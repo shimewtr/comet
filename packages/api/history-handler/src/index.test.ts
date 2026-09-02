@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomEvent } from '@comet/shared';
-import { aggregateEvents, bucketSizeFor } from './index';
+import { aggregateEvents, bucketSizeFor } from './history-summary';
 
 describe('bucketSizeFor', () => {
   it.each([
