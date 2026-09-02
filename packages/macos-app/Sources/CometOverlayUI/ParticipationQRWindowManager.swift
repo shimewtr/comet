@@ -95,14 +95,8 @@ public final class ParticipationQRWindowManager: NSObject {
   private func makeWindow(image: NSImage, on screen: NSScreen) -> NSPanel {
     let size = NSSize(width: 172, height: 184)
     let origin = NSPoint(x: screen.frame.maxX - size.width - 16, y: screen.frame.minY + 16)
-    let window = NSPanel(
-      contentRect: NSRect(origin: origin, size: size),
-      styleMask: [.borderless, .nonactivatingPanel],
-      backing: .buffered,
-      defer: false,
-      screen: screen
-    )
-    OverlayWindowPolicy.movablePresentation.apply(to: window)
+    let window = OverlayPanelFactory.make(
+      contentRect: NSRect(origin: origin, size: size), on: screen)
     window.contentView = NSHostingView(rootView: ParticipationQRView(image: image))
     window.setFrameOrigin(origin)
     return window

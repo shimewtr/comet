@@ -76,15 +76,8 @@ public final class CommentListWindowManager: NSObject {
       x: screen.frame.maxX - size.width - 16,
       y: screen.frame.minY + 16
     )
-    let window = NSPanel(
-      contentRect: NSRect(origin: origin, size: size),
-      styleMask: [.borderless, .nonactivatingPanel],
-      backing: .buffered,
-      defer: false,
-      screen: screen
-    )
-    window.backgroundColor = .clear
-    OverlayWindowPolicy.movablePresentation.apply(to: window)
+    let window = OverlayPanelFactory.make(
+      contentRect: NSRect(origin: origin, size: size), on: screen)
     let model = CommentListViewModel(comments: comments)
     window.contentView = NSHostingView(rootView: CommentListOverlayView(model: model))
     return ScreenPanel(window: window, model: model)
