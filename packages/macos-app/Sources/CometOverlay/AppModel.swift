@@ -39,6 +39,7 @@ final class AppModel: ObservableObject {
   let pollPresenter = PollWindowManager()
   let authenticator: any DesktopAuthenticating
   var presentationTimer = PresentationTimer()
+  var commentList = RecentCommentList()
   var eventsTask: Task<Void, Never>?
   var authRefreshTask: Task<Void, Never>?
   var presentationTimerTask: Task<Void, Never>?

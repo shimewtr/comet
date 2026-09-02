@@ -67,8 +67,8 @@ extension AppModel {
   }
 
   func appendCommentToList(_ comment: CometComment) {
-    recentComments.append(comment)
-    if recentComments.count > 12 { recentComments.removeFirst(recentComments.count - 12) }
+    commentList.append(comment)
+    recentComments = commentList.comments
     applyCommentListConfiguration()
   }
 
