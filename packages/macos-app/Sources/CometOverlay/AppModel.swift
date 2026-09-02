@@ -9,11 +9,7 @@ final class AppModel: ObservableObject {
   @Published var settings: AppSettings {
     didSet {
       settingsStore.save(settings)
-      applyOverlayConfiguration()
-      applyParticipationQRConfiguration()
-      applyCommentListConfiguration()
-      applyPresentationTimerConfiguration()
-      applyPollConfiguration()
+      applySettingsChanges(from: oldValue)
     }
   }
 
@@ -79,11 +75,7 @@ final class AppModel: ObservableObject {
       self?.adjustPresentationTimer(by: seconds)
     }
     displays = overlayPresenter.availableDisplays
-    applyOverlayConfiguration()
-    applyParticipationQRConfiguration()
-    applyCommentListConfiguration()
-    applyPresentationTimerConfiguration()
-    applyPollConfiguration()
+    applyAllSettings()
     observeEvents()
     observeDisplayChanges()
     observePresentationTimer()
