@@ -10,17 +10,19 @@ import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import type {
-  HistoryBucket,
-  PopularHistoryItem,
   RoomEvent,
   RoomHistoryDetail,
-  Stamp,
 } from '@comet/shared';
 import { toSummary } from './formatters.js';
 import { getCaptures } from './capture-repository.js';
 import { queryAllEvents, queryEventsPage } from './event-repository.js';
 import { getRoom } from './room-repository.js';
-import { selectPeaks, summarizeMetrics } from './history-summary.js';
+import {
+  aggregateEvents,
+  bucketSizeFor,
+  selectPeaks,
+  summarizeMetrics,
+} from './history-summary.js';
 import {
   decodeCursor,
   encodeCursor,
@@ -42,72 +44,6 @@ function hasErrorName(error: unknown, name: string): boolean {
 
 function hasErrorMessage(error: unknown, message: string): boolean {
   return error instanceof Error && error.message === message;
-}
-
-
-export function bucketSizeFor(duration: number): number {
-  if (duration <= 30 * 60_000) return 10_000;
-  if (duration <= 90 * 60_000) return 30_000;
-  if (duration <= 3 * 60 * 60_000) return 60_000;
-  return 5 * 60_000;
-}
-
-export function aggregateEvents(
-  events: RoomEvent[],
-  from: number,
-  to: number,
-  bucketSizeMs: number
-): HistoryBucket[] {
-  const buckets = new Map<number, RoomEvent[]>();
-  for (const event of events) {
-    const start = from + Math.floor((event.timestamp - from) / bucketSizeMs) * bucketSizeMs;
-    const values = buckets.get(start) ?? [];
-    values.push(event);
-    buckets.set(start, values);
-  }
-  const result: HistoryBucket[] = [];
-  for (let start = from; start <= to; start += bucketSizeMs) {
-    const values = buckets.get(start) ?? [];
-    const comments = values.filter((event) => event.type === 'comment');
-    const stamps = values.filter((event) => event.type === 'stamp');
-    const stampCounts = new Map<string, { stamp: Stamp; count: number }>();
-    const itemCounts = new Map<string, PopularHistoryItem>();
-    for (const event of comments) {
-      if (event.type !== 'comment') continue;
-      const key = `comment:${event.comment.content}`;
-      const current = itemCounts.get(key);
-      itemCounts.set(key, { type: 'comment', content: event.comment.content, count: (current?.count ?? 0) + 1 });
-    }
-    for (const event of stamps) {
-      if (event.type !== 'stamp') continue;
-      const key = event.stamp.stamp.id || event.stamp.stamp.name;
-      const current = stampCounts.get(key);
-      stampCounts.set(key, {
-        stamp: event.stamp.stamp,
-        count: (current?.count ?? 0) + 1,
-      });
-      const itemKey = `stamp:${key}`;
-      const item = itemCounts.get(itemKey);
-      itemCounts.set(itemKey, { type: 'stamp', stamp: event.stamp.stamp, count: (item?.count ?? 0) + 1 });
-    }
-    result.push({
-      start,
-      end: Math.min(start + bucketSizeMs, to),
-      totalCount: values.length,
-      commentCount: comments.length,
-      stampCount: stamps.length,
-      popularStamps: [...stampCounts.values()]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3),
-      popularItems: [...itemCounts.values()]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3),
-      sampleComments: comments
-        .slice(-5)
-        .map((event) => event.type === 'comment' ? event.comment : neverValue()),
-    });
-  }
-  return result;
 }
 
 async function buildAnalysis(events: RoomEvent[], from: number, to: number, roomId: string) {
@@ -136,10 +72,6 @@ async function buildAnalysis(events: RoomEvent[], from: number, to: number, room
     captures: signedCaptures,
     metrics: summarizeMetrics(events, from, to, minuteBuckets, peaks),
   };
-}
-
-function neverValue(): never {
-  throw new Error('unexpected event type');
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
