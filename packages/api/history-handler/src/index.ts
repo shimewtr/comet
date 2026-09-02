@@ -4,7 +4,6 @@ import {
   QueryCommand,
   PutItemCommand,
   UpdateItemCommand,
-  type AttributeValue,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -17,7 +16,9 @@ import type {
   RoomHistoryDetail,
   Stamp,
 } from '@comet/shared';
-import { toEvent, toSummary } from './formatters.js';
+import { toSummary } from './formatters.js';
+import { getCaptures } from './capture-repository.js';
+import { queryAllEvents, queryEventsPage } from './event-repository.js';
 import { getRoom } from './room-repository.js';
 import {
   decodeCursor,
@@ -30,11 +31,9 @@ import {
 
 const client = new DynamoDBClient({});
 const roomsTable = process.env.ROOMS_TABLE_NAME!;
-const eventsTable = process.env.ROOM_EVENTS_TABLE_NAME!;
 const capturesTable = process.env.ROOM_CAPTURES_TABLE_NAME!;
 const captureBucket = process.env.CAPTURE_BUCKET_NAME!;
 const s3 = new S3Client({});
-const MAX_EVENTS = 10_000;
 
 function hasErrorName(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
@@ -44,36 +43,6 @@ function hasErrorMessage(error: unknown, message: string): boolean {
   return error instanceof Error && error.message === message;
 }
 
-
-async function queryAllEvents(
-  roomId: string,
-  from: number,
-  to: number
-): Promise<RoomEvent[]> {
-  const events: RoomEvent[] = [];
-  let cursor: Record<string, AttributeValue> | undefined;
-  do {
-    const result = await client.send(
-      new QueryCommand({
-        TableName: eventsTable,
-        KeyConditionExpression: 'roomId = :roomId AND sk BETWEEN :from AND :to',
-        FilterExpression: '#ttl > :now',
-        ExpressionAttributeNames: { '#ttl': 'ttl' },
-        ExpressionAttributeValues: marshall({
-          ':roomId': roomId,
-          ':from': `${String(from).padStart(13, '0')}#`,
-          ':to': `${String(to).padStart(13, '0')}#\uffff`,
-          ':now': Math.floor(Date.now() / 1000),
-        }),
-        ExclusiveStartKey: cursor,
-      })
-    );
-    events.push(...(result.Items ?? []).map((item) => toEvent(unmarshall(item))));
-    if (events.length > MAX_EVENTS) throw new Error('too many events');
-    cursor = result.LastEvaluatedKey;
-  } while (cursor);
-  return events;
-}
 
 export function bucketSizeFor(duration: number): number {
   if (duration <= 30 * 60_000) return 10_000;
@@ -138,24 +107,6 @@ export function aggregateEvents(
     });
   }
   return result;
-}
-
-async function getCaptures(roomId: string) {
-  const captures: Array<{ capturedAt: number; s3Key: string }> = [];
-  let cursor: Record<string, AttributeValue> | undefined;
-  do {
-    const result = await client.send(new QueryCommand({
-      TableName: capturesTable,
-      KeyConditionExpression: 'roomId = :roomId',
-      FilterExpression: '#ttl > :now',
-      ExpressionAttributeNames: { '#ttl': 'ttl' },
-      ExpressionAttributeValues: marshall({ ':roomId': roomId, ':now': Math.floor(Date.now() / 1000) }),
-      ExclusiveStartKey: cursor,
-    }));
-    captures.push(...(result.Items ?? []).map((item) => unmarshall(item) as { capturedAt: number; s3Key: string }));
-    cursor = result.LastEvaluatedKey;
-  } while (cursor);
-  return captures;
 }
 
 async function buildAnalysis(events: RoomEvent[], from: number, to: number, roomId: string) {
@@ -293,25 +244,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         500
       );
       if (from > to) return json(400, { message: 'from must be before to' });
-      const result = await client.send(
-        new QueryCommand({
-          TableName: eventsTable,
-          KeyConditionExpression: 'roomId = :roomId AND sk BETWEEN :from AND :to',
-          FilterExpression: '#ttl > :now',
-          ExpressionAttributeNames: { '#ttl': 'ttl' },
-          ExpressionAttributeValues: marshall({
-            ':roomId': roomId,
-            ':from': `${String(from).padStart(13, '0')}#`,
-            ':to': `${String(to).padStart(13, '0')}#\uffff`,
-            ':now': Math.floor(Date.now() / 1000),
-          }),
-          Limit: limit,
-          ExclusiveStartKey: decodeCursor(event.queryStringParameters?.cursor),
-        })
+      const result = await queryEventsPage(
+        roomId,
+        from,
+        to,
+        limit,
+        decodeCursor(event.queryStringParameters?.cursor)
       );
       return json(200, {
-        events: (result.Items ?? []).map((item) => toEvent(unmarshall(item))),
-        cursor: encodeCursor(result.LastEvaluatedKey),
+        events: result.events,
+        cursor: encodeCursor(result.cursor),
       });
     }
 
