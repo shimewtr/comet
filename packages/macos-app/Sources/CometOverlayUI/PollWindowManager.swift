@@ -89,15 +89,8 @@ public final class PollWindowManager: NSObject {
   private func makePanel(on screen: NSScreen, poll: PresentationPoll) -> ScreenPanel {
     let size = size(for: poll)
     let origin = NSPoint(x: screen.frame.minX + 28, y: screen.frame.maxY - size.height - 48)
-    let window = NSPanel(
-      contentRect: NSRect(origin: origin, size: size),
-      styleMask: [.borderless, .nonactivatingPanel],
-      backing: .buffered,
-      defer: false,
-      screen: screen
-    )
-    window.backgroundColor = .clear
-    OverlayWindowPolicy.movablePresentation.apply(to: window)
+    let window = OverlayPanelFactory.make(
+      contentRect: NSRect(origin: origin, size: size), on: screen)
     let model = PollOverlayViewModel(poll: poll)
     window.contentView = NSHostingView(rootView: PollOverlayView(model: model))
     return ScreenPanel(window: window, model: model)
