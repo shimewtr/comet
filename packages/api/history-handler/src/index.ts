@@ -2,13 +2,11 @@ import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import {
   DynamoDBClient,
   QueryCommand,
-  PutItemCommand,
-  UpdateItemCommand,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { randomUUID } from 'crypto';
+import { handleCaptureRoute } from './capture-routes.js';
 import type {
   RoomEvent,
   RoomHistoryDetail,
@@ -28,7 +26,6 @@ import {
   encodeCursor,
   json,
   parseBoundedNumber,
-  parseJsonBody,
   parseRange,
 } from './http.js';
 
@@ -37,10 +34,6 @@ const roomsTable = process.env.ROOMS_TABLE_NAME!;
 const capturesTable = process.env.ROOM_CAPTURES_TABLE_NAME!;
 const captureBucket = process.env.CAPTURE_BUCKET_NAME!;
 const s3 = new S3Client({});
-
-function hasErrorName(error: unknown, name: string): boolean {
-  return error instanceof Error && error.name === name;
-}
 
 function hasErrorMessage(error: unknown, message: string): boolean {
   return error instanceof Error && error.message === message;
@@ -81,40 +74,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const roomId = event.pathParameters?.roomId;
     const path = event.rawPath;
-    if (method === 'POST' && roomId && path.endsWith('/recorder')) {
-      const body = parseJsonBody(event.body);
-      if (typeof body.deviceId !== 'string' || !body.deviceId) return json(400, { message: 'deviceId is required' });
-      const now = Date.now();
-      try {
-        await client.send(new UpdateItemCommand({
-          TableName: roomsTable,
-          Key: marshall({ id: roomId }),
-          UpdateExpression: 'SET recorderId = :deviceId, recorderExpiresAt = :expiresAt',
-          ConditionExpression: 'attribute_exists(id) AND expiresAt > :now AND (attribute_not_exists(recorderId) OR recorderId = :deviceId OR recorderExpiresAt < :now)',
-          ExpressionAttributeValues: marshall({ ':deviceId': body.deviceId, ':expiresAt': now + 120_000, ':now': now }),
-        }));
-        return json(200, { acquired: true, expiresAt: now + 120_000 });
-      } catch (error: unknown) {
-        if (hasErrorName(error, 'ConditionalCheckFailedException')) return json(409, { acquired: false });
-        throw error;
-      }
-    }
-    if (method === 'POST' && roomId && path.endsWith('/captures')) {
-      const body = parseJsonBody(event.body);
-      if (typeof body.deviceId !== 'string' || typeof body.dataUrl !== 'string') return json(400, { message: 'deviceId and dataUrl are required' });
-      const match = body.dataUrl.match(/^data:image\/(jpeg|png);base64,(.+)$/);
-      if (!match) return json(400, { message: 'JPEG or PNG image is required' });
-      const bytes = Buffer.from(match[2], 'base64');
-      if (bytes.length > 2 * 1024 * 1024) return json(413, { message: 'Capture exceeds 2MB' });
-      const room = await getRoom(roomId);
-      if (!room || room.expiresAt <= Date.now() || room.recorderId !== body.deviceId || room.recorderExpiresAt < Date.now()) return json(409, { message: 'Recorder lock is not active' });
-      const capturedAt = Math.min(Math.max(Number(body.capturedAt) || Date.now(), Date.now() - 60_000), Date.now() + 5_000);
-      const captureId = randomUUID();
-      const extension = match[1] === 'png' ? 'png' : 'jpg';
-      const s3Key = `${roomId}/${String(capturedAt).padStart(13, '0')}-${captureId}.${extension}`;
-      await s3.send(new PutObjectCommand({ Bucket: captureBucket, Key: s3Key, Body: bytes, ContentType: `image/${match[1]}` }));
-      await client.send(new PutItemCommand({ TableName: capturesTable, Item: marshall({ roomId, sk: `${String(capturedAt).padStart(13, '0')}#${captureId}`, capturedAt, s3Key, ttl: Math.floor((capturedAt + 90 * 24 * 60 * 60 * 1000) / 1000) }) }));
-      return json(201, { capturedAt });
+    if (method === 'POST' && roomId) {
+      const response = await handleCaptureRoute(path, roomId, event.body, { client, s3, roomsTable, capturesTable, captureBucket });
+      if (response) return response;
     }
     if (method !== 'GET') return json(405, { message: 'Method not allowed' });
     if (!roomId) {
