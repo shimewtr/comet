@@ -58,6 +58,20 @@ extension AppModel {
     )
   }
 
+  func applyCommentListConfiguration() {
+    commentListPresenter.apply(
+      isEnabled: settings.commentListEnabled,
+      comments: recentComments,
+      selectedDisplayID: settings.selectedDisplayID
+    )
+  }
+
+  func appendCommentToList(_ comment: CometComment) {
+    recentComments.append(comment)
+    if recentComments.count > 12 { recentComments.removeFirst(recentComments.count - 12) }
+    applyCommentListConfiguration()
+  }
+
   private func previewStamps(startingAt timestamp: Int64) {
     let emojis = ["🎉", "👏", "👍", "❤️", "🚀", "✨", "🔥", "🙌", "😂", "💯"]
     let comboEmoji = emojis.randomElement() ?? "🎉"

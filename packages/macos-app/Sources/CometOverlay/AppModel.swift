@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
       settingsStore.save(settings)
       applyOverlayConfiguration()
       applyParticipationQRConfiguration()
+      applyCommentListConfiguration()
       applyPresentationTimerConfiguration()
       applyPollConfiguration()
     }
@@ -22,6 +23,7 @@ final class AppModel: ObservableObject {
   @Published var authenticationRequired = false
   @Published var isAuthenticated = false
   @Published var presentationTimerSnapshot = PresentationTimer().snapshot()
+  @Published var recentComments: [CometComment] = []
   @Published var poll: PresentationPoll?
   @Published var pollDraft = PresentationPollDraft()
   @Published var isPreparingPoll = false
@@ -32,6 +34,7 @@ final class AppModel: ObservableObject {
   let messageStream: any MessageStreaming
   let overlayPresenter: any OverlayPresenting
   let participationQRPresenter = ParticipationQRWindowManager()
+  let commentListPresenter = CommentListWindowManager()
   let presentationTimerPresenter = PresentationTimerWindowManager()
   let pollPresenter = PollWindowManager()
   let authenticator: any DesktopAuthenticating
@@ -77,6 +80,7 @@ final class AppModel: ObservableObject {
     displays = overlayPresenter.availableDisplays
     applyOverlayConfiguration()
     applyParticipationQRConfiguration()
+    applyCommentListConfiguration()
     applyPresentationTimerConfiguration()
     applyPollConfiguration()
     observeEvents()
