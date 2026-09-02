@@ -20,6 +20,7 @@ import { toSummary } from './formatters.js';
 import { getCaptures } from './capture-repository.js';
 import { queryAllEvents, queryEventsPage } from './event-repository.js';
 import { getRoom } from './room-repository.js';
+import { selectPeaks, summarizeMetrics } from './history-summary.js';
 import {
   decodeCursor,
   encodeCursor,
@@ -111,13 +112,7 @@ export function aggregateEvents(
 
 async function buildAnalysis(events: RoomEvent[], from: number, to: number, roomId: string) {
   const minuteBuckets = aggregateEvents(events, from, to, 60_000).filter((bucket) => bucket.totalCount > 0);
-  const selected: HistoryBucket[] = [];
-  for (const candidate of [...minuteBuckets].sort((a, b) => b.totalCount - a.totalCount || a.start - b.start)) {
-    if (selected.every((peak) => Math.abs(peak.start - candidate.start) >= 3 * 60_000)) {
-      selected.push(candidate);
-      if (selected.length === 10) break;
-    }
-  }
+  const selected = selectPeaks(minuteBuckets);
   const captures = capturesTable ? (await getCaptures(roomId))
     .filter((capture) => capture.capturedAt >= from && capture.capturedAt <= to)
     .sort((a, b) => a.capturedAt - b.capturedAt)
@@ -136,24 +131,10 @@ async function buildAnalysis(events: RoomEvent[], from: number, to: number, room
       capture: nearest,
     };
   });
-  const stampCounts = new Map<string, { stamp: Stamp; count: number }>();
-  for (const event of events) if (event.type === 'stamp') {
-    const key = event.stamp.stamp.id || event.stamp.stamp.name;
-    const current = stampCounts.get(key);
-    stampCounts.set(key, { stamp: event.stamp.stamp, count: (current?.count ?? 0) + 1 });
-  }
-  const topStamp = [...stampCounts.values()].sort((a, b) => b.count - a.count)[0] ?? null;
-  const comments = events.filter((event) => event.type === 'comment').length;
   return {
     peaks,
     captures: signedCaptures,
-    metrics: {
-      durationMs: Math.max(0, to - from),
-      maxPostsPerMinute: minuteBuckets.reduce((max, bucket) => Math.max(max, bucket.totalCount), 0),
-      peakAt: peaks[0]?.start ?? null,
-      topStamp,
-      commentRatio: events.length ? comments / events.length : 0,
-    },
+    metrics: summarizeMetrics(events, from, to, minuteBuckets, peaks),
   };
 }
 
