@@ -1,10 +1,7 @@
 import { DEFAULT_SETTINGS, loadSettings } from '../settings';
-import {
-  CometSocket,
-  WebSocketMessageType,
-  RoomListPayload,
-  GLOBAL_ROOM,
-} from '@comet/shared';
+import { GLOBAL_ROOM } from '@comet/shared';
+import { loadRoomList, populateRoomSelect } from './room-list';
+import { ensureWebAppPermission, fetchCometConfig } from './runtime-config';
 
 /**
  * DOM要素をnullチェック付きで取得する
@@ -34,62 +31,6 @@ function showSaveMessage(
   }, 3000);
 }
 
-/** Web配信用URLをWebSocket URLとして誤入力していないか検証する */
-function hasSameHostname(firstUrl: string, secondUrl: string): boolean {
-  if (!firstUrl || !secondUrl) return false;
-  try {
-    return new URL(firstUrl).hostname === new URL(secondUrl).hostname;
-  } catch {
-    return false;
-  }
-}
-
-interface CometRuntimeConfig {
-  websocketUrl: string;
-  historyApiUrl: string;
-  authEnabled: boolean;
-}
-
-/**
- * 独自ドメインのランタイム設定を取得するため、そのoriginだけの権限を要求する。
- * permissions.requestはクリックなどのユーザージェスチャー内で呼ぶ必要がある。
- */
-async function ensureWebAppPermission(webAppUrl: string): Promise<boolean> {
-  const originPattern = `${new URL(webAppUrl).origin}/*`;
-  const permissions = { origins: [originPattern] };
-  // contains()をawaitしてからrequest()を呼ぶと、popupのクリックによる
-  // ユーザージェスチャーが失われ、Chromeの権限ダイアログが完了しない。
-  // request()は既に許可済みの場合もtrueを返すため、直接呼び出す。
-  return chrome.permissions.request(permissions);
-}
-
-async function fetchCometConfig(
-  webAppUrl: string
-): Promise<CometRuntimeConfig> {
-  const response = await fetch(
-    `${webAppUrl.replace(/\/+$/, '')}/comet-config.json`,
-    { cache: 'no-store' }
-  );
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const config = await response.json();
-  if (
-    typeof config.websocketUrl !== 'string' ||
-    (!config.websocketUrl.startsWith('wss://') &&
-      !config.websocketUrl.startsWith('ws://'))
-  )
-    throw new Error('Invalid WebSocket URL');
-  if (hasSameHostname(config.websocketUrl, webAppUrl)) {
-    throw new Error('WebSocket URL points to the web hosting domain');
-  }
-  return {
-    websocketUrl: config.websocketUrl,
-    historyApiUrl:
-      typeof config.historyApiUrl === 'string'
-        ? config.historyApiUrl.replace(/\/+$/, '')
-        : '',
-    authEnabled: config.authEnabled === true,
-  };
-}
 
 async function main() {
   const toggleCheckbox = getElement<HTMLInputElement>('toggle-checkbox');
@@ -139,49 +80,16 @@ async function main() {
   ) => {
     if (!websocketUrl) return;
     refreshRoomsButton.disabled = true;
-    const socket = new CometSocket(websocketUrl, {
-      tokenProvider: () => authToken || null,
-      keepaliveIntervalMs: 0,
-      maxReconnectAttempts: 0,
-    });
     try {
-      const rooms = await new Promise<RoomListPayload['rooms']>(
-        (resolve, reject) => {
-          const timeout = setTimeout(
-            () => reject(new Error('Room list timeout')),
-            5000
-          );
-          socket.on(
-            WebSocketMessageType.ROOM_LIST,
-            ({ rooms }) => {
-              clearTimeout(timeout);
-              resolve(rooms);
-            }
-          );
-          void socket
-            .connect()
-            .then(() => socket.send(WebSocketMessageType.ROOM_LIST_REQUEST, {}))
-            .catch((error) => {
-              clearTimeout(timeout);
-              reject(error);
-            });
-        }
+      populateRoomSelect(
+        roomSelect,
+        await loadRoomList(websocketUrl, authToken),
+        selectedRoomId
       );
-      roomSelect.replaceChildren();
-      rooms.forEach((room) => {
-        const option = document.createElement('option');
-        option.value = room.id;
-        option.textContent = `${room.name}${room.id === 'global' ? '' : ` (${room.id.slice(0, 8)})`}`;
-        roomSelect.append(option);
-      });
-      roomSelect.value = rooms.some((room) => room.id === selectedRoomId)
-        ? selectedRoomId
-        : GLOBAL_ROOM.id;
     } catch (error) {
       console.error('Failed to load rooms:', error);
       showSaveMessage(saveMessage, 'Room一覧の取得に失敗しました', 'error');
     } finally {
-      socket.disconnect();
       refreshRoomsButton.disabled = false;
     }
   };
