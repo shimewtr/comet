@@ -24,4 +24,40 @@ describe('useRoomSession', () => {
       roomId: 'room-2',
     });
   });
+
+  it('recovers to the fallback Room while preserving a Room error', () => {
+    const send = vi.fn();
+    const clearCommentHistory = vi.fn();
+    const setError = vi.fn();
+    const fallbackRoom = {
+      id: 'global',
+      name: 'グローバル',
+      createdAt: 0,
+      lastActiveAt: 0,
+      expiresAt: null,
+    };
+    const { result } = renderHook(() =>
+      useRoomSession({
+        socketRef: { current: { send } } as never,
+        joinedRoomIdRef: { current: 'expired-room' },
+        clearCommentHistory,
+        setError,
+      })
+    );
+
+    act(() => {
+      result.current.handleRoomError({
+        code: 'ROOM_EXPIRED',
+        message: 'このRoomは期限切れです',
+        fallbackRoom,
+      });
+    });
+
+    expect(result.current.currentRoom).toEqual(fallbackRoom);
+    expect(result.current.isJoiningRoom).toBe(false);
+    expect(clearCommentHistory).toHaveBeenCalledOnce();
+    expect(setError).toHaveBeenCalledWith('このRoomは期限切れです');
+    expect(setError).not.toHaveBeenCalledWith(null);
+    expect(send).toHaveBeenCalledWith(WebSocketMessageType.HISTORY_REQUEST, {});
+  });
 });
