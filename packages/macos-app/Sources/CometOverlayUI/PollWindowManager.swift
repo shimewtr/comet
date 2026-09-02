@@ -78,21 +78,12 @@ public final class PollWindowManager: NSObject {
   private func refreshWindows() {
     hideAll()
     guard let poll else { return }
-    for screen in selectedScreens() {
+    for screen in OverlayScreenSelector.screens(selectedDisplayID: configuration.selectedDisplayID)
+    {
       let panel = makePanel(on: screen, poll: poll)
       panels[ScreenIdentity.directDisplayID(for: screen)] = panel
       panel.window.orderFrontRegardless()
     }
-  }
-
-  private func selectedScreens() -> [NSScreen] {
-    guard let selectedDisplayID = configuration.selectedDisplayID else { return NSScreen.screens }
-    if let screen = NSScreen.screens.first(where: {
-      ScreenIdentity.stableDisplayID(for: $0) == selectedDisplayID
-    }) {
-      return [screen]
-    }
-    return NSScreen.main.map { [$0] } ?? []
   }
 
   private func makePanel(on screen: NSScreen, poll: PresentationPoll) -> ScreenPanel {

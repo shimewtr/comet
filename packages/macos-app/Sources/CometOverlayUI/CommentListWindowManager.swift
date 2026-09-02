@@ -62,20 +62,12 @@ public final class CommentListWindowManager: NSObject {
   private func refreshWindows(comments: [CometComment]) {
     hideAll()
     guard configuration?.isEnabled == true else { return }
-    for screen in selectedScreens() {
+    for screen in OverlayScreenSelector.screens(selectedDisplayID: configuration?.selectedDisplayID)
+    {
       let panel = makePanel(on: screen, comments: comments)
       panels[ScreenIdentity.directDisplayID(for: screen)] = panel
       panel.window.orderFrontRegardless()
     }
-  }
-
-  private func selectedScreens() -> [NSScreen] {
-    guard let id = configuration?.selectedDisplayID else { return NSScreen.screens }
-    if let screen = NSScreen.screens.first(where: { ScreenIdentity.stableDisplayID(for: $0) == id })
-    {
-      return [screen]
-    }
-    return NSScreen.main.map { [$0] } ?? []
   }
 
   private func makePanel(on screen: NSScreen, comments: [CometComment]) -> ScreenPanel {
