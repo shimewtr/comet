@@ -3,6 +3,38 @@ import CometOverlayCore
 import Foundation
 
 extension AppModel {
+  func applyAllSettings() {
+    applyOverlayConfiguration()
+    applyParticipationQRConfiguration()
+    applyCommentListConfiguration()
+    applyPresentationTimerConfiguration()
+    applyPollConfiguration()
+  }
+
+  func applySettingsChanges(from previous: AppSettings) {
+    let displayChanged = previous.selectedDisplayID != settings.selectedDisplayID
+    if displayChanged
+      || previous.overlaysEnabled != settings.overlaysEnabled
+      || previous.displaySettings != settings.displaySettings
+    {
+      applyOverlayConfiguration()
+    }
+    if displayChanged
+      || previous.participationQREnabled != settings.participationQREnabled
+      || previous.webAppURL != settings.webAppURL
+      || previous.selectedRoomID != settings.selectedRoomID
+    {
+      applyParticipationQRConfiguration()
+    }
+    if displayChanged || previous.commentListEnabled != settings.commentListEnabled {
+      applyCommentListConfiguration()
+    }
+    if displayChanged || previous.presentationTimerEnabled != settings.presentationTimerEnabled {
+      applyPresentationTimerConfiguration()
+    }
+    if displayChanged { applyPollConfiguration() }
+  }
+
   func previewOverlay() {
     let timestamp = Int64(Date().timeIntervalSince1970 * 1_000)
     let messages = [
