@@ -84,21 +84,12 @@ public final class ParticipationQRWindowManager: NSObject {
       let image = ParticipationQRCode.image(for: url.absoluteString)
     else { return }
 
-    for screen in selectedScreens() {
+    for screen in OverlayScreenSelector.screens(selectedDisplayID: configuration.selectedDisplayID)
+    {
       let window = makeWindow(image: image, on: screen)
       windows[ScreenIdentity.directDisplayID(for: screen)] = window
       window.orderFrontRegardless()
     }
-  }
-
-  private func selectedScreens() -> [NSScreen] {
-    guard let selectedDisplayID = configuration?.selectedDisplayID else { return NSScreen.screens }
-    if let screen = NSScreen.screens.first(where: {
-      ScreenIdentity.stableDisplayID(for: $0) == selectedDisplayID
-    }) {
-      return [screen]
-    }
-    return NSScreen.main.map { [$0] } ?? []
   }
 
   private func makeWindow(image: NSImage, on screen: NSScreen) -> NSPanel {
