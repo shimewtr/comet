@@ -92,7 +92,7 @@ export function CommentForm({ onSubmit, disabled = false }: CommentFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!content.trim() || cooldownRemaining > 0) {
+    if (disabled || !content.trim() || cooldownRemaining > 0) {
       return;
     }
 
