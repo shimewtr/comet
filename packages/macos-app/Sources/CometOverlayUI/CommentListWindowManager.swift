@@ -62,8 +62,18 @@ public final class CommentListWindowManager: NSObject {
   }
 
   private func makePanel(on screen: NSScreen, comments: [CometComment]) -> ScreenPanel {
-    let size = NSSize(width: 360, height: 310)
-    let window = NSPanel(contentRect: NSRect(x: screen.frame.maxX - size.width - 24, y: screen.frame.maxY - size.height - 52, width: size.width, height: size.height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false, screen: screen)
+    let size = NSSize(width: 380, height: 330)
+    let origin = NSPoint(
+      x: screen.frame.maxX - size.width - 16,
+      y: screen.frame.minY + 16
+    )
+    let window = NSPanel(
+      contentRect: NSRect(origin: origin, size: size),
+      styleMask: [.borderless, .nonactivatingPanel],
+      backing: .buffered,
+      defer: false,
+      screen: screen
+    )
     window.backgroundColor = .clear
     OverlayWindowPolicy.movablePresentation.apply(to: window)
     let model = CommentListViewModel(comments: comments)
