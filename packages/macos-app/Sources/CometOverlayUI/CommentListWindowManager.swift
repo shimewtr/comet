@@ -24,7 +24,9 @@ public final class CommentListWindowManager: NSObject {
 
   public override init() {
     super.init()
-    NotificationCenter.default.addObserver(self, selector: #selector(screenParametersDidChange), name: NSApplication.didChangeScreenParametersNotification, object: nil)
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(screenParametersDidChange),
+      name: NSApplication.didChangeScreenParametersNotification, object: nil)
   }
 
   deinit { NotificationCenter.default.removeObserver(self) }
@@ -33,15 +35,27 @@ public final class CommentListWindowManager: NSObject {
     let updated = Configuration(isEnabled: isEnabled, selectedDisplayID: selectedDisplayID)
     let changed = updated != configuration
     configuration = updated
-    guard isEnabled else { hideAll(); return }
-    if changed { refreshWindows(comments: comments) }
-    else { panels.values.forEach { $0.model.comments = comments } }
+    guard isEnabled else {
+      hideAll()
+      return
+    }
+    if changed {
+      refreshWindows(comments: comments)
+    } else {
+      for panel in panels.values {
+        panel.model.comments = comments
+      }
+    }
   }
 
-  @objc private func screenParametersDidChange() { refreshWindows(comments: panels.values.first?.model.comments ?? []) }
+  @objc private func screenParametersDidChange() {
+    refreshWindows(comments: panels.values.first?.model.comments ?? [])
+  }
 
   private func hideAll() {
-    panels.values.forEach { $0.window.orderOut(nil) }
+    for panel in panels.values {
+      panel.window.orderOut(nil)
+    }
     panels.removeAll()
   }
 
@@ -57,7 +71,10 @@ public final class CommentListWindowManager: NSObject {
 
   private func selectedScreens() -> [NSScreen] {
     guard let id = configuration?.selectedDisplayID else { return NSScreen.screens }
-    if let screen = NSScreen.screens.first(where: { ScreenIdentity.stableDisplayID(for: $0) == id }) { return [screen] }
+    if let screen = NSScreen.screens.first(where: { ScreenIdentity.stableDisplayID(for: $0) == id })
+    {
+      return [screen]
+    }
     return NSScreen.main.map { [$0] } ?? []
   }
 
@@ -88,7 +105,8 @@ private struct CommentListOverlayView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text("コメント").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
       if model.comments.isEmpty {
-        Text("コメントを待っています").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+        Text("コメントを待っています").foregroundStyle(.secondary).frame(
+          maxWidth: .infinity, maxHeight: .infinity)
       } else {
         VStack(alignment: .leading, spacing: 6) {
           ForEach(model.comments.suffix(8)) { comment in
