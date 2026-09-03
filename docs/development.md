@@ -79,6 +79,8 @@ pnpm --filter @comet/shared test
 pnpm --filter @comet/web lint
 ```
 
+Webの画面テストは、WebSocket接続状態・Room参加中の投稿ガードを含めて確認します。
+
 ## ローカル設定と秘密情報
 
 次のファイルはGitへコミットしないでください。`.gitignore`で除外されています。
