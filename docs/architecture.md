@@ -25,6 +25,7 @@ flowchart TB
 CDKは環境ごとに次のスタックを管理します。
 
 - `StorageStack`: 接続、コメント、Room、イベント、投票、投票最終票用DynamoDBと認証署名鍵
+- History APIのHTTP入口は、一覧・履歴読み取りと、録画ロック・キャプチャ保存の書き込みルートを分離し、各ルートのAWS依存を局所化します。
 - `WebSocketStack`: API Gateway WebSocket APIと接続・切断・メッセージ処理Lambda
 - `StampStack`: スタンプ用S3、CloudFront、DynamoDB、HTTP API、Lambda
 - `HistoryStack`: 履歴・集計用HTTP APIとLambda
