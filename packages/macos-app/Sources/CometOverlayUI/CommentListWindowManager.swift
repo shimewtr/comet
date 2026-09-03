@@ -6,6 +6,8 @@ import SwiftUI
 private final class CommentListViewModel: ObservableObject {
   @Published var comments: [CometComment]
   init(comments: [CometComment]) { self.comments = comments }
+
+  var presentation: CommentListPresentation { CommentListPresentation(comments: comments) }
 }
 
 @MainActor
@@ -89,12 +91,12 @@ private struct CommentListOverlayView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Text("コメント").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-      if model.comments.isEmpty {
+      if model.presentation.isEmpty {
         Text("コメントを待っています").foregroundStyle(.secondary).frame(
           maxWidth: .infinity, maxHeight: .infinity)
       } else {
         VStack(alignment: .leading, spacing: 6) {
-          ForEach(model.comments.suffix(8)) { comment in
+          ForEach(model.presentation.visibleComments) { comment in
             CommentListRow(comment: comment)
           }
         }
