@@ -12,7 +12,7 @@ import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
 import { HistoryPage } from './components/HistoryPage';
 import { ExtensionAuthPage } from './components/ExtensionAuthPage';
-import cometIconUrl from './assets/comet-icon.png';
+import cometIconUrl from './assets/comet-icon-transparent.png';
 
 const REPOSITORY_URL = 'https://github.com/shimewtr/comet';
 
