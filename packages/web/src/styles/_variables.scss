@@ -1,19 +1,25 @@
 // Color tokens
-$color-primary: #4a90e2;
-$color-primary-dark: #357abd;
-$color-brand-background: #01061b;
-$color-border: #e2e8f0;
-$color-border-light: #cbd5e0;
-$color-bg-white: #ffffff;
-$color-bg-light: #f7fafc;
-$color-bg-lighter: #edf2f7;
-$color-text-primary: #2d3748;
-$color-text-secondary: #4a5568;
-$color-text-muted: #718096;
-$color-text-light: #a0aec0;
-$color-error: #f56565;
-$color-error-dark: #c53030;
-$color-error-bg: #fed7d7;
+// 端正で読みやすいオフホワイト基調。ブルーを主要アクセント、ライラックは小さな装飾に限定する
+$color-primary: #526eff; // 主要アクセント
+$color-primary-dark: #435be0; // アクセントのホバー
+$color-primary-soft: #eef1ff; // 選択状態・ホバーの淡いブルー背景
+$color-accent-lilac: #b9adff; // 装飾専用。本文や重要なアイコンの色には使わない
+$color-page-background: #f7f8fa; // ページ背景
+$color-border: #e2e6ee; // 境界線
+$color-border-light: #cdd4df; // ホバー時など、やや強めの境界線
+$color-bg-white: #ffffff; // ヘッダー・カード背景
+$color-bg-light: #f3f5f9; // 入力欄・補助エリア背景
+$color-bg-lighter: #e8ecf2; // ホバー・無効ボタンの背景
+$color-text-primary: #20242c; // 主テキスト（チャコール）
+$color-text-secondary: #454d5c; // ボタン文字・小見出し
+$color-text-muted: #626d80; // 補助テキスト・プレースホルダー
+$color-text-light: #7b8699; // 日時など控えめな補足
+$color-text-disabled: #697386; // 無効ボタンの文字
+$color-error: #b42318; // エラーの文字・アイコン・削除ボタン
+$color-error-dark: #912018; // エラー系ボタンのホバー
+$color-error-bg: #fff1f0; // エラー通知の背景
+$color-error-bg-hover: #fee4e2; // エラー通知内ボタンのホバー
+$color-error-border: #fda29b; // エラー通知の境界線
 
 // Spacing (8px grid system)
 $space-xs: 0.25rem; // 4px
@@ -49,17 +55,14 @@ $transition-fast: 0.15s;
 $transition-base: 0.2s;
 $transition-slow: 0.3s;
 
-// Shadows
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md:
-  0 4px 6px -1px rgba(0, 0, 0, 0.1),
-  0 2px 4px -1px rgba(0, 0, 0, 0.06);
-$shadow-lg:
-  0 10px 15px -3px rgba(0, 0, 0, 0.1),
-  0 4px 6px -2px rgba(0, 0, 0, 0.05);
-$shadow-xl:
-  0 20px 25px -5px rgba(0, 0, 0, 0.1),
-  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+// Shadows（チャコール基調の淡い影。カードは $shadow-card 程度に抑える）
+$shadow-sm: 0 1px 2px 0 rgba(32, 36, 44, 0.04);
+$shadow-card: 0 2px 8px rgba(32, 36, 44, 0.04);
+$shadow-md: 0 4px 12px rgba(32, 36, 44, 0.08);
+$shadow-lg: 0 10px 24px -4px rgba(32, 36, 44, 0.12);
+$shadow-xl: 0 20px 40px -8px rgba(32, 36, 44, 0.16);
+// フォーカスリング（入力欄・ボタン共通）
+$shadow-focus: 0 0 0 3px rgba($color-primary, 0.2);
 
 // Z-index layers
 $z-modal: 1000;
@@ -82,13 +85,8 @@ $button-width-lg: 120px;
 
 // Opacity levels
 $opacity-disabled: 0.5;
+$opacity-disabled-primary: 0.56; // Primary（青地）ボタンの無効時。色は変えず透過で示す
 $opacity-hover: 0.8;
-
-// Semi-transparent colors
-$color-white-alpha-20: rgba(255, 255, 255, 0.2);
-$color-white-alpha-30: rgba(255, 255, 255, 0.3);
-$color-white-alpha-40: rgba(255, 255, 255, 0.4);
-$color-white-alpha-50: rgba(255, 255, 255, 0.5);
 
 // Breakpoints
 $breakpoint-sm: 600px;
