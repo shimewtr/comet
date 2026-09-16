@@ -129,19 +129,47 @@ private struct CommentOverlayView: View {
 
 private struct CommentEffect: ViewModifier {
   let animation: CommentAnimation?
-  @State private var active = false
 
   func body(content: Content) -> some View {
-    content
-      .opacity(animation == .blink && active ? 0.25 : 1)
-      .scaleEffect(animation == .bounce && active ? 1.12 : 1)
-      .offset(x: animation == .shake && active ? 5 : 0)
-      .onAppear {
-        guard animation != nil, animation != CommentAnimation.none else { return }
-        withAnimation(.easeInOut(duration: 0.25).repeatForever(autoreverses: true)) {
-          active = true
-        }
-      }
+    TimelineView(
+      .animation(
+        minimumInterval: 1.0 / 60.0,
+        paused: animation == nil || animation == CommentAnimation.none
+      )
+    ) { timeline in
+      let elapsed = timeline.date.timeIntervalSinceReferenceDate
+      content
+        .opacity(CommentEffectMotion.opacity(for: animation, at: elapsed))
+        .offset(y: CommentEffectMotion.verticalOffset(for: animation, at: elapsed))
+    }
+  }
+}
+
+enum CommentEffectMotion {
+  private static let blinkDuration: TimeInterval = 0.7
+  private static let bounceDuration: TimeInterval = 1.2
+  private static let shakeDuration: TimeInterval = 0.16
+
+  static func opacity(for animation: CommentAnimation?, at elapsed: TimeInterval) -> Double {
+    guard animation == .blink else { return 1 }
+    let phase = elapsed * 2 * Double.pi / blinkDuration
+    return 0.625 + 0.375 * cos(phase)
+  }
+
+  static func verticalOffset(
+    for animation: CommentAnimation?,
+    at elapsed: TimeInterval
+  ) -> CGFloat {
+    switch animation {
+    case .bounce:
+      let phase = elapsed * Double.pi / bounceDuration
+      return -20 * CGFloat(abs(sin(phase)))
+    case .shake:
+      let phase = elapsed * 2 * Double.pi / shakeDuration
+      return 6 * CGFloat(sin(phase))
+    default:
+      return 0
+    }
   }
 }
 
