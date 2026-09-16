@@ -81,10 +81,11 @@ macOSアプリは認証付き環境へ接続すると、macOSのデフォルト�
 2. Edge認証がログイン済みセッションを確認する
 3. Edge認証がsubjectとchallengeを含む2分間の交換コードをAES-GCMで暗号化し、固定`comet-overlay://auth/callback`へ返す
 4. アプリがcallbackのscheme、host、path、stateを検証する
-5. アプリが交換コードとverifierを`POST /auth/desktop/token`へ送り、15分間のCometチケットを取得する
-6. チケットだけを端末限定のKeychainへ保存し、期限1分前に同じフローで更新してWebSocketを再接続する
+5. アプリが交換コードとverifierを`POST /auth/desktop/token`へ送り、15分間のCometチケットと12時間の更新用トークンを取得する
+6. 両方を端末限定のKeychainへ保存し、チケットの期限1分前に`POST /auth/desktop/refresh`でバックグラウンド更新してWebSocketを再接続する
+7. 更新用トークンが失効した場合だけ、ブラウザでOIDC認証をやり直す
 
-IdPのaccess token、ID token、client secret、WebセッションCookieはmacOSアプリへ渡しません。ログアウト時はKeychainのチケットを削除してWebSocketを切断し、Web認証セッションのComet Cookieも消去します。発行済みチケットは最長15分で自然失効します。
+IdPのaccess token、ID token、client secret、WebセッションCookieはmacOSアプリへ渡しません。更新用トークンはCometが署名したmacOSアプリ専用JWTで、WebやIdPのセッションには利用できません。ログアウト時はKeychainのチケットと更新用トークンを削除してWebSocketを切断し、Web認証セッションのComet Cookieも消去します。発行済みチケットは最長15分、更新用トークンは最長12時間で自然失効します。
 
 ### desktop認証の脅威モデル
 
@@ -95,6 +96,7 @@ IdPのaccess token、ID token、client secret、WebセッションCookieはmacOS
 | 任意URLへの転送            | callback URLをサーバー定数にし、クライアント指定を受け付けない      | なし                                                                        |
 | 交換コードの漏えい         | subjectを含むコードをAES-256-GCMで暗号化し、有効期間を2分に制限する | verifierと同時に漏れた場合は有効期間内に交換可能                            |
 | チケットの漏えい           | Keychainの`AfterFirstUnlockThisDeviceOnly`で保存し、15分で失効する  | ロック解除済み端末を完全に侵害された場合は失効まで利用され得る              |
+| 更新用トークンの漏えい     | 用途別issuer・audienceで分離し、Keychainへ保存して12時間で失効する  | 失効まで短命チケットを再発行され得る                                        |
 | 交換コードの再利用         | PKCEと2分の期限で制限する                                           | Edgeはステートレスなため、verifierを持つ同一アプリから期限内の再交換は可能  |
 | CSRF                       | stateとPKCEの両方を要求する                                         | なし                                                                        |
 

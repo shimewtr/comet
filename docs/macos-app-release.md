@@ -77,14 +77,14 @@ spctl --assess --type execute --verbose=2 build/macos/Comet.app
 
 署名・Notarization済みの`Comet.app`を`/Applications`へコピーし、ApplicationsまたはSpotlightから起動します。メニューバーのCometアイコンから接続と表示を操作できます。
 
-アップデート時はメニューバーからアプリを終了し、新しい`.app`で置き換えます。WebアプリURL、表示設定、対象ディスプレイ、Keychain内の有効な短命チケットは同じBundle IDなら維持されます。初期版には自動アップデーターを含めません。
+アップデート時はメニューバーからアプリを終了し、新しい`.app`で置き換えます。WebアプリURL、表示設定、対象ディスプレイ、Keychain内の有効な短命チケットと更新用トークンは同じBundle IDなら維持されます。初期版には自動アップデーターを含めません。
 
 ## アンインストール
 
 1. メニューバーからCometを終了する
 2. `/Applications/Comet.app`をFinderのゴミ箱へ移動する
 3. 設定も消す場合は`defaults delete com.shimewtr.comet.overlay`を実行する
-4. 認証チケットも消す場合は`security delete-generic-password -s com.shimewtr.comet.macos.auth-ticket`を実行する
+4. 認証チケットと更新用トークンも消す場合は`security delete-generic-password -s com.shimewtr.comet.macos.auth-ticket`を実行する
 
 Web側のCometセッションも消す場合は、アンインストール前にアプリの「ログアウト」を実行します。
 

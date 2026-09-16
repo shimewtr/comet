@@ -33,7 +33,17 @@ import {
   isSafeLocalPath,
   matchesPKCEChallenge,
 } from './desktop-auth.js';
-import { clearCookie, cookie, jsonResponse, parseCookies, redirect } from './http.js';
+import {
+  createDesktopRefreshToken,
+  verifyDesktopRefreshToken,
+} from './desktop-refresh.js';
+import {
+  clearCookie,
+  cookie,
+  jsonResponse,
+  parseCookies,
+  redirect,
+} from './http.js';
 
 interface EdgeConfig {
   issuer: string;
@@ -146,7 +156,6 @@ function getJwks(discovery: OidcDiscovery) {
 function base64url(buffer: Buffer): string {
   return buffer.toString('base64url');
 }
-
 
 // ---- 認証フロー ----
 
@@ -341,6 +350,23 @@ async function issueTicket(session: {
   return jsonResponse(200, { token, expiresAt });
 }
 
+async function issueDesktopCredentials(session: {
+  sub: string;
+  email?: string;
+}): Promise<CloudFrontRequestResult> {
+  const key = await getSigningKey();
+  const expiresAt = Date.now() + TICKET_TTL_SECONDS * 1000;
+  const token = await new SignJWT({ email: session.email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(session.sub)
+    .setIssuer(TICKET_ISSUER)
+    .setIssuedAt()
+    .setExpirationTime(`${TICKET_TTL_SECONDS}s`)
+    .sign(key);
+  const refreshCredential = await createDesktopRefreshToken(key, session);
+  return jsonResponse(200, { token, expiresAt, ...refreshCredential });
+}
+
 async function startDesktopLogin(
   host: string,
   querystring: string,
@@ -413,9 +439,31 @@ async function exchangeDesktopCode(
     ) {
       return jsonResponse(401, { error: 'PKCE verification failed' });
     }
-    return await issueTicket({ sub: payload.subject });
+    return await issueDesktopCredentials({ sub: payload.subject });
   } catch {
     return jsonResponse(401, { error: 'Invalid or expired desktop code' });
+  }
+}
+
+async function refreshDesktopTicket(
+  request: CloudFrontRequestEvent['Records'][number]['cf']['request']
+): Promise<CloudFrontRequestResult> {
+  if (request.method !== 'POST') {
+    return jsonResponse(405, { error: 'Method not allowed' });
+  }
+  const params = new URLSearchParams(decodeRequestBody(request.body));
+  const refreshToken = params.get('refresh_token') ?? '';
+  if (refreshToken.length < 20 || refreshToken.length > 4096) {
+    return jsonResponse(400, { error: 'Invalid refresh request' });
+  }
+  try {
+    const identity = await verifyDesktopRefreshToken(
+      refreshToken,
+      await getSigningKey()
+    );
+    return await issueTicket(identity);
+  } catch {
+    return jsonResponse(401, { error: 'Invalid or expired refresh token' });
   }
 }
 
@@ -448,6 +496,10 @@ export const handler = async (
 
     if (request.uri === '/auth/desktop/token') {
       return await exchangeDesktopCode(request);
+    }
+
+    if (request.uri === '/auth/desktop/refresh') {
+      return await refreshDesktopTicket(request);
     }
 
     const session = await verifySession(cookies);
