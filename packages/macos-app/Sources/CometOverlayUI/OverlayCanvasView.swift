@@ -163,7 +163,7 @@ enum CommentEffectMotion {
     switch animation {
     case .bounce:
       let phase = elapsed * Double.pi / bounceDuration
-      return -20 * CGFloat(abs(sin(phase)))
+      return -32 * CGFloat(abs(sin(phase)))
     case .shake:
       let phase = elapsed * 2 * Double.pi / shakeDuration
       return 6 * CGFloat(sin(phase))

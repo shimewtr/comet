@@ -6,7 +6,7 @@ import Testing
 @Test
 func bounceEffectMovesUpAndReturnsToItsBaseline() {
   #expect(CommentEffectMotion.verticalOffset(for: .bounce, at: 0) == 0)
-  #expect(CommentEffectMotion.verticalOffset(for: .bounce, at: 0.6) == -20)
+  #expect(CommentEffectMotion.verticalOffset(for: .bounce, at: 0.6) == -32)
   #expect(abs(CommentEffectMotion.verticalOffset(for: .bounce, at: 1.2)) < 0.001)
 }
 
