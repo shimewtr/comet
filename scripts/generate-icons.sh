@@ -13,12 +13,10 @@ readonly WEB_PUBLIC="${REPOSITORY_ROOT}/packages/web/public"
 readonly WEB_ASSETS="${REPOSITORY_ROOT}/packages/web/src/assets"
 readonly CHROME_ICONS="${REPOSITORY_ROOT}/packages/chrome-extension/icons"
 
-for source_icon in "${APP_ICON}"; do
-  if [[ ! -f "${source_icon}" ]]; then
-    echo "Icon source not found: ${source_icon}" >&2
-    exit 1
-  fi
-done
+if [[ ! -f "${APP_ICON}" ]]; then
+  echo "Icon source not found: ${APP_ICON}" >&2
+  exit 1
+fi
 
 mkdir -p "${SWIFT_RESOURCES}" "${WEB_PUBLIC}" "${WEB_ASSETS}" "${CHROME_ICONS}"
 
