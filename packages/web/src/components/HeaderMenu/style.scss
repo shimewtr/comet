@@ -1,0 +1,80 @@
+$menu-button-size: 36px; // RoomSelector のピル（$toolbar-height）と揃える
+
+.header-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.header-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $menu-button-size;
+  height: $menu-button-size;
+  padding: 0;
+  border: $border-width-thin solid $color-border;
+  border-radius: 999px;
+  background-color: $color-bg-white;
+  color: $color-text-muted;
+  transition:
+    border-color $transition-base,
+    background-color $transition-base,
+    color $transition-base;
+
+  &:hover {
+    border-color: $color-border-light;
+    background-color: $color-bg-light;
+    color: $color-text-primary;
+  }
+
+  &[aria-expanded='true'] {
+    border-color: $color-primary;
+    background-color: $color-primary-soft;
+    color: $color-primary-dark;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: $shadow-focus;
+  }
+}
+
+.header-menu-list {
+  z-index: $z-dropdown;
+  position: absolute;
+  top: calc(100% + #{$space-xs});
+  right: 0;
+  min-width: 220px;
+  padding: $space-xs;
+  border: $border-width-thin solid $color-border;
+  border-radius: $radius-lg;
+  background-color: $color-bg-white;
+  box-shadow: $shadow-md;
+}
+
+.header-menu-item {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  padding: $space-sm $space-md;
+  border: 0;
+  border-radius: $radius-md;
+  background-color: transparent;
+  color: $color-text-primary;
+  font: inherit;
+  font-size: $font-sm;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color $transition-base,
+    color $transition-base;
+
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    background-color: $color-bg-light;
+    color: $color-text-primary;
+  }
+}

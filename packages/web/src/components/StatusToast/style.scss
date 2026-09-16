@@ -3,15 +3,16 @@
 .status-toast {
   z-index: $z-modal;
   position: fixed;
-  top: $space-lg;
+  top: calc(64px + #{$space-md}); // stickyヘッダーに被らない位置
   left: 50%;
   min-width: 300px;
   padding: $space-md;
   transform: translateX(-50%);
+  border: $border-width-thin solid $color-error-border;
   border-radius: $radius-lg;
-  background-color: $color-error;
-  box-shadow: $shadow-lg;
-  color: $color-bg-white;
+  background-color: $color-error-bg;
+  box-shadow: $shadow-md;
+  color: $color-error;
   animation: slideDown $transition-slow ease-out;
 
   &-content {
@@ -29,10 +30,10 @@
 
   &-reconnect {
     padding: $space-xs $space-md;
-    border: $border-width-thin solid $color-white-alpha-50;
+    border: $border-width-thin solid $color-error-border;
     border-radius: $radius-sm;
-    background: $color-white-alpha-20;
-    color: $color-bg-white;
+    background: $color-bg-white;
+    color: $color-error;
     font-weight: $font-medium;
     font-size: $font-sm;
     white-space: nowrap;
@@ -40,11 +41,11 @@
     transition: background $transition-base;
 
     &:hover:not(:disabled) {
-      background: $color-white-alpha-30;
+      background: $color-error-bg-hover;
     }
 
     &:active:not(:disabled) {
-      background: $color-white-alpha-40;
+      background: rgba($color-error-border, 0.5);
     }
 
     &:disabled {

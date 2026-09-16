@@ -1,87 +1,107 @@
-.room-selector {
-  .room-section-title {
+// ヘッダー(白背景)上に載せるためのトーン。ホバーは淡いグレーで示す
+$toolbar-bg: $color-bg-white;
+$toolbar-bg-hover: $color-bg-light;
+$toolbar-border: $color-border;
+$toolbar-border-hover: $color-border-light;
+$toolbar-text: $color-text-primary;
+$toolbar-text-muted: $color-text-muted;
+$toolbar-height: 36px;
+$toolbar-height-compact: 32px; // モバイルのヘッダーを低く保つためのピル高さ
+$color-online: #48bb78;
+
+.room-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: $space-sm;
+  font-size: $font-sm;
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+    white-space: nowrap;
+  }
+
+  // 入力群を1つのピルにまとめる
+  .room-toolbar-group {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: $space-md;
-  }
-
-  .room-history-link {
-    padding: $space-xs $space-sm;
-    border: $border-width-thin solid $color-border;
-    border-radius: $radius-sm;
-    background-color: $color-bg-light;
-    color: $color-text-secondary;
-    font-weight: $font-semibold;
-    font-size: $font-xs;
-    transition: border-color $transition-base, background-color $transition-base, color $transition-base;
+    min-width: 0;
+    height: $toolbar-height;
+    overflow: hidden;
+    border: $border-width-thin solid $toolbar-border;
+    border-radius: 999px;
+    background-color: $toolbar-bg;
+    transition:
+      border-color $transition-base,
+      background-color $transition-base;
 
     &:hover {
+      border-color: $toolbar-border-hover;
+    }
+
+    &:focus-within {
       border-color: $color-primary;
-      background-color: $color-bg-lighter;
-      color: $color-primary-dark;
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba($color-primary, 0.18);
+      box-shadow: $shadow-focus;
     }
   }
 
-  .room-selector-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: $space-lg;
-  }
-
-  .room-form-group {
+  .room-toolbar-label {
     display: flex;
-    flex-direction: column;
-    gap: $space-sm;
-
-    > label {
-      color: $color-text-primary;
-      font-weight: $font-semibold;
-      font-size: $font-sm;
-    }
+    align-items: center;
+    height: 100%;
+    padding: 0 $space-sm 0 $space-md;
+    gap: 6px;
+    color: $toolbar-text-muted;
+    font-weight: $font-semibold;
+    font-size: $font-xs;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
   }
 
-  .room-input-row {
-    display: flex;
-    min-width: 0;
-    gap: $space-sm;
+  .room-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: $toolbar-text-muted;
+    transition:
+      background-color $transition-base,
+      box-shadow $transition-base;
+
+    &.is-online {
+      background-color: $color-online;
+      box-shadow: 0 0 0 3px rgba($color-online, 0.25);
+    }
   }
 
   select,
   input {
-    flex: 1;
     min-width: 0;
-    height: $button-height-md;
+    height: 100%;
     padding: 0 $space-sm;
-    border: $border-width solid $color-border;
-    border-radius: $radius-sm;
+    border: 0;
     outline: none;
-    background-color: $color-bg-white;
-    color: $color-text-primary;
+    background-color: transparent;
+    color: $toolbar-text;
     font-size: $font-sm;
     font-family: inherit;
-    transition:
-      border-color $transition-base,
-      box-shadow $transition-base,
-      background-color $transition-base;
+    text-overflow: ellipsis; // 幅が足りないときはプレースホルダーも「…」で切る
 
-    &:hover:not(:disabled) {
-      border-color: $color-border-light;
-    }
-
-    &:focus-visible {
-      border-color: $color-primary;
-      box-shadow: 0 0 0 3px rgba($color-primary, 0.18);
+    &::placeholder {
+      color: $toolbar-text-muted;
     }
 
     &:disabled {
-      background-color: $color-bg-light;
       cursor: not-allowed;
       opacity: $opacity-disabled;
     }
@@ -89,32 +109,63 @@
 
   select {
     appearance: none;
-    padding-right: $space-xl;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23718096' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-position: right $space-sm center;
+    max-width: 240px;
+    padding-right: $space-lg;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23626d80' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right $space-xs center;
     background-size: $space-md;
     background-repeat: no-repeat;
+    text-overflow: ellipsis;
     cursor: pointer;
+
+    // ドロップダウン自体はOS描画なので読める配色に戻す
+    option {
+      background-color: $color-bg-white;
+      color: $color-text-primary;
+    }
   }
 
-  .room-button {
-    min-width: $button-width-md;
-    height: $button-height-md;
-    padding: 0 $space-md;
-    border-radius: $radius-sm;
-    font-weight: $font-semibold;
-    font-size: $font-sm;
-    font-family: inherit;
-    cursor: pointer;
-    transition:
-      border-color $transition-base,
-      background-color $transition-base,
-      box-shadow $transition-base,
-      opacity $transition-base;
+  // プルダウンで「新しいRoomを作成…」を選ぶと、同じピル内が入力フォームに切り替わる
+  .room-create {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+  }
 
-    &:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba($color-primary, 0.22);
+  .room-create input {
+    width: 200px;
+  }
+
+  .room-toolbar-group.is-creating {
+    border-color: $color-primary;
+  }
+
+  .room-icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: $toolbar-height;
+    height: 100%;
+    border: 0;
+    border-left: $border-width-thin solid $toolbar-border;
+    background-color: transparent;
+    color: $toolbar-text-muted;
+    transition:
+      color $transition-base,
+      background-color $transition-base;
+
+    &:hover:not(:disabled) {
+      background-color: $toolbar-bg-hover;
+      color: $toolbar-text;
+    }
+
+    &:hover:not(:disabled) svg {
+      transform: rotate(90deg);
+    }
+
+    svg {
+      transition: transform $transition-slow ease;
     }
 
     &:disabled {
@@ -123,37 +174,73 @@
     }
   }
 
-  .room-button-secondary {
-    border: $border-width solid $color-border;
-    background-color: $color-bg-light;
-    color: $color-text-secondary;
-
-    &:hover:not(:disabled) {
-      border-color: $color-border-light;
-      background-color: $color-bg-lighter;
-    }
-  }
-
-  .room-button-primary {
-    border: $border-width solid $color-primary;
+  .room-create-button {
+    height: 100%;
+    padding: 0 $space-md;
+    border: 0;
     background-color: $color-primary;
-    color: white;
+    color: $color-bg-white;
+    font-weight: $font-semibold;
+    font-size: $font-sm;
+    font-family: inherit;
+    white-space: nowrap;
+    transition:
+      background-color $transition-base,
+      opacity $transition-base;
 
     &:hover:not(:disabled) {
-      border-color: $color-primary-dark;
       background-color: $color-primary-dark;
     }
+
+    // 無効時はブルーのまま透過させて示す
+    &:disabled {
+      cursor: not-allowed;
+      opacity: $opacity-disabled-primary;
+    }
   }
 
+  // モバイルはロゴと同じ行に収めるため、「Room」の文字を隠してドットだけ残す
   @media (max-width: $breakpoint-sm) {
-    .room-selector-grid {
-      grid-template-columns: 1fr;
-      gap: $space-md;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+
+    .room-toolbar-group {
+      flex: 1 1 auto;
+      height: $toolbar-height-compact;
     }
 
-    .room-button {
-      min-width: 72px;
-      padding: 0 $space-sm;
+    .room-toolbar-label {
+      padding: 0 $space-xs 0 12px;
+    }
+
+    .room-toolbar-label-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    .room-icon-button {
+      width: $toolbar-height-compact;
+    }
+
+    select {
+      flex: 1;
+      max-width: none;
+    }
+
+    .room-create {
+      flex: 1;
+    }
+
+    .room-create input {
+      flex: 1;
+      width: auto;
     }
   }
 }

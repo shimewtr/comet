@@ -34,3 +34,8 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+/* テキスト選択の背景。ライラックは装飾に限定して使う */
+::selection {
+  background-color: rgba(185, 173, 255, 0.45);
+}

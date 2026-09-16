@@ -25,7 +25,7 @@
 
 .comment-history-empty {
   padding: $space-xl $space-md;
-  color: $color-text-light;
+  color: $color-text-muted;
   font-size: $font-sm;
   text-align: center;
 }
@@ -72,14 +72,16 @@
 .copy-button {
   padding: 2px 2px;
   border: none;
+  border-radius: $radius-sm;
   background-color: transparent;
+  color: $color-text-light;
   font-size: $font-sm;
   cursor: pointer;
   transition: all $transition-base;
 
   &:hover {
-    border-color: $color-primary;
-    background-color: $color-bg-light;
+    background-color: $color-bg-lighter;
+    color: $color-text-secondary;
   }
 
   &:active {
