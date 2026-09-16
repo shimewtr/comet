@@ -13,7 +13,7 @@ readonly WEB_PUBLIC="${REPOSITORY_ROOT}/packages/web/public"
 readonly WEB_ASSETS="${REPOSITORY_ROOT}/packages/web/src/assets"
 readonly CHROME_ICONS="${REPOSITORY_ROOT}/packages/chrome-extension/icons"
 
-for source_icon in "${APP_ICON}" "${TOOLBAR_ICON}"; do
+for source_icon in "${APP_ICON}"; do
   if [[ ! -f "${source_icon}" ]]; then
     echo "Icon source not found: ${source_icon}" >&2
     exit 1
@@ -21,6 +21,9 @@ for source_icon in "${APP_ICON}" "${TOOLBAR_ICON}"; do
 done
 
 mkdir -p "${SWIFT_RESOURCES}" "${WEB_PUBLIC}" "${WEB_ASSETS}" "${CHROME_ICONS}"
+
+# Keep every product on the same transparent Comet artwork.
+cp "${APP_ICON}" "${TOOLBAR_ICON}"
 
 resize_icon() {
   local size="$1"
@@ -39,8 +42,8 @@ resize_icon 180 "${WEB_PUBLIC}/apple-touch-icon.png"
 resize_icon 16 "${CHROME_ICONS}/icon-16.png"
 resize_icon 48 "${CHROME_ICONS}/icon-48.png"
 resize_icon 128 "${CHROME_ICONS}/icon-128.png"
-resize_icon 16 "${CHROME_ICONS}/toolbar-16.png" "${TOOLBAR_ICON}"
-resize_icon 32 "${CHROME_ICONS}/toolbar-32.png" "${TOOLBAR_ICON}"
-resize_icon 48 "${CHROME_ICONS}/toolbar-48.png" "${TOOLBAR_ICON}"
+resize_icon 16 "${CHROME_ICONS}/toolbar-16.png"
+resize_icon 32 "${CHROME_ICONS}/toolbar-32.png"
+resize_icon 48 "${CHROME_ICONS}/toolbar-48.png"
 
 echo "Generated Web and Chrome icons from ${APP_ICON}"
