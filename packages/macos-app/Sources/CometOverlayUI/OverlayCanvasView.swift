@@ -129,6 +129,7 @@ private struct CommentOverlayView: View {
 
 private struct CommentEffect: ViewModifier {
   let animation: CommentAnimation?
+  @State private var startedAt = Date.timeIntervalSinceReferenceDate
 
   func body(content: Content) -> some View {
     TimelineView(
@@ -137,17 +138,31 @@ private struct CommentEffect: ViewModifier {
         paused: animation == nil || animation == CommentAnimation.none
       )
     ) { timeline in
-      let elapsed = timeline.date.timeIntervalSinceReferenceDate
+      let elapsed = timeline.date.timeIntervalSinceReferenceDate - startedAt
+      let transform = CommentEffectMotion.transform(for: animation, at: elapsed)
       content
         .opacity(CommentEffectMotion.opacity(for: animation, at: elapsed))
-        .offset(y: CommentEffectMotion.verticalOffset(for: animation, at: elapsed))
+        .scaleEffect(
+          x: transform.scaleX,
+          y: transform.scaleY,
+          anchor: .bottom
+        )
+        .offset(y: transform.verticalOffset)
     }
   }
 }
 
+struct CommentEffectTransform: Equatable {
+  let verticalOffset: CGFloat
+  let scaleX: CGFloat
+  let scaleY: CGFloat
+
+  static let identity = CommentEffectTransform(verticalOffset: 0, scaleX: 1, scaleY: 1)
+}
+
 enum CommentEffectMotion {
   private static let blinkDuration: TimeInterval = 0.7
-  private static let bounceDuration: TimeInterval = 1.2
+  private static let bounceDuration: TimeInterval = 1.4
   private static let shakeDuration: TimeInterval = 0.16
 
   static func opacity(for animation: CommentAnimation?, at elapsed: TimeInterval) -> Double {
@@ -156,20 +171,79 @@ enum CommentEffectMotion {
     return 0.625 + 0.375 * cos(phase)
   }
 
-  static func verticalOffset(
+  static func transform(
     for animation: CommentAnimation?,
     at elapsed: TimeInterval
-  ) -> CGFloat {
+  ) -> CommentEffectTransform {
     switch animation {
     case .bounce:
-      let phase = elapsed * Double.pi / bounceDuration
-      return -32 * CGFloat(abs(sin(phase)))
+      return bounceTransform(at: elapsed)
     case .shake:
       let phase = elapsed * 2 * Double.pi / shakeDuration
-      return 6 * CGFloat(sin(phase))
+      return CommentEffectTransform(
+        verticalOffset: 6 * CGFloat(sin(phase)),
+        scaleX: 1,
+        scaleY: 1
+      )
     default:
-      return 0
+      return .identity
     }
+  }
+
+  private static func bounceTransform(at elapsed: TimeInterval) -> CommentEffectTransform {
+    let remainder = elapsed.truncatingRemainder(dividingBy: bounceDuration)
+    let phase = (remainder >= 0 ? remainder : remainder + bounceDuration) / bounceDuration
+
+    let rest = CommentEffectTransform.identity
+    let anticipation = CommentEffectTransform(verticalOffset: 8, scaleX: 1.18, scaleY: 0.78)
+    let launch = CommentEffectTransform(verticalOffset: 0, scaleX: 0.86, scaleY: 1.22)
+    let apex = CommentEffectTransform(verticalOffset: -72, scaleX: 0.94, scaleY: 1.08)
+    let landing = CommentEffectTransform(verticalOffset: 6, scaleX: 1.24, scaleY: 0.72)
+    let rebound = CommentEffectTransform(verticalOffset: -20, scaleX: 0.96, scaleY: 1.06)
+
+    switch phase {
+    case ..<0.10:
+      return interpolate(phase, fromTime: 0, toTime: 0.10, from: rest, to: anticipation)
+    case ..<0.18:
+      return interpolate(
+        phase,
+        fromTime: 0.10,
+        toTime: 0.18,
+        from: anticipation,
+        to: launch
+      )
+    case ..<0.48:
+      return interpolate(phase, fromTime: 0.18, toTime: 0.48, from: launch, to: apex)
+    case ..<0.74:
+      return interpolate(phase, fromTime: 0.48, toTime: 0.74, from: apex, to: landing)
+    case ..<0.82:
+      return interpolate(phase, fromTime: 0.74, toTime: 0.82, from: landing, to: rest)
+    case ..<0.90:
+      return interpolate(phase, fromTime: 0.82, toTime: 0.90, from: rest, to: rebound)
+    default:
+      return interpolate(phase, fromTime: 0.90, toTime: 1, from: rebound, to: rest)
+    }
+  }
+
+  private static func interpolate(
+    _ phase: Double,
+    fromTime: Double,
+    toTime: Double,
+    from: CommentEffectTransform,
+    to: CommentEffectTransform
+  ) -> CommentEffectTransform {
+    let progress = (phase - fromTime) / (toTime - fromTime)
+    let eased = progress * progress * (3 - 2 * progress)
+
+    func value(_ start: CGFloat, _ end: CGFloat) -> CGFloat {
+      start + (end - start) * CGFloat(eased)
+    }
+
+    return CommentEffectTransform(
+      verticalOffset: value(from.verticalOffset, to.verticalOffset),
+      scaleX: value(from.scaleX, to.scaleX),
+      scaleY: value(from.scaleY, to.scaleY)
+    )
   }
 }
 
