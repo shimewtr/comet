@@ -229,6 +229,17 @@ export class WebStack extends cdk.Stack {
                   includeBody: true,
                 })),
               },
+              '/auth/desktop/refresh': {
+                origin,
+                viewerProtocolPolicy:
+                  cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+                cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                edgeLambdas: edgeLambdas.map((association) => ({
+                  ...association,
+                  includeBody: true,
+                })),
+              },
             }
           : {}),
       },

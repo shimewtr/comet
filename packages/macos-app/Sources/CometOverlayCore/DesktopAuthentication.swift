@@ -5,15 +5,30 @@ import Security
 public struct AuthTicket: Codable, Equatable, Sendable {
   public let token: String
   public let expiresAt: Int64
+  public let refreshToken: String?
+  public let refreshExpiresAt: Int64?
 
-  public init(token: String, expiresAt: Int64) {
+  public init(
+    token: String,
+    expiresAt: Int64,
+    refreshToken: String? = nil,
+    refreshExpiresAt: Int64? = nil
+  ) {
     self.token = token
     self.expiresAt = expiresAt
+    self.refreshToken = refreshToken
+    self.refreshExpiresAt = refreshExpiresAt
   }
 
   public func isValid(at date: Date = Date(), refreshLeewayMilliseconds: Int64 = 60_000) -> Bool {
     !token.isEmpty
       && expiresAt - refreshLeewayMilliseconds > Int64(date.timeIntervalSince1970 * 1_000)
+  }
+
+  public func canRefresh(at date: Date = Date()) -> Bool {
+    guard let refreshToken, let refreshExpiresAt else { return false }
+    return refreshToken.count >= 20 && refreshToken.count <= 4_096
+      && refreshExpiresAt > Int64(date.timeIntervalSince1970 * 1_000)
   }
 }
 
@@ -62,6 +77,7 @@ public enum DesktopAuthenticationError: Error, Equatable, LocalizedError, Sendab
   case stateMismatch
   case missingAuthorizationCode
   case exchangeFailed(statusCode: Int)
+  case refreshFailed(statusCode: Int)
   case invalidTicket
   case cancelled
   case keychain(status: Int32)
@@ -80,6 +96,8 @@ public enum DesktopAuthenticationError: Error, Equatable, LocalizedError, Sendab
       "認証コードを取得できませんでした"
     case .exchangeFailed(let statusCode):
       "認証チケットの取得に失敗しました（HTTP \(statusCode)）"
+    case .refreshFailed(let statusCode):
+      "認証チケットの更新に失敗しました（HTTP \(statusCode)）"
     case .invalidTicket:
       "認証チケットが正しくありません"
     case .cancelled:
@@ -110,6 +128,14 @@ public enum DesktopAuthURLBuilder {
   public static func exchangeURL(webAppURL: URL) throws -> URL {
     var components = try webComponents(for: webAppURL)
     components.path = "/auth/desktop/token"
+    components.query = nil
+    guard let url = components.url else { throw DesktopAuthenticationError.invalidWebAppURL }
+    return url
+  }
+
+  public static func refreshURL(webAppURL: URL) throws -> URL {
+    var components = try webComponents(for: webAppURL)
+    components.path = "/auth/desktop/refresh"
     components.query = nil
     guard let url = components.url else { throw DesktopAuthenticationError.invalidWebAppURL }
     return url
@@ -208,5 +234,6 @@ public protocol AuthTicketStoring: Sendable {
 public protocol DesktopAuthenticating: AnyObject {
   func validTicket(for webAppURL: URL) async throws -> AuthTicket?
   func authenticate(webAppURL: URL) async throws -> AuthTicket
+  func refreshTicket(for webAppURL: URL) async throws -> AuthTicket?
   func logout(webAppURL: URL) async throws
 }

@@ -103,7 +103,12 @@ extension AppModel {
       do {
         try await Task.sleep(for: .milliseconds(delay))
         guard !Task.isCancelled, let self else { return }
-        let refreshedTicket = try await self.authenticator.authenticate(webAppURL: webAppURL)
+        let refreshedTicket: AuthTicket
+        if let backgroundTicket = try await self.authenticator.refreshTicket(for: webAppURL) {
+          refreshedTicket = backgroundTicket
+        } else {
+          refreshedTicket = try await self.authenticator.authenticate(webAppURL: webAppURL)
+        }
         var configuration = baseConfiguration
         configuration.websocketURL = try DesktopAuthURLBuilder.authenticatedWebSocketURL(
           baseURL: baseConfiguration.websocketURL, ticket: refreshedTicket

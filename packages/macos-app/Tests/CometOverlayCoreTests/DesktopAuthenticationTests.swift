@@ -44,6 +44,9 @@ func desktopAuthURLsAreFixedToConfiguredWebOrigin() throws {
   #expect(loginURL.query?.contains("unsafe") == false)
   #expect(loginURL.fragment == nil)
   #expect(exchangeURL.absoluteString == "https://comet.example.com:8443/auth/desktop/token")
+  #expect(
+    try DesktopAuthURLBuilder.refreshURL(webAppURL: webAppURL).absoluteString
+      == "https://comet.example.com:8443/auth/desktop/refresh")
   #expect(logoutURL.absoluteString == "https://comet.example.com:8443/auth/logout?desktop=1")
   #expect(try DesktopAuthURLBuilder.origin(for: webAppURL) == "https://comet.example.com:8443")
 }
@@ -129,4 +132,31 @@ func authTicketUsesRefreshLeeway() {
   #expect(ticket.isValid(at: now))
   #expect(!ticket.isValid(at: now.addingTimeInterval(11)))
   #expect(ticket.isValid(at: now.addingTimeInterval(11), refreshLeewayMilliseconds: 0))
+}
+
+@Test
+func authTicketTracksItsIndependentRefreshCredential() {
+  let now = Date(timeIntervalSince1970: 1_000)
+  let ticket = AuthTicket(
+    token: "ticket",
+    expiresAt: 1_010_000,
+    refreshToken: "refresh-token-with-sufficient-length",
+    refreshExpiresAt: 2_000_000
+  )
+
+  #expect(!ticket.isValid(at: now))
+  #expect(ticket.canRefresh(at: now))
+  #expect(!ticket.canRefresh(at: Date(timeIntervalSince1970: 2_000)))
+}
+
+@Test
+func authTicketDecodesLegacyKeychainDataWithoutRefreshCredential() throws {
+  let ticket = try JSONDecoder().decode(
+    AuthTicket.self,
+    from: Data(#"{"token":"legacy-ticket","expiresAt":1070000}"#.utf8)
+  )
+
+  #expect(ticket.token == "legacy-ticket")
+  #expect(ticket.refreshToken == nil)
+  #expect(!ticket.canRefresh(at: Date(timeIntervalSince1970: 1_000)))
 }
