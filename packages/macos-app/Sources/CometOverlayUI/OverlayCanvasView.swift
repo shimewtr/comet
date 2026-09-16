@@ -57,27 +57,27 @@ private struct CommentOverlayView: View {
       .foregroundStyle(Color(hex: item.comment.style.color))
       .shadow(color: .black.opacity(0.9), radius: 2, x: 1, y: 1)
       .opacity(settings.commentOpacity)
+    let animatedText = text.modifier(CommentEffect(animation: item.comment.style.animation))
 
     Group {
       switch item.placement {
       case .scrolling:
-        text
+        animatedText
           .fixedSize()
           .position(
             x: hasStarted ? -estimatedWidth / 2 : canvasSize.width + estimatedWidth / 2,
             y: scrollingY(fontSize: fontSize)
           )
       case .fixedTop:
-        text.position(
+        animatedText.position(
           x: canvasSize.width / 2,
           y: max(verticalBounds.lowerBound + fontSize / 2, canvasSize.height * 0.08)
         )
       case .fixedBottom:
-        text
+        animatedText
           .position(x: canvasSize.width / 2, y: verticalBounds.upperBound - fontSize / 2)
       }
     }
-    .modifier(CommentEffect(animation: item.comment.style.animation))
     .opacity(item.placement == .scrolling && !isVisible ? 0 : 1)
     .task {
       guard item.placement == .scrolling else { return }
