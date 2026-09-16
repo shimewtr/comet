@@ -80,8 +80,8 @@
   transition: all $transition-base;
 
   &:hover {
-    background-color: $color-primary-soft;
-    color: $color-primary;
+    background-color: $color-bg-lighter;
+    color: $color-text-secondary;
   }
 
   &:active {

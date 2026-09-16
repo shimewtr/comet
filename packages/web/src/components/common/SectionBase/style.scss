@@ -28,7 +28,11 @@
   .section-content {
     display: flex;
     flex-direction: column;
-    padding: $space-md 0 0;
     gap: $space-md;
+  }
+
+  // 見出しがあるときだけ、見出しとの間を空ける
+  .section-header + .section-content {
+    padding-top: $space-md;
   }
 }

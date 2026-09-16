@@ -5,6 +5,9 @@ import { StatusToast } from './components/StatusToast';
 import { StampPicker } from './components/StampPicker';
 import { useWebSocket } from './hooks/useWebSocket';
 import { RoomSelector } from './components/RoomSelector';
+import { HeaderMenu } from './components/HeaderMenu';
+import { CustomStampManager } from './components/CustomStampManager';
+import { useCustomStamps } from './hooks/useCustomStamps';
 import type { CommentStyle, Stamp } from '@comet/shared';
 import './App.scss';
 import { HistoryPage } from './components/HistoryPage';
@@ -40,6 +43,10 @@ function LiveApp() {
   } = useWebSocket();
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const prevConnectedRef = useRef<boolean>(isConnected);
+  // カスタムスタンプはパレット（表示）とヘッダーの管理メニュー（編集）の両方で使う
+  const { customStamps, uploading, deleteStamp, uploadStamp } =
+    useCustomStamps();
+  const [isStampManagerOpen, setStampManagerOpen] = useState(false);
 
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
@@ -84,15 +91,27 @@ function LiveApp() {
             Comet
           </h1>
 
-          <RoomSelector
-            rooms={rooms}
-            currentRoom={currentRoom}
-            connected={isConnected}
-            disabled={!isConnected || isJoiningRoom}
-            onJoin={joinRoom}
-            onCreate={createRoom}
-            onRefresh={refreshRooms}
-          />
+          <div className="app-header-actions">
+            <RoomSelector
+              rooms={rooms}
+              currentRoom={currentRoom}
+              connected={isConnected}
+              disabled={!isConnected || isJoiningRoom}
+              onJoin={joinRoom}
+              onCreate={createRoom}
+              onRefresh={refreshRooms}
+            />
+            {/* 履歴への導線と管理系の操作は「…」メニューに逃がす（小さい端末では非表示） */}
+            <HeaderMenu
+              items={[
+                { label: '履歴を見る', href: '/history' },
+                {
+                  label: 'カスタムスタンプを管理',
+                  onSelect: () => setStampManagerOpen(true),
+                },
+              ]}
+            />
+          </div>
         </div>
       </header>
 
@@ -106,6 +125,7 @@ function LiveApp() {
 
             <div className="stamp-section">
               <StampPicker
+                customStamps={customStamps}
                 onSelectStamp={handleStampSelect}
                 disabled={!isConnected || isJoiningRoom}
               />
@@ -120,6 +140,14 @@ function LiveApp() {
 
       <AppFooter />
       {toast && <StatusToast message={toast.message} onReconnect={reconnect} />}
+      <CustomStampManager
+        isOpen={isStampManagerOpen}
+        onClose={() => setStampManagerOpen(false)}
+        customStamps={customStamps}
+        uploading={uploading}
+        onDeleteStamp={deleteStamp}
+        onUploadStamp={uploadStamp}
+      />
     </div>
   );
 }
@@ -131,11 +159,7 @@ function App() {
         <header className="app-header">
           <div className="app-header-inner">
             <span className="app-title">
-              <img
-                className="comet-icon"
-                src={cometIconUrl}
-                alt="Comet Icon"
-              />
+              <img className="comet-icon" src={cometIconUrl} alt="Comet Icon" />
               Comet
             </span>
           </div>

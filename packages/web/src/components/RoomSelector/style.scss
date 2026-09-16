@@ -1,11 +1,12 @@
-// ヘッダー(白背景)上に載せるためのトーン。ホバーは淡いブルーで示す
+// ヘッダー(白背景)上に載せるためのトーン。ホバーは淡いグレーで示す
 $toolbar-bg: $color-bg-white;
-$toolbar-bg-hover: $color-primary-soft;
+$toolbar-bg-hover: $color-bg-light;
 $toolbar-border: $color-border;
 $toolbar-border-hover: $color-border-light;
 $toolbar-text: $color-text-primary;
 $toolbar-text-muted: $color-text-muted;
 $toolbar-height: 36px;
+$toolbar-height-compact: 32px; // モバイルのヘッダーを低く保つためのピル高さ
 $color-online: #48bb78;
 
 .room-toolbar {
@@ -94,6 +95,7 @@ $color-online: #48bb78;
     color: $toolbar-text;
     font-size: $font-sm;
     font-family: inherit;
+    text-overflow: ellipsis; // 幅が足りないときはプレースホルダーも「…」で切る
 
     &::placeholder {
       color: $toolbar-text-muted;
@@ -155,7 +157,7 @@ $color-online: #48bb78;
 
     &:hover:not(:disabled) {
       background-color: $toolbar-bg-hover;
-      color: $color-primary;
+      color: $toolbar-text;
     }
 
     &:hover:not(:disabled) svg {
@@ -190,48 +192,41 @@ $color-online: #48bb78;
       background-color: $color-primary-dark;
     }
 
-    // 無効時は有効時（ブルー）と見分けがつくグレーにする
+    // 無効時はブルーのまま透過させて示す
     &:disabled {
-      background-color: $color-bg-lighter;
-      color: $color-text-disabled;
       cursor: not-allowed;
+      opacity: $opacity-disabled-primary;
     }
   }
 
-  .room-history-link {
-    display: flex;
-    align-items: center;
-    height: $toolbar-height;
-    padding: 0 $space-md;
-    border: $border-width-thin solid $toolbar-border;
-    border-radius: 999px;
-    background-color: $toolbar-bg;
-    color: $toolbar-text;
-    font-weight: $font-semibold;
-    font-size: $font-sm;
-    white-space: nowrap;
-    transition:
-      border-color $transition-base,
-      background-color $transition-base,
-      color $transition-base;
-
-    &:hover {
-      border-color: $color-primary;
-      background-color: $toolbar-bg-hover;
-      color: $color-primary-dark;
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: $shadow-focus;
-    }
-  }
-
+  // モバイルはロゴと同じ行に収めるため、「Room」の文字を隠してドットだけ残す
   @media (max-width: $breakpoint-sm) {
-    width: 100%;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
 
     .room-toolbar-group {
       flex: 1 1 auto;
+      height: $toolbar-height-compact;
+    }
+
+    .room-toolbar-label {
+      padding: 0 $space-xs 0 12px;
+    }
+
+    .room-toolbar-label-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    .room-icon-button {
+      width: $toolbar-height-compact;
     }
 
     select {

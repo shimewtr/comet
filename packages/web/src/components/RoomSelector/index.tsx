@@ -18,7 +18,7 @@ const CREATE_OPTION = '__create__';
 
 /**
  * ヘッダーに収まるRoom操作ツールバー
- * Roomの切り替えと新規作成を1つのプルダウンにまとめ、履歴への導線を添える
+ * Roomの切り替えと新規作成を1つのプルダウンにまとめる
  */
 export function RoomSelector({
   rooms,
@@ -63,7 +63,8 @@ export function RoomSelector({
             title={connected ? '接続中' : '未接続'}
             aria-hidden="true"
           />
-          Room
+          {/* モバイルでは文字を視覚的に隠し、ラベルとしての読み上げだけ残す */}
+          <span className="room-toolbar-label-text">Room</span>
         </label>
 
         {isCreating ? (
@@ -128,10 +129,6 @@ export function RoomSelector({
           </>
         )}
       </div>
-
-      <a className="room-history-link" href="/history">
-        履歴
-      </a>
     </div>
   );
 }

@@ -100,9 +100,9 @@
   }
 
   &:hover {
-    border-color: $color-primary;
-    background-color: $color-primary-soft;
-    color: $color-primary-dark;
+    border-color: $color-border-light;
+    background-color: $color-bg-lighter;
+    color: $color-text-primary;
   }
 
   .file-input-hidden:disabled ~ & {
@@ -155,8 +155,8 @@
   color: $color-text-secondary;
 
   &:hover:not(:disabled) {
-    background-color: $color-primary-soft;
-    color: $color-primary-dark;
+    background-color: $color-bg-lighter;
+    color: $color-text-primary;
   }
 }
 
@@ -166,5 +166,10 @@
 
   &:hover:not(:disabled) {
     background-color: $color-primary-dark;
+  }
+
+  // Primary ボタンの無効時は共通で透過 56%
+  &:disabled {
+    opacity: $opacity-disabled-primary;
   }
 }

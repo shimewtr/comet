@@ -1,3 +1,10 @@
 export { CopyIcon } from './CopyIcon';
 export { CheckIcon } from './CheckIcon';
 export { RefreshIcon } from './RefreshIcon';
+export { PencilIcon } from './PencilIcon';
+export { MoreIcon } from './MoreIcon';
+export { TextSizeIcon } from './TextSizeIcon';
+export { SpeedIcon } from './SpeedIcon';
+export { SparklesIcon } from './SparklesIcon';
+export { BoltIcon } from './BoltIcon';
+export { ClearFormatIcon } from './ClearFormatIcon';

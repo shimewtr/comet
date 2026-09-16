@@ -12,6 +12,11 @@
 .stamp-dialog-container {
   width: 100%;
   max-width: 560px;
+
+  // パレット編集ダイアログ
+  &.is-wide {
+    max-width: 640px;
+  }
 }
 
 .stamp-manage-dialog {
@@ -78,8 +83,8 @@
     color: $color-text-secondary;
 
     &:hover {
-      background-color: $color-primary-soft;
-      color: $color-primary-dark;
+      background-color: $color-bg-lighter;
+      color: $color-text-primary;
     }
   }
 }

@@ -1,14 +1,53 @@
+// 枠線の内側に接する要素の角丸。外側の角丸から枠線の太さを引いた値にすると隙間が出ない
+$radius-inner: calc(#{$radius-md} - #{$border-width});
+// 幅の狭い端末でのチップの高さ
+$chip-height-compact: 28px;
+// さらに狭い端末（小型スマホ）。チップの隙間を詰めて設定行を 1 行に収める
+$breakpoint-xs: 400px;
+
 .comment-form {
   display: flex;
   flex-direction: column;
   gap: $space-md;
 
+  // 入力欄・設定チップ・ツールバーをひとつの枠にまとめる、エディタ風のブロック。
+  // 枠線とフォーカス表示はこちらが持ち、書く面（入力欄）は白、道具の面（設定行・ツールバー）は
+  // 淡いグレーと面を分けて、役割の違いが分かるようにする
+  // メニューを枠の外にはみ出させたいので overflow は切らず、上下の帯の角を枠の内側の角丸に合わせる
+  .comment-composer {
+    display: flex;
+    flex-direction: column;
+    border: $border-width solid $color-border;
+    border-radius: $radius-md;
+    background-color: $color-bg-white;
+    transition:
+      border-color $transition-base,
+      box-shadow $transition-base;
+
+    // 設定やツールバーの操作では光らせず、入力欄そのものにフォーカスがあるときだけ枠を強調する
+    &:has(.comment-input:focus) {
+      border-color: $color-primary;
+      box-shadow: $shadow-focus;
+    }
+  }
+
+  // 上段: 今の職人設定を 1 個ずつチップで並べる行。右端に「…」メニュー
+  .composer-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: $space-sm;
+    gap: $space-xs;
+    border-bottom: $border-width-thin solid $color-border;
+    border-radius: $radius-inner $radius-inner 0 0;
+    background-color: $color-bg-light;
+  }
+
   .comment-preview {
     position: relative;
     height: 100px;
     overflow: hidden;
-    border: $border-width-thin solid $color-border;
-    border-radius: $radius-md;
+    border-bottom: $border-width-thin solid $color-border;
     background:
       linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)),
       #101522;
@@ -59,279 +98,380 @@
     animation: comment-preview-shake 0.8s linear infinite;
   }
 
-  .form-row {
+  // 設定行の右端のリセットボタン。丸いアイコンボタン
+  .composer-reset {
     display: flex;
-    flex-direction: column;
-    gap: $space-md;
-
-    @media (max-width: $breakpoint-sm) {
-      gap: $space-sm;
-    }
-  }
-
-  // 職人設定: 色・サイズ・速度・アニメーション・盛り上げモードの折りたたみ
-  .artisan-settings {
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: $button-height-sm;
+    height: $button-height-sm;
+    margin-left: auto;
+    padding: 0;
     border: $border-width-thin solid $color-border;
-    border-radius: $radius-md;
-    background-color: $color-bg-light;
+    border-radius: 999px;
+    background-color: $color-bg-white;
+    color: $color-text-muted;
+    cursor: pointer;
+    transition:
+      border-color $transition-base,
+      background-color $transition-base,
+      color $transition-base,
+      opacity $transition-base;
 
-    .artisan-settings-summary {
-      display: flex;
-      align-items: center;
-      padding: $space-sm $space-md;
-      gap: $space-sm;
-      color: $color-text-secondary;
-      font-weight: $font-semibold;
-      font-size: $font-sm;
-      list-style: none;
-      cursor: pointer;
-      user-select: none;
-
-      &::-webkit-details-marker {
-        display: none;
-      }
-
-      &::before {
-        display: inline-block;
-        width: 0.4em;
-        height: 0.4em;
-        transform: rotate(-45deg);
-        border-right: $border-width solid currentColor;
-        border-bottom: $border-width solid currentColor;
-        content: '';
-        transition: transform $transition-base;
-      }
-
-      &:hover {
-        color: $color-text-primary;
-      }
-
-      &:focus-visible {
-        border-radius: $radius-md;
-        outline: $border-width solid $color-primary;
-        outline-offset: -$border-width;
-      }
-    }
-
-    &[open] .artisan-settings-summary::before {
-      transform: rotate(45deg);
-    }
-
-    > .form-row {
-      padding: 0 $space-md $space-md;
-    }
-  }
-
-  // コメント投稿がこの画面のメイン機能なので、入力欄と送信ボタンはひと回り大きくする
-  .comment-input-row {
-    display: flex;
-    align-items: stretch;
-    gap: $space-md;
-
-    @media (max-width: $breakpoint-sm) {
-      gap: $space-sm;
-    }
-
-    .comment-input {
-      flex: 1;
-      min-width: 0;
-    }
-  }
-
-  .form-group {
-    label {
-      display: block;
-      margin-bottom: $space-sm;
-      color: $color-text-primary;
-      font-weight: $font-semibold;
-      font-size: $font-sm;
-    }
-
-    .toggle-label {
-      display: flex;
-      align-items: center;
-      gap: $space-sm;
-      cursor: pointer;
-      user-select: none;
-
-      input[type='checkbox'] {
-        width: 18px;
-        height: 18px;
-        accent-color: $color-primary;
-        cursor: pointer;
-      }
-    }
-
-    &.persist-toggle {
-      padding-top: $space-sm;
-      border-top: $border-width-thin solid $color-border;
-
-      .toggle-label {
-        margin-bottom: 0;
-        color: $color-text-primary;
-        font-weight: $font-semibold;
-        font-size: $font-sm;
-      }
-
-      .persist-hint {
-        margin: $space-xs 0 0;
-        color: $color-text-muted;
-        font-size: $font-xs;
-      }
-    }
-
-    .comment-input {
-      box-sizing: border-box;
-      width: 100%;
-      min-height: $button-height-lg;
-      padding: $space-sm $space-md;
-      border: $border-width solid $color-border;
-      border-radius: $radius-md;
+    &:hover:not(:disabled) {
+      border-color: $color-border-light;
       background-color: $color-bg-light;
       color: $color-text-primary;
-      font-size: $font-lg;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: $shadow-focus;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: $opacity-disabled;
+    }
+  }
+
+  .persist-chip {
+    display: inline-flex;
+    align-items: center;
+    height: $button-height-sm;
+    padding: 0 $space-sm;
+    gap: $space-xs;
+    border: $border-width-thin solid $color-border;
+    border-radius: 999px;
+    background-color: $color-bg-white;
+    color: $color-text-secondary;
+    font-size: $font-xs;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: $color-primary;
+    }
+
+    &:has(input:focus-visible) {
+      box-shadow: $shadow-focus;
+    }
+  }
+
+  // チップから開くドロップダウンメニュー
+  .setting-menu-list {
+    z-index: $z-dropdown;
+    position: absolute;
+    top: calc(100% + #{$space-xs});
+    left: 0;
+    width: max-content;
+    min-width: 160px;
+    max-width: min(300px, calc(100vw - #{$space-md} * 2));
+    padding: $space-xs;
+    border: $border-width-thin solid $color-border;
+    border-radius: $radius-lg;
+    background-color: $color-bg-white;
+    box-shadow: $shadow-md;
+  }
+
+  .setting-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: $space-sm $space-md;
+    gap: $space-sm;
+    border: 0;
+    border-radius: $radius-md;
+    background-color: transparent;
+    color: $color-text-primary;
+    font-weight: $font-semibold;
+    font-size: $font-sm;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color $transition-base,
+      color $transition-base;
+
+    &:hover,
+    &:focus-visible {
+      outline: none;
+      background-color: $color-bg-light;
+      color: $color-text-primary;
+    }
+  }
+
+  // 選択中の印。選ばれていない項目でも幅を確保して文字の位置を揃える
+  .setting-menu-check {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 1.25rem;
+    color: $color-primary;
+  }
+
+  // チップの上に出すツールチップ。何の設定かを示す。ホバーとキーボードフォーカスで少し遅れて出し、
+  // メニューを開いている間は邪魔なので出さない
+  [data-tooltip] {
+    position: relative;
+
+    &::before {
+      z-index: $z-dropdown;
+      position: absolute;
+      bottom: calc(100% + #{$space-xs});
+      left: 50%;
+      padding: $space-xs $space-sm;
+      transform: translate(-50%, 2px);
+      border-radius: $radius-sm;
+      background-color: $color-text-primary;
+      content: attr(data-tooltip);
+      color: $color-bg-white;
+      font-weight: $font-medium;
+      font-size: $font-xs;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
       transition:
-        border-color $transition-base,
-        background-color $transition-base,
-        box-shadow $transition-base;
-
-      @media (max-width: $breakpoint-sm) {
-        min-height: $button-height-md;
-        padding: $space-sm;
-        font-size: $font-md;
-      }
-
-      &::placeholder {
-        color: $color-text-muted;
-      }
-
-      &:focus {
-        border-color: $color-primary;
-        outline: none;
-        background-color: $color-bg-white;
-        box-shadow: $shadow-focus;
-      }
-
-      &:disabled {
-        background-color: $color-bg-lighter;
-        color: $color-text-disabled;
-        cursor: not-allowed;
-      }
+        opacity $transition-base,
+        transform $transition-base;
     }
 
-    .color-picker {
-      display: flex;
-      flex-wrap: wrap;
-      gap: $space-sm;
-
-      .color-button {
-        width: $button-width-sm;
-        height: $button-height-sm;
-        padding: 0;
-        border: $border-width solid $color-border;
-        border-radius: $radius-sm;
-        cursor: pointer;
-        transition: all $transition-base;
-
-        &.selected {
-          border: 3px solid $color-primary;
-          box-shadow: $shadow-focus;
-        }
-
-        &:hover:not(:disabled) {
-          box-shadow: $shadow-md;
-          opacity: $opacity-hover;
-        }
-
-        &:disabled {
-          cursor: not-allowed;
-          opacity: $opacity-disabled;
-        }
-      }
+    &:hover::before,
+    &:focus-visible::before {
+      transform: translate(-50%, 0);
+      opacity: 1;
+      transition-delay: 0.3s;
     }
 
-    .size-picker,
-    .speed-picker,
-    .animation-picker {
-      display: flex;
-      gap: $space-sm;
+    &[aria-expanded='true']::before {
+      opacity: 0;
+    }
+  }
 
-      .size-button,
-      .speed-button,
-      .animation-button {
-        flex: 1;
-        padding: $space-sm 0;
-        border: $border-width solid $color-border;
-        border-radius: $radius-sm;
-        background-color: $color-bg-white;
-        color: $color-text-secondary;
-        font-weight: $font-medium;
-        font-size: $font-sm;
-        cursor: pointer;
-        transition: all $transition-base;
+  // 設定チップと盛り上げモードのトグル。丸いピル型で、押すと選択肢が下に開く
+  .setting-chip,
+  .danmaku-chip {
+    display: inline-flex;
+    align-items: center;
+    height: $button-height-sm;
+    padding: 0 $space-sm;
+    gap: $space-xs;
+    border: $border-width-thin solid $color-border;
+    border-radius: 999px;
+    background-color: $color-bg-white;
+    color: $color-text-primary;
+    font-size: $font-sm;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      border-color $transition-base,
+      background-color $transition-base,
+      color $transition-base;
 
-        &:hover:not(:disabled) {
-          border-color: $color-border-light;
-          background-color: $color-primary-soft;
-          color: $color-primary-dark;
-        }
+    // ホバーはグレーで控えめに。開いている／選んでいる状態だけブルーで示す
+    &:hover:not(:disabled) {
+      border-color: $color-border-light;
+      background-color: $color-bg-light;
+      color: $color-text-primary;
+    }
 
-        &:disabled {
-          cursor: not-allowed;
-          opacity: $opacity-disabled;
-        }
+    &[aria-expanded='true'],
+    &[aria-pressed='true'] {
+      border-color: $color-primary;
+      background-color: $color-primary-soft;
+      color: $color-primary-dark;
+    }
 
-        // 選択中は淡いブルー背景＋ブルーの枠と文字で示す
-        &.selected {
-          border-color: $color-primary;
-          background-color: $color-primary-soft;
-          color: $color-primary-dark;
+    &:focus-visible {
+      outline: none;
+      box-shadow: $shadow-focus;
+    }
 
-          &:hover {
-            border-color: $color-primary;
-            background-color: $color-primary-soft;
-            color: $color-primary-dark;
-          }
-        }
-      }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: $opacity-disabled;
+    }
+  }
+
+  .setting-menu {
+    position: relative;
+  }
+
+  // 色の見本。チップでは今の色の四角として、メニューでは選択肢の頭に小さく使う
+  .setting-swatch {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border: $border-width-thin solid $color-border;
+    border-radius: 50%;
+  }
+
+  .setting-chip .setting-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: $radius-sm;
+  }
+
+  // 開閉の矢印は付けない。押せることはホバー表示とツールチップ、開いたメニューで伝える
+  .setting-chip {
+    .setting-chip-icon {
+      display: inline-flex;
+      align-items: center;
+      color: $color-text-muted;
+    }
+
+    &:hover:not(:disabled) .setting-chip-icon,
+    &[aria-expanded='true'] .setting-chip-icon {
+      color: inherit;
+    }
+
+    .setting-chip-value {
+      display: inline-flex;
+      align-items: center;
+      gap: $space-xs;
+      font-weight: $font-semibold;
+    }
+  }
+
+  // 盛り上げモードはアイコンだけの丸ボタン
+  .danmaku-chip {
+    justify-content: center;
+    width: $button-height-sm;
+    padding: 0;
+    color: $color-text-muted;
+  }
+
+  // 下段: 入力欄と送信ボタンを同じ行に並べる。枠線は .comment-composer 側で描く。
+  // 白い「書く面」の背景は行全体で持ち、送信ボタンの後ろまで同じ面に見せる。
+  // 無効時のグレーも行全体に敷く
+  // 送信ボタンの上下右の余白は $space-sm でそろえ、上段の設定行のチップ周りと同じにする
+  .composer-input-row {
+    display: flex;
+    align-items: stretch;
+    padding: $space-sm $space-sm $space-sm 0;
+    gap: $space-sm;
+    border-radius: 0 0 $radius-inner $radius-inner;
+    background-color: $color-bg-white;
+    transition: background-color $transition-base;
+
+    &:has(.comment-input:disabled) {
+      background-color: $color-bg-lighter;
+    }
+  }
+
+  // コメント投稿がこの画面のメイン機能なので、入力欄はひと回り大きくする
+  .comment-input {
+    box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
+    min-height: $button-height-md; // 送信ボタンと同じ高さ。行の余白ぶんで全体はひと回り大きくなる
+    padding: 0 $space-md;
+    border: 0;
+    background-color: transparent;
+    color: $color-text-primary;
+    font-size: $font-lg;
+
+    @media (max-width: $breakpoint-sm) {
+      min-height: $button-height-sm;
+      padding: 0 $space-sm;
+      font-size: $font-md;
+    }
+
+    &::placeholder {
+      color: $color-text-muted;
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:disabled {
+      color: $color-text-disabled;
+      cursor: not-allowed;
     }
   }
 
   .submit-button {
     flex-shrink: 0;
-    min-width: $button-width-lg;
-    min-height: $button-height-lg;
+    min-width: $button-width-md;
+    min-height: $button-height-md;
     padding: $space-sm $space-lg;
     border: none;
     border-radius: $radius-md;
     background-color: $color-primary;
     color: $color-bg-white;
     font-weight: $font-semibold;
-    font-size: $font-lg;
+    font-size: $font-md;
     white-space: nowrap;
 
+    // 幅の狭い端末では入力欄の高さに合わせて小さくする
     @media (max-width: $breakpoint-sm) {
-      min-width: $button-width-md;
-      min-height: $button-height-md;
-      padding: $space-sm $space-md;
-      font-size: $font-md;
+      min-width: 0;
+      min-height: $button-height-sm;
+      padding: $space-xs $space-md;
+      font-size: $font-sm;
     }
     cursor: pointer;
     transition:
       transform $transition-base,
       background-color $transition-base,
-      box-shadow $transition-base;
+      box-shadow $transition-base,
+      opacity $transition-base;
 
     &:hover:not(:disabled) {
       background-color: $color-primary-dark;
     }
 
-    // 無効時は有効時（ブルー＋白文字）と見分けがつくグレーにする
+    // 無効時はブルーのまま透過させて示す
     &:disabled {
       transform: none;
-      background-color: $color-bg-lighter;
-      color: $color-text-disabled;
       cursor: not-allowed;
+      opacity: $opacity-disabled-primary;
+    }
+  }
+
+  // 幅の狭い端末では、チップ・盛り上げモード・リセットを一回り小さくして設定行を 1 行に収める
+  @media (max-width: $breakpoint-sm) {
+    .setting-chip,
+    .danmaku-chip,
+    .persist-chip,
+    .composer-reset {
+      height: $chip-height-compact;
+      font-size: $font-xs;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    .setting-chip {
+      padding: 0 6px;
+      gap: 3px;
+
+      .setting-swatch {
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    .danmaku-chip,
+    .composer-reset {
+      width: $chip-height-compact;
+    }
+  }
+
+  @media (max-width: $breakpoint-xs) {
+    .composer-settings {
+      gap: 3px;
     }
   }
 }

@@ -1,29 +1,26 @@
 .stamp-picker {
+  // ---- よく使うスタンプのパレット ----
+  // 左右の余白は全体ピッカーの内側余白（--epr-horizontal-padding = 10px）と揃える
+  $stamp-content-inset: 10px;
+  // パレットのボタンの一辺。スタンプ送信はメイン機能なので、デスクトップではひと回り大きくして
+  // 絵文字（32px）の周りの余白も広く取る。モバイル幅は 1 行に収まる数を優先して 48px
+  $stamp-palette-cell: 56px;
+  $stamp-palette-cell-mobile: 48px;
   .section-content {
     min-height: 200px;
     padding: 0;
   }
 
-  .stamp-section-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: $space-md;
-  }
-
-  .stamp-section-actions {
-    display: flex;
-    gap: $space-xs;
-  }
-
-  .stamp-header-button {
-    padding: $space-xs $space-sm;
+  // 編集ダイアログの操作ボタン。通常のボタンと同じ大きさで置く
+  .palette-editor-button {
+    min-height: $button-height-sm;
+    padding: $space-xs 12px;
     border: $border-width-thin solid $color-border;
-    border-radius: $radius-sm;
+    border-radius: $radius-md;
     background-color: $color-bg-white;
     color: $color-text-secondary;
     font-weight: $font-semibold;
-    font-size: $font-xs;
+    font-size: $font-sm;
     white-space: nowrap;
     transition:
       border-color $transition-base,
@@ -31,9 +28,9 @@
       color $transition-base;
 
     &:hover:not(:disabled) {
-      border-color: $color-primary;
-      background-color: $color-primary-soft;
-      color: $color-primary-dark;
+      border-color: $color-border-light;
+      background-color: $color-bg-light;
+      color: $color-text-primary;
     }
 
     &:focus-visible {
@@ -47,17 +44,253 @@
     }
   }
 
-  // 歯車などアイコンだけのヘッダーボタン。テキストボタンと高さを揃えて正方形にする
-  .stamp-header-icon-button {
-    display: inline-flex;
+  // 主操作（「保存」）はブルーの塗りと少し広い左右余白で目立たせる
+  .palette-editor-button.is-primary {
+    padding-right: $space-md;
+    padding-left: $space-md;
+    border-color: $color-primary;
+    background-color: $color-primary;
+    box-shadow: $shadow-sm;
+    color: $color-bg-white;
+
+    &:hover:not(:disabled) {
+      border-color: $color-primary-dark;
+      background-color: $color-primary-dark;
+      color: $color-bg-white;
+    }
+  }
+
+  .stamp-palette-area {
+    display: flex;
+    flex-direction: column;
+    padding: $space-md $stamp-content-inset $space-sm;
+    gap: $space-sm;
+  }
+
+  // 列は auto-fill で敷き詰め、余った幅はタイル自身に均等に配る（一辺は $stamp-palette-cell 以上、正方形）。
+  // 間隔は縦横とも gap の 8px で揃い、1 行が埋まったとき右端がコメント入力欄の右端と揃う
+  .stamp-palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax($stamp-palette-cell, 1fr));
+    gap: $space-sm;
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: repeat(
+        auto-fill,
+        minmax($stamp-palette-cell-mobile, 1fr)
+      );
+    }
+  }
+
+  // パレットのスタンプは薄い枠線だけで、背景の塗りと影は持たない。
+  // ホバー時は枠線が濃くなるだけにして、浮き上がりや色付きは付けない
+  .stamp-palette-button {
+    display: flex;
+    position: relative;
     align-items: center;
     justify-content: center;
     aspect-ratio: 1;
-    padding: $space-xs;
+    // 大きさはグリッドの列幅に従う（正方形）。最小値は grid-template-columns 側で決める
+    width: 100%;
+    padding: 0;
+    border: $border-width-thin solid $color-border;
+    border-radius: $radius-md;
+    background-color: transparent;
+    font-size: 32px;
+    line-height: 1;
+    transition:
+      border-color $transition-fast,
+      box-shadow $transition-fast;
+
+    img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    &:hover {
+      border-color: $color-border-light;
+    }
+
+    &:focus-visible {
+      border-color: $color-primary;
+      outline: none;
+      box-shadow: $shadow-focus;
+    }
+  }
+
+  // 末尾の鉛筆タイル。スタンプではないので破線と補助テキスト色で控えめにする
+  .stamp-palette-edit {
+    border-style: dashed;
+    border-color: $color-border;
+    background-color: transparent;
+    color: $color-text-muted;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: $color-text-primary;
+    }
+
+    // 編集パネルを開いている間は押下状態にする
+    &[aria-pressed='true'] {
+      border-style: solid;
+      border-color: $color-primary;
+      background-color: $color-primary-soft;
+      color: $color-primary;
+    }
+  }
+
+  // 編集中は「外す」操作だと分かるよう、破線の枠と右上の × を出す。
+  // ドラッグで並び替えるので、指でなぞったときにページがスクロールしないようにする
+  .stamp-palette.is-editing .stamp-palette-button:not(.stamp-palette-edit) {
+    border-style: dashed;
+    border-color: $color-border;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  // ドラッグ中のタイルはポインタに追従して浮かせる。位置は inline style の transform で動かす。
+  // 周りのタイルはライブ並び替えの FLIP（inline の transition）で滑る
+  .stamp-palette-button.is-dragged {
+    z-index: $z-default + 1;
+    box-shadow: $shadow-lg;
+    cursor: grabbing;
+    opacity: 0.92;
+    pointer-events: none;
+  }
+
+  .stamp-palette.is-dragging .stamp-palette-button {
+    cursor: grabbing;
+  }
+
+  // 推奨上限（30個）を超えた位置のスタンプ。編集中に赤く示し、外すか前へ動かすよう促す
+  .stamp-palette.is-editing .stamp-palette-button.is-over-limit {
+    border-color: $color-error-border;
+    background-color: $color-error-bg;
+  }
+
+  // パレット直下の件数（n/30）。上限を超えたら赤くする
+  .stamp-palette-count {
+    margin: 0;
+    color: $color-text-muted;
+    font-weight: $font-semibold;
+    font-size: $font-sm;
+    font-variant-numeric: tabular-nums;
+
+    &.is-over {
+      color: $color-error;
+    }
+  }
+
+  // 外すための × ボタン。見た目は 18px の丸だが、::before で当たり判定を 30px 角まで広げる
+  .stamp-palette-remove {
+    display: flex;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: $border-width solid $color-bg-white;
+    border-radius: 50%;
+    background-color: $color-error;
+    box-shadow: $shadow-sm;
+    color: $color-bg-white;
+    line-height: 0; // 中身は SVG なので行の高さで位置がずれないようにする
+    cursor: pointer;
+    transition: background-color $transition-fast;
 
     svg {
       display: block;
     }
+
+    &::before {
+      position: absolute;
+      inset: -6px;
+      content: '';
+    }
+
+    &:hover {
+      background-color: $color-error-dark;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: $shadow-focus;
+    }
+  }
+
+  // ---- パレット編集ダイアログ（モーダル） ----
+  // 画面上のパレットを直接編集するとレイアウトが動くので、別レイヤーで下書きを編集して「保存」で反映する。
+  // 上の操作行は淡いグレー、パレットと入れ子のピッカーは白の面。高さは画面内に収め、はみ出す分は中でスクロールする
+  .palette-editor {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - #{$space-md * 2});
+    overflow: hidden auto;
+    border-radius: $radius-xl;
+    background-color: $color-bg-white;
+    box-shadow: $shadow-xl;
+  }
+
+  // スマホ幅では編集しない（鉛筆タイルを出さない）。編集はデスクトップで行う
+  @media (max-width: $breakpoint-sm) {
+    .stamp-palette-edit {
+      display: none;
+    }
+  }
+
+  // ダイアログの左右余白は 24px で、中身に少しゆとりを持たせる
+  .stamp-edit-panel-palette {
+    padding: $space-lg $space-lg $space-md; // 下は件数の行とピッカーの箱の間隔になる
+  }
+
+  // パレット直下の行。左に「はじめの状態に戻す」、右に件数
+  .palette-editor-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: $space-sm;
+    gap: $space-sm;
+  }
+
+  // 追加元の全体ピッカー。パレットと並列ではなく、その下に入れ子で置かれた子要素として見せる。
+  // 内側の枠と左右の余白で一段下がった階層にする
+  .stamp-edit-panel-source {
+    padding: 0 $space-lg $space-lg;
+  }
+
+  .stamp-edit-panel-picker {
+    overflow: hidden;
+    border: $border-width-thin solid $color-border;
+    border-radius: $radius-md;
+    background-color: $color-bg-white;
+  }
+
+  // 確定操作（閉じる・保存）の行。ダイアログの下部に置き、右寄せにする
+  .palette-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: $space-sm $space-lg;
+    gap: $space-sm;
+    border-top: $border-width-thin solid $color-border;
+    background-color: $color-bg-light;
+  }
+
+  .stamp-palette-toolbar-actions {
+    display: flex;
+    margin-left: auto;
+    gap: $space-xs;
   }
 }
 
@@ -66,7 +299,7 @@
   --epr-search-input-padding: 0;
   // ピッカー（内側スクロール領域を含む）の高さ。
   // モバイル幅ではページと入れ子のスクロールになるため、低くして区切られたパネルとして見せる
-  --stamp-picker-height: 400px;
+  --stamp-picker-height: 360px;
 
   @media (max-width: $breakpoint-sm) {
     --stamp-picker-height: 300px;
@@ -79,25 +312,22 @@
     border: none;
   }
 
+  // 検索欄。フォーカス時は枠線の色が変わるだけにする（リングや背景の変化は付けない）
   .epr-search-container {
     input {
       padding: 0.625rem $space-md 0.625rem $space-md;
-      transition:
-        border-color $transition-base,
-        background-color $transition-base,
-        box-shadow $transition-base;
-
-      &:focus {
-        box-shadow: $shadow-focus;
-      }
+      transition: border-color $transition-base;
     }
   }
 
   // 検索欄は検索タブ（先頭タブ）を選択中だけ表示する。
-  // 検索語が入力されている間はタブを離れられないので、その間も出し続ける
+  // 検索語が入力されている間はタブを離れられないので、その間も出し続ける。
+  // 検索欄本体だけ隠すと、ライブラリ側の親ラッパー（上下 15px の余白）が空のまま残り、
+  // カテゴリ見出しの上に空白が出るので、ラッパーごと隠す
   .unified-picker:not(.is-search-tab)
     .EmojiPickerReact:not(.epr-search-active)
-    .epr-search-container {
+    .epr-header
+    > :has(.epr-search-container) {
     display: none;
   }
 
@@ -140,9 +370,14 @@
   $emoji-card-inset: $space-xs; // セル内でカードを内側に寄せる量（4px）。隣のカードとの隙間はこの2倍
 
   // タブのアイコンは categoryIcons.tsx の線画（currentColor）。
-  // 未選択は補助テキスト色、ホバー・選択中はブルー＋淡いブルー背景で示す
+  // 未選択は補助テキスト色、ホバーはグレーの背景、選択中はブルーのアイコンと下線で示す
+  @mixin category-tab-hover {
+    background-color: $color-bg-light;
+    color: $color-text-primary;
+  }
+
+  // 選択中はブルーのアイコンと下線だけで示し、背景は付けない
   @mixin category-tab-active {
-    background-color: $color-primary-soft;
     color: $color-primary;
 
     .epr-cat-icon-image {
@@ -173,7 +408,7 @@
     }
 
     &:hover {
-      @include category-tab-active;
+      @include category-tab-hover;
     }
 
     &.epr-active {
@@ -200,7 +435,7 @@
       }
 
       &:hover {
-        @include category-tab-active;
+        @include category-tab-hover;
       }
     }
 
@@ -212,6 +447,12 @@
         @include category-underline;
       }
     }
+  }
+
+  // 「よく使う」カテゴリはパレットと役割が重なるので出さない。
+  // 先頭タブ（この枠）は検索タブとしてだけ使う（UnifiedPicker 参照）
+  li[data-name='suggested'] {
+    display: none;
   }
 
   // カスタムセクションを常に出すためのプレースホルダー（UnifiedPicker 参照）は描画しない
@@ -236,7 +477,7 @@
     )::after {
     display: block;
     padding: $space-sm $space-sm $space-lg;
-    content: 'カスタムスタンプはまだありません。右上の「＋ 追加」から登録できます。';
+    content: 'カスタムスタンプはまだありません。「カスタムスタンプを管理」から登録できます。';
     color: $color-text-muted;
     font-size: $font-sm;
   }
@@ -263,7 +504,7 @@
     --epr-category-icon-active-color: #{$color-primary};
     --epr-highlight-color: #{$color-primary};
     --epr-search-input-bg-color: #{$color-bg-light};
-    --epr-search-input-bg-color-active: #{$color-bg-white};
+    --epr-search-input-bg-color-active: #{$color-bg-light};
     --epr-search-input-text-color: #{$color-text-primary};
     --epr-search-input-placeholder-color: #{$color-text-muted};
     --epr-search-border-color: #{$color-border};
@@ -290,7 +531,11 @@
 
   // 絵文字・カスタムスタンプは押せるボタンだと分かるよう、他のボタンと同じカード状にする。
   // ボタン自体の位置・サイズはライブラリが決めるので、カード本体は ::before で内側に描く
+  // --in-palette はパレット編集中に「すでにパレットにある絵文字」で 1 になる（PaletteEditorDialog が
+  // 対象の data-unified を列挙した <style> を出す）。仮想化で要素が作り直されても CSS だけで追従できる
   .epr-emoji {
+    --in-palette: 0;
+
     overflow: visible;
     isolation: isolate;
     transition: transform $transition-fast;
@@ -300,9 +545,15 @@
       position: absolute;
       inset: $emoji-card-inset;
       border-radius: $radius-md;
-      background-color: $color-bg-light;
+      // 塗りは持たず枠線だけ。選択済みは枠線の色（ブルー）と右上のチェックで示す
+      background-color: transparent;
       box-shadow:
-        inset 0 0 0 $border-width-thin $color-border,
+        inset 0 0 0 $border-width-thin
+          color-mix(
+            in srgb,
+            $color-primary calc(var(--in-palette) * 100%),
+            $color-border
+          ),
         $shadow-sm;
       content: '';
       transition:
@@ -310,14 +561,40 @@
         background-color $transition-fast;
     }
 
+    // 選択済みを示す右上のチェック。--in-palette が 0 のときは見えない
+    &::after {
+      display: flex;
+      position: absolute;
+      top: calc(#{$emoji-card-inset} - 2px);
+      right: calc(#{$emoji-card-inset} - 2px);
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      transform: scale(var(--in-palette));
+      border: $border-width solid $color-bg-white;
+      border-radius: 50%;
+      background-color: $color-primary;
+      content: '✓';
+      color: $color-bg-white;
+      font-weight: $font-bold;
+      font-size: 9px;
+      line-height: 1;
+      opacity: var(--in-palette);
+      pointer-events: none;
+      transition:
+        opacity $transition-fast,
+        transform $transition-fast;
+    }
+
     &:hover,
     &:focus-visible {
       transform: translateY(-1px);
 
       &::before {
-        background-color: $color-primary-soft;
+        background-color: $color-bg-lighter;
         box-shadow:
-          inset 0 0 0 $border-width-thin rgba($color-primary, 0.35),
+          inset 0 0 0 $border-width-thin $color-border-light,
           $shadow-md;
       }
     }
@@ -327,7 +604,7 @@
 
       &::before {
         box-shadow:
-          inset 0 0 0 $border-width-thin rgba($color-primary, 0.35),
+          inset 0 0 0 $border-width-thin $color-border-light,
           $shadow-sm;
       }
     }
@@ -335,17 +612,6 @@
 
   aside {
     width: 100% !important;
-  }
-}
-
-.emoji-picker-fieldset {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-
-  &:disabled {
-    opacity: $opacity-disabled;
   }
 }
 

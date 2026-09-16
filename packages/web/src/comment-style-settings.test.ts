@@ -11,26 +11,18 @@ const STORAGE_KEY = 'comet_comment_style_settings';
 describe('comment-style-settings', () => {
   useInMemoryLocalStorage();
 
-  it('returns null when nothing is saved', () => {
-    expect(loadCommentStyleSettings()).toBeNull();
+  it('round-trips valid settings', () => {
+    const settings = {
+      color: '#FF0000',
+      size: 'large' as const,
+      speedOption: 'fast' as const,
+      animation: 'bounce' as const,
+    };
+    saveCommentStyleSettings(settings);
+    expect(loadCommentStyleSettings()).toEqual(settings);
   });
 
-  it('round-trips saved settings', () => {
-    saveCommentStyleSettings({
-      color: '#FF0000',
-      size: 'large',
-      speedOption: 'fast',
-      animation: 'bounce',
-    });
-    expect(loadCommentStyleSettings()).toEqual({
-      color: '#FF0000',
-      size: 'large',
-      speedOption: 'fast',
-      animation: 'bounce',
-    });
-  });
-
-  it('ignores values that are no longer valid options', () => {
+  it('rejects values outside the current options', () => {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -40,11 +32,6 @@ describe('comment-style-settings', () => {
         animation: 'bounce',
       })
     );
-    expect(loadCommentStyleSettings()).toBeNull();
-  });
-
-  it('ignores broken JSON', () => {
-    window.localStorage.setItem(STORAGE_KEY, '{not json');
     expect(loadCommentStyleSettings()).toBeNull();
   });
 

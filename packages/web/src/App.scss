@@ -1,13 +1,15 @@
+// ヘッダーの高さ。右ペインの固定位置と StatusToast の表示位置で共有する
+$app-header-height: 64px;
+
 .app {
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  // 非表示のツールチップなど、はみ出した絶対配置の装飾でページに横スクロールが生まれないようにする。
+  // clip はスクロールコンテナを作らないので、sticky などの挙動には影響しない
+  overflow-x: clip;
   background-color: $color-page-background;
-
-  @media (max-width: $breakpoint-sm) {
-    padding: $space-sm $space-sm 0;
-  }
 
   // 画面上部に固定されるアプリバー。左にロゴ、右にRoom操作ツールバーを配置する
   .app-header {
@@ -15,7 +17,6 @@
     position: sticky;
     top: 0;
     width: 100%;
-    margin-bottom: $space-lg;
     border-bottom: $border-width-thin solid $color-border;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -24,26 +25,40 @@
 
     @media (max-width: $breakpoint-sm) {
       position: static;
-      margin: -$space-sm (-$space-sm) $space-md;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
 
+    // 左ペインの内側余白（$space-lg）と揃えて、ロゴと入力欄の左端を一直線にする
     .app-header-inner {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      max-width: 1200px;
-      min-height: 64px;
-      margin: 0 auto;
-      padding: $space-sm 0;
+      min-height: $app-header-height;
+      padding: $space-sm $space-lg;
       gap: $space-sm $space-lg;
 
+      // モバイルも1行に収める。「Room」の文字を隠して幅を確保する（RoomSelector側）
       @media (max-width: $breakpoint-sm) {
-        padding: $space-sm $space-sm $space-md;
+        flex-wrap: nowrap;
+        min-height: 0;
+        padding: $space-sm $space-md;
         gap: $space-sm;
+      }
+    }
+
+    // Room 操作と「…」メニューを右側にまとめる
+    .app-header-actions {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: $space-sm;
+
+      @media (max-width: $breakpoint-sm) {
+        flex: 1 1 auto;
+        justify-content: flex-end;
       }
     }
 
@@ -59,7 +74,8 @@
       font-family: 'Space Grotesk', sans-serif;
 
       @media (max-width: $breakpoint-sm) {
-        font-size: $font-xxl;
+        gap: 6px;
+        font-size: $font-xl;
       }
 
       .comet-icon {
@@ -67,63 +83,138 @@
         height: 36px;
 
         @media (max-width: $breakpoint-sm) {
-          width: 30px;
-          height: 30px;
+          width: 26px;
+          height: 26px;
         }
       }
     }
   }
 
+  // ライブ画面はカードを並べず、左「入力（コメント・スタンプ）」右「履歴」の2つの面で構成する
   .app-content {
     display: flex;
+    flex: 1;
     flex-direction: column;
     width: 100%;
-    max-width: 1200px;
-    gap: $space-lg;
   }
 
   .app-content-main {
     display: flex;
+    flex: 1;
     flex-direction: row;
-    max-height: 1200px;
-    gap: $space-lg;
+    align-items: stretch;
+    min-height: 0;
 
     // スマホ幅では縦積みにして、コメント履歴をスタンプの下に表示する
     @media (max-width: $breakpoint-sm) {
       flex-direction: column;
-      max-height: none;
     }
   }
 
+  // 左ペイン：白い面。中身は読みやすい幅（800px）に収める
   .app-main {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
-    width: 100%;
-    max-width: 800px;
-    gap: $space-lg;
-  }
+    min-width: 0;
+    padding: $space-lg;
+    gap: $space-xl;
+    background-color: $color-bg-white;
 
-  .app-aside {
-    display: flex;
-    flex-direction: column;
-    width: 400px;
-    gap: $space-lg;
+    > * {
+      width: 100%;
+      max-width: 800px;
+    }
 
     @media (max-width: $breakpoint-sm) {
-      width: 100%;
+      padding: $space-md;
+      gap: $space-lg;
+    }
+  }
+
+  // 右ペイン：淡いグレーの面。ヘッダー下に固定し、履歴リストだけがペイン内でスクロールする
+  .app-aside {
+    display: flex;
+    flex: 0 0 400px;
+    flex-direction: column;
+    border-left: $border-width-thin solid $color-border;
+    background-color: $color-bg-light;
+
+    // ヘッダーは高さ + 下境界線 1px ぶん占めるので、その直下に固定する
+    > * {
+      position: sticky;
+      top: calc(#{$app-header-height} + #{$border-width-thin});
+      height: calc(100dvh - #{$app-header-height} - #{$border-width-thin});
+    }
+
+    // スマホ幅では入力の下に積む。淡いグレーの面がそのまま区切りになるので、線や固定は付けない
+    @media (max-width: $breakpoint-sm) {
+      flex: 1 1 auto;
+      border-left: 0;
+
+      > * {
+        position: static;
+        height: auto;
+      }
+    }
+  }
+
+  // ペイン内のセクションはカードにせず、見出しの下線だけで区切る
+  .app-main .section-base,
+  .app-aside .section-base {
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  // 見出しを持たないので、パレットの余白はペインの gap に任せる
+  .app-main .stamp-palette-area {
+    padding-top: 0;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .app-aside .section-base {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: $space-lg $space-md;
+
+    @media (max-width: $breakpoint-sm) {
+      padding: $space-md;
+    }
+
+    .section-header {
+      flex: none;
+    }
+
+    .section-content {
+      flex: 1;
+      min-height: 0;
+    }
+  }
+
+  // 履歴リストはペイン内でスクロールする。
+  // スマホ幅では下に積むので、高さを固定して履歴が画面を占領しないようにする
+  .app-aside .comment-history-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+
+    @media (max-width: $breakpoint-sm) {
+      max-height: 320px;
     }
   }
 
   .app-footer {
     margin-top: auto;
-    padding: 160px $space-md $space-xl;
+    padding: $space-lg $space-md;
     color: $color-text-muted;
     font-size: $font-sm;
     text-align: center;
-
-    @media (max-width: $breakpoint-sm) {
-      padding: 50px $space-sm $space-lg;
-    }
 
     a {
       transition: color $transition-base;

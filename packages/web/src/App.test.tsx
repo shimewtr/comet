@@ -16,17 +16,42 @@ vi.mock('./hooks/useWebSocket', () => ({
     sendComment: vi.fn(),
     sendStamp: vi.fn(),
     reconnect: vi.fn(),
-    rooms: [{ id: 'global', name: 'グローバル', createdAt: 0, lastActiveAt: 0, expiresAt: null }],
-    currentRoom: { id: 'global', name: 'グローバル', createdAt: 0, lastActiveAt: 0, expiresAt: null },
+    rooms: [
+      {
+        id: 'global',
+        name: 'グローバル',
+        createdAt: 0,
+        lastActiveAt: 0,
+        expiresAt: null,
+      },
+    ],
+    currentRoom: {
+      id: 'global',
+      name: 'グローバル',
+      createdAt: 0,
+      lastActiveAt: 0,
+      expiresAt: null,
+    },
     joinRoom: vi.fn(),
     createRoom: vi.fn(),
     refreshRooms: vi.fn(),
   }),
 }));
 
+vi.mock('./hooks/useCustomStamps', () => ({
+  useCustomStamps: () => ({
+    customStamps: [],
+    uploading: false,
+    deleteStamp: vi.fn(),
+    uploadStamp: vi.fn(),
+  }),
+}));
+
 vi.mock('./components/StampPicker', () => ({
   StampPicker: ({ disabled }: { disabled: boolean }) => (
-    <button type="button" disabled={disabled}>スタンプ</button>
+    <button type="button" disabled={disabled}>
+      スタンプ
+    </button>
   ),
 }));
 
@@ -44,8 +69,13 @@ describe('App live screen', () => {
     render(<App />);
 
     expect(screen.getByLabelText('Room')).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Room一覧を更新' })).toHaveProperty('disabled', true);
-    expect(screen.getByPlaceholderText('コメントを入力...')).toHaveProperty('disabled', true);
+    expect(
+      screen.getByRole('button', { name: 'Room一覧を更新' })
+    ).toHaveProperty('disabled', true);
+    expect(screen.getByPlaceholderText('コメントを入力...')).toHaveProperty(
+      'disabled',
+      true
+    );
     expect(screen.getByRole('button', { name: 'スタンプ' })).toHaveProperty(
       'disabled',
       true
@@ -58,7 +88,10 @@ describe('App live screen', () => {
     render(<App />);
 
     expect(screen.getByLabelText('Room')).toHaveProperty('disabled', true);
-    expect(screen.getByPlaceholderText('コメントを入力...')).toHaveProperty('disabled', true);
+    expect(screen.getByPlaceholderText('コメントを入力...')).toHaveProperty(
+      'disabled',
+      true
+    );
     expect(screen.getByRole('button', { name: 'スタンプ' })).toHaveProperty(
       'disabled',
       true

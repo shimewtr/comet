@@ -9,16 +9,19 @@ import { CATEGORY_ICONS, SEARCH_TAB_ICON_CLASS } from './categoryIcons';
 interface UnifiedPickerProps {
   customStamps: Stamp[];
   onSelectStamp: (stamp: Stamp) => void;
+  /** 開いたときに検索タブ（検索欄あり）から始めるか */
+  initialSearchTab?: boolean;
 }
 
 /**
- * カテゴリの並びと日本語表示名（Slackの絵文字ピッカーと同じ情報設計）
- * 「よく使う」を先頭、標準カテゴリ、最後にアップロードした「カスタム」を置く。
+ * カテゴリの並びと日本語表示名。
+ * 先頭の SUGGESTED（よく使う）枠は検索タブとして使い、カテゴリ本体は style.scss で非表示にする
+ * （よく使うスタンプはパレットが担う）。標準カテゴリの後に、アップロードした「カスタム」を置く。
  * 先頭タブは検索タブとして扱い、選択中だけ検索欄を表示する。
  * タブのアイコンは categoryIcons.tsx の線画に差し替え、色は style.scss で制御する
  */
 const CATEGORIES = [
-  { category: Categories.SUGGESTED, name: 'よく使う絵文字' },
+  { category: Categories.SUGGESTED, name: '検索' },
   { category: Categories.SMILEYS_PEOPLE, name: 'スマイリー・人' },
   { category: Categories.ANIMALS_NATURE, name: '動物・自然' },
   { category: Categories.FOOD_DRINK, name: '食べ物・飲み物' },
@@ -29,6 +32,23 @@ const CATEGORIES = [
   { category: Categories.FLAGS, name: '旗' },
   { category: Categories.CUSTOM, name: 'カスタム' },
 ];
+
+/**
+ * emoji-picker-react が「最近使った絵文字」を保存する localStorage のキー。
+ * この一覧は先頭カテゴリ（SUGGESTED）の中身になるが、当アプリでは先頭タブを検索専用にしていて
+ * カテゴリ本体は CSS で隠している。ところがライブラリは隠れていてもこのカテゴリの高さを
+ * スクロール位置の計算に足し込むため、記録が溜まるほど後続カテゴリの下端が描かれなくなる。
+ * 記録を止める設定はないので、マウント時とクリック後に消して常に 0 件にしておく
+ */
+const SUGGESTED_STORAGE_KEY = 'epr_suggested';
+
+function clearSuggestedEmojis() {
+  try {
+    window.localStorage.removeItem(SUGGESTED_STORAGE_KEY);
+  } catch {
+    // Storage が使えない環境では記録もされないので何もしない
+  }
+}
 
 /**
  * emoji-picker-react は customEmojis が空だとカスタムカテゴリ自体を隠してしまう。
@@ -54,11 +74,12 @@ const CUSTOM_PLACEHOLDER = {
 export default function UnifiedPicker({
   customStamps,
   onSelectStamp,
+  initialSearchTab = false,
 }: UnifiedPickerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   // 先頭タブ（検索タブ）を選択中か。ライブラリの epr-active はスクロール位置で決まり、
   // 「よく使う」が空のときは検索タブに付かないため、こちらで別に管理する
-  const [isSearchTab, setIsSearchTab] = useState(false);
+  const [isSearchTab, setIsSearchTab] = useState(initialSearchTab);
 
   const customEmojis = [
     ...customStamps.map((stamp) => ({
@@ -69,7 +90,13 @@ export default function UnifiedPicker({
     CUSTOM_PLACEHOLDER,
   ];
 
+  useEffect(() => {
+    clearSuggestedEmojis();
+  }, []);
+
   const handleEmojiClick = (emojiData: EmojiClickData) => {
+    // ライブラリはこのクリックで「最近使った」を保存するので、その直後に消す
+    window.setTimeout(clearSuggestedEmojis, 0);
     if (emojiData.isCustom) {
       // カスタム絵文字の unified には登録時の id が入る
       const stamp = customStamps.find((s) => s.id === emojiData.unified);
