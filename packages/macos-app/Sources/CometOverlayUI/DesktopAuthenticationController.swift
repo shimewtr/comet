@@ -8,7 +8,7 @@ public final class DesktopAuthenticationController: NSObject, DesktopAuthenticat
   private let session: URLSession
 
   public init(
-    ticketStore: any AuthTicketStoring = KeychainAuthTicketStore(),
+    ticketStore: any AuthTicketStoring = InMemoryAuthTicketStore(),
     session: URLSession = .shared
   ) {
     self.ticketStore = ticketStore

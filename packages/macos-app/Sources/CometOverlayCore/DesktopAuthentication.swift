@@ -80,7 +80,6 @@ public enum DesktopAuthenticationError: Error, Equatable, LocalizedError, Sendab
   case refreshFailed(statusCode: Int)
   case invalidTicket
   case cancelled
-  case keychain(status: Int32)
 
   public var errorDescription: String? {
     switch self {
@@ -102,8 +101,6 @@ public enum DesktopAuthenticationError: Error, Equatable, LocalizedError, Sendab
       "認証チケットが正しくありません"
     case .cancelled:
       "ログインをキャンセルしました"
-    case .keychain(let status):
-      "Keychainの操作に失敗しました（\(status)）"
     }
   }
 }

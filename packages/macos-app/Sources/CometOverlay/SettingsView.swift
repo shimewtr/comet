@@ -13,7 +13,7 @@ struct SettingsView: View {
       Section("認証") {
         LabeledContent("状態", value: model.authenticationDescription)
         Button("ログアウト") { model.logout() }.disabled(!model.canLogout)
-        Text("ログアウトすると、KeychainのComet認証チケットとブラウザのCometセッションを削除します。").font(.caption).foregroundStyle(
+        Text("ログアウトすると、アプリ内のComet認証情報とブラウザのCometセッションを削除します。").font(.caption).foregroundStyle(
           .secondary)
       }
       Section("表示") {
