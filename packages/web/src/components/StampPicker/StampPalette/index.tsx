@@ -62,6 +62,7 @@ export function StampPalette({
   onToggleEditing,
 }: StampPaletteProps) {
   const [drag, setDrag] = useState<DragState | null>(null);
+  const pressAnimationsRef = useRef(new Map<string, Animation>());
   // document に付けたリスナーから最新の状態を読むための ref
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
@@ -86,6 +87,42 @@ export function StampPalette({
   const stamps = entries
     .map((entry) => resolvePaletteEntry(entry, customStamps))
     .filter((stamp): stamp is Stamp => stamp !== null);
+
+  useEffect(
+    () => () => {
+      pressAnimationsRef.current.forEach((animation) => animation.cancel());
+      pressAnimationsRef.current.clear();
+    },
+    []
+  );
+
+  /**
+   * `:active` では拾えない macOS の「タップでクリック」でも、click を受けたら必ず軽く沈ませる。
+   * 同じスタンプの連打時は進行中の動きを止め、先頭から再生する。
+   */
+  const handleStampClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    stamp: Stamp
+  ) => {
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      pressAnimationsRef.current.get(stamp.id)?.cancel();
+      const animation = event.currentTarget.animate(
+        [
+          { transform: 'scale(1)' },
+          { transform: 'scale(0.9)', offset: 0.45 },
+          { transform: 'scale(1)' },
+        ],
+        { duration: 180, easing: 'ease-out' }
+      );
+      pressAnimationsRef.current.set(stamp.id, animation);
+      animation.onfinish = () => {
+        if (pressAnimationsRef.current.get(stamp.id) === animation) {
+          pressAnimationsRef.current.delete(stamp.id);
+        }
+      };
+    }
+    onSelect(stamp);
+  };
 
   const setTileRef = (id: string) => (el: HTMLElement | null) => {
     if (el) tileRefs.current.set(id, el);
@@ -329,7 +366,7 @@ export function StampPalette({
             data-stamp-id={stamp.id}
             className={className}
             disabled={disabled}
-            onClick={() => onSelect(stamp)}
+            onClick={(event) => handleStampClick(event, stamp)}
             title={stamp.name}
             aria-label={`${stamp.name} を送る`}
           >
