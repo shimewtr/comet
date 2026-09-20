@@ -19,6 +19,11 @@ import {
   createRemoteJWKSet,
   jwtVerify,
 } from 'jose';
+import {
+  ACCESS_TICKET_TTL_SECONDS,
+  createAccessTicket,
+  DESKTOP_ACCESS_TICKET_TTL_SECONDS,
+} from './access-ticket.js';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   SecretsManagerClient,
@@ -62,13 +67,10 @@ const SESSION_COOKIE = 'comet_session';
 const TXN_COOKIE = 'comet_txn';
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const TXN_TTL_SECONDS = 10 * 60;
-const TICKET_TTL_SECONDS = 15 * 60;
 const DESKTOP_CODE_TTL_SECONDS = 2 * 60;
 
 const SESSION_ISSUER = 'comet-session';
 const TXN_ISSUER = 'comet-txn';
-// websocket-handler側のTICKET_ISSUERと一致させること
-const TICKET_ISSUER = 'comet-auth';
 const DESKTOP_CODE_ISSUER = 'comet-desktop-auth';
 
 interface OidcDiscovery {
@@ -336,18 +338,13 @@ async function issueTicket(session: {
   sub: string;
   email?: string;
 }): Promise<CloudFrontRequestResult> {
-  const key = await getSigningKey();
-  const expiresAt = Date.now() + TICKET_TTL_SECONDS * 1000;
+  const ticket = await createAccessTicket(
+    await getSigningKey(),
+    session,
+    ACCESS_TICKET_TTL_SECONDS
+  );
 
-  const token = await new SignJWT({ email: session.email })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(session.sub)
-    .setIssuer(TICKET_ISSUER)
-    .setIssuedAt()
-    .setExpirationTime(`${TICKET_TTL_SECONDS}s`)
-    .sign(key);
-
-  return jsonResponse(200, { token, expiresAt });
+  return jsonResponse(200, ticket);
 }
 
 async function issueDesktopCredentials(session: {
@@ -355,16 +352,25 @@ async function issueDesktopCredentials(session: {
   email?: string;
 }): Promise<CloudFrontRequestResult> {
   const key = await getSigningKey();
-  const expiresAt = Date.now() + TICKET_TTL_SECONDS * 1000;
-  const token = await new SignJWT({ email: session.email })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(session.sub)
-    .setIssuer(TICKET_ISSUER)
-    .setIssuedAt()
-    .setExpirationTime(`${TICKET_TTL_SECONDS}s`)
-    .sign(key);
+  const ticket = await createAccessTicket(
+    key,
+    session,
+    DESKTOP_ACCESS_TICKET_TTL_SECONDS
+  );
   const refreshCredential = await createDesktopRefreshToken(key, session);
-  return jsonResponse(200, { token, expiresAt, ...refreshCredential });
+  return jsonResponse(200, { ...ticket, ...refreshCredential });
+}
+
+async function issueDesktopTicket(session: {
+  sub: string;
+  email?: string;
+}): Promise<CloudFrontRequestResult> {
+  const ticket = await createAccessTicket(
+    await getSigningKey(),
+    session,
+    DESKTOP_ACCESS_TICKET_TTL_SECONDS
+  );
+  return jsonResponse(200, ticket);
 }
 
 async function startDesktopLogin(
@@ -461,7 +467,7 @@ async function refreshDesktopTicket(
       refreshToken,
       await getSigningKey()
     );
-    return await issueTicket(identity);
+    return await issueDesktopTicket(identity);
   } catch {
     return jsonResponse(401, { error: 'Invalid or expired refresh token' });
   }

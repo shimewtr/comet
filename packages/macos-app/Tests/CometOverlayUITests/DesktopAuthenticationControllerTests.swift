@@ -4,6 +4,19 @@ import Testing
 
 @testable import CometOverlayUI
 
+@Test
+func inMemoryAuthTicketStoreKeepsCredentialsOnlyForItsLifetime() async throws {
+  let origin = "https://comet.example.com"
+  let ticket = AuthTicket(token: "access-ticket", expiresAt: Int64.max)
+  let store = InMemoryAuthTicketStore()
+
+  try await store.save(ticket, for: origin)
+  #expect(try await store.load(for: origin) == ticket)
+  try await store.remove(for: origin)
+  #expect(try await store.load(for: origin) == nil)
+  #expect(try await InMemoryAuthTicketStore().load(for: origin) == nil)
+}
+
 @MainActor
 @Test
 func expiredAccessTicketRefreshesWithoutOpeningTheBrowser() async throws {
@@ -18,7 +31,7 @@ func expiredAccessTicketRefreshesWithoutOpeningTheBrowser() async throws {
   let configuration = URLSessionConfiguration.ephemeral
   configuration.protocolClasses = [RefreshURLProtocol.self]
   let session = URLSession(configuration: configuration)
-  let refreshedExpiry = now + 15 * 60 * 1_000
+  let refreshedExpiry = now + 60 * 60 * 1_000
   RefreshURLProtocol.handler = { request in
     #expect(request.url?.path == "/auth/desktop/refresh")
     #expect(

@@ -37,7 +37,7 @@ Cometのコメントとスタンプを、ChromeやGoogleスライドに限定せ
 - 最初は`.floating`相当から始め、プレゼンアプリごとの実機結果に基づいて必要最小限のlevelへ調整する
 - 通信は`URLSessionWebSocketTask`を使用し、不要な外部依存を追加しない
 - macOS側のプロトコルモデルと共有JSON fixtureを用意し、TypeScript実装との互換性をテストする
-- 認証チケットはKeychainへ保存し、IdPアクセストークンは保存しない
+- 認証チケットはアプリのメモリだけに保持し、IdPアクセストークンは保存しない
 - Chrome専用の`/auth/extension`とは別に、固定callbackを持つdesktop認証フローを設計する
 
 ## 開発環境の確認結果
@@ -171,7 +171,7 @@ Cometのコメントとスタンプを、ChromeやGoogleスライドに限定せ
 
 - desktop用ログイン開始・callback方式を脅威モデルとともに設計する
 - `ASWebAuthenticationSession`から固定URL Schemeまたはloopback callbackへ戻す
-- 短命Cometチケットを受け取りKeychainへ保存する
+- Cometチケットを受け取りアプリのメモリだけに保持する
 - 期限前更新、ログアウト、失効時の再ログインを実装する
 - callbackの改ざん、任意URLへの転送、チケット漏えいをテストする
 

@@ -150,7 +150,7 @@ func authTicketTracksItsIndependentRefreshCredential() {
 }
 
 @Test
-func authTicketDecodesLegacyKeychainDataWithoutRefreshCredential() throws {
+func authTicketDecodesLegacyStoredDataWithoutRefreshCredential() throws {
   let ticket = try JSONDecoder().decode(
     AuthTicket.self,
     from: Data(#"{"token":"legacy-ticket","expiresAt":1070000}"#.utf8)
