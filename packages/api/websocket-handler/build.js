@@ -7,7 +7,7 @@ async function build() {
       entryPoints: ['src/index.ts'],
       bundle: true,
       platform: 'node',
-      target: 'node18',
+      target: 'node24',
       outfile: 'dist/index.js',
       external: [
         // AWS SDKは Lambda 環境に含まれているため外部化

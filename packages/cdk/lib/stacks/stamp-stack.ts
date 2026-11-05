@@ -117,7 +117,7 @@ export class StampStack extends cdk.Stack {
     const uploadLambda = new lambda.Function(this, 'UploadLambda', {
       functionName: uploadLambdaName,
       logGroup: uploadLogGroup,
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: nodejsLambdaCode('stamp-upload'),
       environment: {
@@ -145,7 +145,7 @@ export class StampStack extends cdk.Stack {
         'stamp-api-authorizer'
       );
       const authorizerFn = new lambda.Function(this, 'StampApiAuthorizer', {
-        runtime: lambda.Runtime.NODEJS_22_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         handler: 'index.httpAuthorizer',
         // チケット検証コードはwebsocket-handlerのバンドルに含まれる
         code: nodejsLambdaCode('websocket-handler'),

@@ -5,7 +5,7 @@ esbuild
     entryPoints: ['src/index.ts'],
     bundle: true,
     platform: 'node',
-    target: 'node22',
+    target: 'node24',
     outfile: 'dist/index.js',
     external: ['@aws-sdk/*'],
     format: 'cjs',
