@@ -36,7 +36,7 @@ export class HistoryStack extends cdk.Stack {
     });
     const handler = new lambda.Function(this, 'HistoryHandler', {
       functionName,
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: nodejsLambdaCode('history-handler'),
       timeout: cdk.Duration.seconds(30),

@@ -14,11 +14,11 @@ export function nodejsLambdaCode(packageName: string): lambda.Code {
 
   return lambda.Code.fromAsset(sourceDirectory, {
     bundling: {
-      image: lambda.Runtime.NODEJS_22_X.bundlingImage,
+      image: lambda.Runtime.NODEJS_24_X.bundlingImage,
       command: [
         'bash',
         '-c',
-        'cp -R /asset-input /tmp/comet-lambda && cd /tmp/comet-lambda && npm install --no-save esbuild@0.28.2 && npx esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outfile=/asset-output/index.js --sourcemap --external:@aws-sdk/*',
+        'cp -R /asset-input /tmp/comet-lambda && cd /tmp/comet-lambda && npm install --no-save esbuild@0.28.2 && npx esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=/asset-output/index.js --sourcemap --external:@aws-sdk/*',
       ],
       local: {
         tryBundle(outputDirectory) {
@@ -26,7 +26,7 @@ export function nodejsLambdaCode(packageName: string): lambda.Code {
             path.join(sourceDirectory, 'src/index.ts'),
             '--bundle',
             '--platform=node',
-            '--target=node22',
+            '--target=node24',
             '--format=cjs',
             `--outfile=${path.join(outputDirectory, 'index.js')}`,
             '--sourcemap',

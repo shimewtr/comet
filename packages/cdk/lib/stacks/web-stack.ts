@@ -161,7 +161,7 @@ export class WebStack extends cdk.Stack {
         this,
         'EdgeAuthFn',
         {
-          runtime: lambda.Runtime.NODEJS_20_X,
+          runtime: lambda.Runtime.NODEJS_24_X,
           handler: 'index.handler',
           code: lambda.Code.fromAsset(edgeAssetDir),
           memorySize: 128,

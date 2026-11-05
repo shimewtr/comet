@@ -71,7 +71,7 @@ export class WebSocketStack extends cdk.Stack {
     // Lambda関数はCDKがソースからbundleする。事前にdistを生成しておく方式では、
     // `cdk deploy` を直接実行したときに未bundleのworkspace依存を配備し得るため。
     const lambdaConfig = {
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       role: lambdaRole,
       timeout: cdk.Duration.seconds(30),
       memorySize: props.config.lambdaMemorySize,
@@ -137,7 +137,7 @@ export class WebSocketStack extends cdk.Stack {
         'websocket-authorizer'
       );
       const authorizerFn = new lambda.Function(this, 'ConnectAuthorizer', {
-        runtime: lambda.Runtime.NODEJS_22_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         code: handlerCode,
         handler: 'index.wsAuthorizer',
         functionName: authorizerName,
