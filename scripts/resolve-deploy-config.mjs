@@ -14,7 +14,9 @@ export function resolveDeployProfile(configFile, envName, required = false) {
     config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`設定ファイルを読み込めません: ${configFile}\n${detail}`);
+    throw new Error(`設定ファイルを読み込めません: ${configFile}\n${detail}`, {
+      cause: error,
+    });
   }
 
   const profile = config.envs?.[envName]?.profile;
