@@ -42,6 +42,23 @@ public struct OverlayCanvasView: View {
   }
 }
 
+/// 黒文字は暗い背景に埋もれるため白いぼかしで縁取り、それ以外は黒い影を付ける。
+private struct CommentLegibilityShadow: ViewModifier {
+  let isBlackText: Bool
+
+  func body(content: Content) -> some View {
+    if isBlackText {
+      // 1 回だと薄いので重ねて縁取りの濃さを出す
+      content
+        .shadow(color: .white, radius: 1)
+        .shadow(color: .white, radius: 2)
+        .shadow(color: .white.opacity(0.9), radius: 4)
+    } else {
+      content.shadow(color: .black.opacity(0.9), radius: 2, x: 1, y: 1)
+    }
+  }
+}
+
 private struct CommentOverlayView: View {
   let item: RenderedComment
   let canvasSize: CGSize
@@ -55,7 +72,7 @@ private struct CommentOverlayView: View {
     let text = Text(item.comment.content)
       .font(.system(size: fontSize, weight: .bold))
       .foregroundStyle(Color(hex: item.comment.style.color))
-      .shadow(color: .black.opacity(0.9), radius: 2, x: 1, y: 1)
+      .modifier(CommentLegibilityShadow(isBlackText: isBlackText))
       .opacity(settings.commentOpacity)
     let animatedText = text.modifier(CommentEffect(animation: item.comment.style.animation))
 
@@ -93,6 +110,11 @@ private struct CommentOverlayView: View {
         hasStarted = true
       }
     }
+  }
+
+  private var isBlackText: Bool {
+    item.comment.style.color
+      .trimmingCharacters(in: CharacterSet.alphanumerics.inverted) == "000000"
   }
 
   private var baseFontSize: CGFloat {
